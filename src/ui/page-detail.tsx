@@ -43,12 +43,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
   };
 
   const closePhotoModal = () => {
-    if (showPhotoModal) {
-      setShowPhotoModal(false);
-      if (history.state && history.state.modalOpen === "photo") {
-        history.back();
-      }
-    }
+    setShowPhotoModal(false);
   };
 
   // Fullscreen Map Modal states & handlers
@@ -60,12 +55,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
   };
 
   const closeMapModal = () => {
-    if (showMapModal) {
-      setShowMapModal(false);
-      if (history.state && history.state.modalOpen === "map") {
-        history.back();
-      }
-    }
+    setShowMapModal(false);
   };
 
   useEffect(() => {

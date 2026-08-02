@@ -43,7 +43,7 @@ export function useToast() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const showToast = (message: string, type: 'error' | 'success' | 'info' = 'error') => {
-    const id = ++toastId;
+    const id = Date.now() + (toastId++);
     setToasts(prev => [...prev, { id, message, type }]);
   };
 

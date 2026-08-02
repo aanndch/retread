@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useRef } from 'preact/hooks';
+import { useReducer, useEffect, useRef, useCallback } from 'preact/hooks';
 import { db } from '../../db';
 import { compressImage } from '../../images';
 import { Toast, useToast } from '../../components/toast';
@@ -66,7 +66,10 @@ const initialEditorState: EditorState = {
 };
 
 // Simple merging reducer (acts like this.setState)
-const formReducer = (state: EditorState, action: Partial<EditorState>) => ({ ...state, ...action });
+const formReducer = (state: EditorState, action: Partial<EditorState>) => {
+  const filtered = Object.fromEntries(Object.entries(action).filter(([, v]) => v !== undefined));
+  return { ...state, ...filtered };
+};
 
 // ==========================================
 // EDITOR VIEW COMPONENT
@@ -132,20 +135,24 @@ export function Editor({ onNavigate }: EditorProps) {
   // Auto-capture departure GPS on mount for new trips
   useEffect(() => {
     if (mode === 'new-trip' && navigator.geolocation) {
+      let active = true;
       dispatch({ startGpsLoading: true });
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          dispatch({
+          if (active) dispatch({
             startGpsLoading: false,
             startLocation: { kind: 'gps', lat: position.coords.latitude, lng: position.coords.longitude, name: '' }
           });
         },
         () => {
-          dispatch({ startGpsLoading: false });
-          showToast('GPS auto-detect failed.');
+          if (active) {
+            dispatch({ startGpsLoading: false });
+            showToast('GPS auto-detect failed.');
+          }
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
+      return () => { active = false; };
     }
   }, [mode]);
 
@@ -276,7 +283,7 @@ export function Editor({ onNavigate }: EditorProps) {
   }
 
   // Geolocation Handler
-  const handleDropPin = () => {
+  const handleDropPin = useCallback(() => {
     if (!navigator.geolocation) {
       showToast('Geolocation is not supported by your device.');
       return;
@@ -292,11 +299,11 @@ export function Editor({ onNavigate }: EditorProps) {
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
-  };
+  }, []);
 
-  const handleClearLocation = () => {
+  const handleClearLocation = useCallback(() => {
     dispatch({ location: location && location.name ? { kind: 'named', name: location.name } : null });
-  };
+  }, [location]);
 
   const onClearStartLocation = () => {
     dispatch({ startLocation: startLocation && startLocation.name ? { kind: 'named', name: startLocation.name } : null });

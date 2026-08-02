@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/retread/',
+  base: process.env.BASE_URL || '/retread/',
   plugins: [
     preact(),
     VitePWA({
@@ -55,7 +55,7 @@ export default defineConfig({
                 maxEntries: 50,
                 maxAgeSeconds: 60 * 60 * 24 * 7 // 1 week
               },
-              networkTimeoutSeconds: 5 // fail fast if offline
+              networkTimeoutSeconds: 10 // fail fast if offline
             }
           }
         ]

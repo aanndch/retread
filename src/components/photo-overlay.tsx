@@ -24,6 +24,17 @@ export function PhotoOverlay({
   const isPhotoDraggingRef = useRef(false);
   const imgScaleRef = useRef(1);
 
+  // Reset zoom state when overlay opens
+  useEffect(() => {
+    if (isOpen) {
+      setImgScale(1);
+      imgScaleRef.current = 1;
+      setImgOffset({ x: 0, y: 0 });
+      setIsPhotoDragging(false);
+      isPhotoDraggingRef.current = false;
+    }
+  }, [isOpen]);
+
   // Close modal when hardware back button is pressed
   useEffect(() => {
     const handlePopState = () => {

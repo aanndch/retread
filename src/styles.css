@@ -1389,6 +1389,7 @@ input[type=number] {
 .gallery-carousel {
   overflow: hidden;
   margin-bottom: var(--spacing-md);
+  touch-action: pan-y;
 }
 
 .carousel-viewport {
@@ -1756,7 +1757,7 @@ input[type=number] {
   user-select: none;
 }
 
-.photo-zoomed-img {
+.photo-zoom-image {
   max-width: 95vw;
   max-height: 80vh;
   object-fit: contain;
@@ -1765,7 +1766,7 @@ input[type=number] {
   -webkit-user-drag: none;
 }
 
-.photo-zoomed-img:active {
+.photo-zoom-image:active {
   cursor: grabbing;
 }
 

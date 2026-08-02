@@ -32,10 +32,18 @@ export function Home({ onNavigate }: HomeProps) {
   // Live query for trips + their first page's first photo for the cover
   const tripsData = useLiveQuery(async () => {
     const allTrips = await db.trips.orderBy('createdAt').reverse().toArray();
+    const allPages = await db.pages.toArray();
+    const pagesByTrip = new Map<number, typeof allPages>();
+    for (const page of allPages) {
+      const list = pagesByTrip.get(page.tripId) || [];
+      list.push(page);
+      pagesByTrip.set(page.tripId, list);
+    }
+    
     const list = [];
     
     for (const trip of allTrips) {
-      const pages = await db.pages.where('tripId').equals(trip.id!).toArray();
+      const pages = pagesByTrip.get(trip.id!) || [];
       
       // Find the first page chronologically that has at least one photo
       const sortedPages = [...pages].sort((a, b) => {
@@ -302,27 +310,15 @@ export function Home({ onNavigate }: HomeProps) {
 
         {/* Footer Settings Entry */}
         <div style={{ textAlign: 'left', marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-md)' }}>
-          <button 
-            type="button" 
+          <Button 
+            variant="tertiary"
             onClick={() => setShowSettings(true)}
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              color: 'var(--color-ink-muted)', 
-              fontFamily: 'var(--font-mechanical)', 
-              fontSize: '11px', 
-              cursor: 'pointer',
-              textDecoration: 'underline',
-              opacity: 0.7,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: 0
-            }}
+            class="btn-icon-text"
+            style={{ textDecoration: 'underline', opacity: 0.7 }}
           >
             <GearIcon size={16} />
             <span>Manage Settings & Backups</span>
-          </button>
+          </Button>
         </div>
       </main>
 

@@ -33,13 +33,18 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   };
 
   const closeMapModal = () => {
-    if (showMapModal) {
-      setShowMapModal(false);
-      if (history.state && history.state.modalOpen === "map") {
-        history.back();
-      }
-    }
+    setShowMapModal(false);
   };
+
+  // Close modals on browser back button
+  useEffect(() => {
+    const handlePopState = () => {
+      if (showMapModal) setShowMapModal(false);
+      if (showDeleteModal) setShowDeleteModal(false);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [showMapModal, showDeleteModal]);
 
   const onNavigateRef = useRef(onNavigate);
   onNavigateRef.current = onNavigate;
