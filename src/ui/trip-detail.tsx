@@ -267,6 +267,33 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
     }
   }
 
+  // Compile start -> end location summary
+  let startLabel = '';
+  if (trip.startLocation) {
+    startLabel = trip.startLocation.name || 
+      (trip.startLocation.kind === 'gps' 
+        ? `[${trip.startLocation.lat.toFixed(4)}, ${trip.startLocation.lng.toFixed(4)}]`
+        : '');
+  }
+
+  let endLabel = '';
+  if (pages.length > 0) {
+    const lastPage = pages[pages.length - 1];
+    if (lastPage.location) {
+      endLabel = lastPage.location.name || 
+        (lastPage.location.kind === 'gps' 
+          ? `[${lastPage.location.lat.toFixed(4)}, ${lastPage.location.lng.toFixed(4)}]`
+          : '');
+    }
+  }
+
+  let routeSummary = '';
+  if (startLabel && endLabel) {
+    routeSummary = `${startLabel} → ${endLabel}`;
+  } else if (startLabel) {
+    routeSummary = startLabel;
+  }
+
   return (
     <div class="trip-detail-container">
       <header class="detail-header">
@@ -279,6 +306,11 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
         </Button>
         <div class="header-titles">
           <h3>{trip.title}</h3>
+          {routeSummary && (
+            <div style={{ fontSize: '12px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-mechanical)', marginBottom: '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              {routeSummary}
+            </div>
+          )}
           <span class="trip-dates-sub">{dateRange}</span>
         </div>
       </header>
@@ -393,7 +425,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                               📍{" "}
                               {page.location.name ||
                                 (page.location.kind === "gps"
-                                  ? "GPS"
+                                  ? `[${page.location.lat.toFixed(4)}, ${page.location.lng.toFixed(4)}]`
                                   : "Named")}
                             </span>
                           )}

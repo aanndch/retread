@@ -408,7 +408,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
           )}
           {page.location && (
             <div class="metric-badge location-badge-wide">
-              <span class="badge-label">Logged Location</span>
+              <span class="badge-label">Leg Destination</span>
               <span class="badge-value">
                 📍{" "}
                 {page.location.name ||

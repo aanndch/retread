@@ -16,6 +16,7 @@ interface MetricsStepProps {
   odo: number | null;
   setOdo: (o: number | null) => void;
   location: LocationUnion | null;
+  setLocation: (l: LocationUnion | null) => void;
   gpsLoading: boolean;
   handleDropPin: () => void;
   handleClearLocation: () => void;
@@ -26,6 +27,7 @@ interface MetricsStepProps {
   startOdo: number | null;
   setStartOdo: (o: number | null) => void;
   startLocation: LocationUnion | null;
+  setStartLocation: (l: LocationUnion | null) => void;
   startGpsLoading: boolean;
   onClearStartLocation: () => void;
   onRetryStartGps: () => void;
@@ -49,6 +51,7 @@ export function MetricsStep({
   odo,
   setOdo,
   location,
+  setLocation,
   gpsLoading,
   handleDropPin,
   handleClearLocation,
@@ -59,6 +62,7 @@ export function MetricsStep({
   startOdo,
   setStartOdo,
   startLocation,
+  setStartLocation,
   startGpsLoading,
   onClearStartLocation,
   onRetryStartGps,
@@ -92,6 +96,29 @@ export function MetricsStep({
       {(mode === 'new-trip' || mode === 'edit-trip') && (
         <div class="form-group">
           <label class="input-label">Starting From</label>
+          
+          {/* Starting Location Name text input */}
+          <div class="form-group" style={{ marginBottom: '8px' }}>
+            <input 
+              type="text" 
+              class="form-input form-input-sm" 
+              placeholder="Starting place name (e.g. Delhi)" 
+              value={startLocation ? startLocation.name : ''}
+              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
+                const val = (e.target as HTMLInputElement).value;
+                if (!startLocation) {
+                  if (val) setStartLocation({ kind: 'named', name: val });
+                } else if (startLocation.kind === 'named') {
+                  if (val) setStartLocation({ kind: 'named', name: val });
+                  else setStartLocation(null);
+                } else {
+                  setStartLocation({ ...startLocation, name: val });
+                }
+              }}
+            />
+          </div>
+
+          {/* Coordinate Pin Selection */}
           {startGpsLoading ? (
             <span class="field-tip">📡 Detecting your location...</span>
           ) : startLocation?.kind === 'gps' ? (
@@ -244,8 +271,30 @@ export function MetricsStep({
 
           {/* Geolocation Section */}
           <div class="form-group form-group-bordered">
-            <label class="input-label">Location Pin</label>
+            <label class="input-label">Leg Destination</label>
             
+            {/* Destination Name Text Input */}
+            <div class="form-group" style={{ marginBottom: '8px' }}>
+              <input 
+                type="text" 
+                class="form-input form-input-sm" 
+                placeholder="Destination name (e.g. Jispa)" 
+                value={location ? location.name : ''}
+                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
+                  const val = (e.target as HTMLInputElement).value;
+                  if (!location) {
+                    if (val) setLocation({ kind: 'named', name: val });
+                  } else if (location.kind === 'named') {
+                    if (val) setLocation({ kind: 'named', name: val });
+                    else setLocation(null);
+                  } else {
+                    setLocation({ ...location, name: val });
+                  }
+                }}
+              />
+            </div>
+
+            {/* Coordinate Pin selection/badge */}
             {gpsLoading ? (
               <span class="field-tip">📡 Detecting your location...</span>
             ) : location?.kind === 'gps' ? (

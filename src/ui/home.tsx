@@ -48,11 +48,39 @@ export function Home({ onNavigate }: HomeProps) {
       const pageWithPhoto = sortedPages.find(p => p.photos && p.photos.length > 0);
       const firstPhotoBlob = pageWithPhoto ? pageWithPhoto.photos[0] : null;
 
+      // Compile start -> end location summary
+      let startLabel = '';
+      if (trip.startLocation) {
+        startLabel = trip.startLocation.name || 
+          (trip.startLocation.kind === 'gps' 
+            ? `[${trip.startLocation.lat.toFixed(4)}, ${trip.startLocation.lng.toFixed(4)}]`
+            : '');
+      }
+
+      let endLabel = '';
+      if (sortedPages.length > 0) {
+        const lastPage = sortedPages[sortedPages.length - 1];
+        if (lastPage.location) {
+          endLabel = lastPage.location.name || 
+            (lastPage.location.kind === 'gps' 
+              ? `[${lastPage.location.lat.toFixed(4)}, ${lastPage.location.lng.toFixed(4)}]`
+              : '');
+        }
+      }
+
+      let routeSummary = '';
+      if (startLabel && endLabel) {
+        routeSummary = `${startLabel} → ${endLabel}`;
+      } else if (startLabel) {
+        routeSummary = startLabel;
+      }
+
       list.push({
         trip,
         daysCount: new Set(pages.map(p => p.date)).size,
         totalKm: computeTotalDistance(pages, trip.startOdo),
-        firstPhotoBlob
+        firstPhotoBlob,
+        routeSummary
       });
     }
     
@@ -244,7 +272,6 @@ export function Home({ onNavigate }: HomeProps) {
         </div>
       )}
 
-      {/* Trips list grid */}
       <main class="trips-section">
         {tripsData === undefined ? (
           <p class="loading-text">Reading logbooks...</p>
@@ -255,13 +282,14 @@ export function Home({ onNavigate }: HomeProps) {
           </div>
         ) : (
           <div class="trips-grid">
-            {tripsData.map(({ trip, daysCount, totalKm, firstPhotoBlob }) => (
+            {tripsData.map(({ trip, daysCount, totalKm, firstPhotoBlob, routeSummary }) => (
               <TripCard 
                 key={trip.id} 
                 trip={trip} 
                 daysCount={daysCount} 
                 totalKm={totalKm} 
                 firstPhotoBlob={firstPhotoBlob} 
+                routeSummary={routeSummary}
               />
             ))}
           </div>
@@ -275,7 +303,7 @@ export function Home({ onNavigate }: HomeProps) {
           aria-label="New Ride" 
           onClick={() => onNavigate('#/edit?mode=new-trip')}
         >
-          ✦
+          ＋
         </Button>
       </div>
 
@@ -293,9 +321,10 @@ interface TripCardProps {
   daysCount: number;
   totalKm: number;
   firstPhotoBlob: Blob | null;
+  routeSummary: string;
 }
 
-function TripCard({ trip, daysCount, totalKm, firstPhotoBlob }: TripCardProps) {
+function TripCard({ trip, daysCount, totalKm, firstPhotoBlob, routeSummary }: TripCardProps) {
   const [imgUrl, setImgUrl] = useState('');
 
   // Handle object URL lifecycle to prevent memory leaks
@@ -320,6 +349,11 @@ function TripCard({ trip, daysCount, totalKm, firstPhotoBlob }: TripCardProps) {
         </div>
         <div class="trip-card-details">
           <h4 class="trip-card-title">{trip.title || 'Untitled Ride'}</h4>
+          {routeSummary && (
+            <div class="trip-card-route" style={{ fontSize: '12px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-mechanical)', marginBottom: '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              {routeSummary}
+            </div>
+          )}
           <div class="trip-card-meta">
             <span>{daysCount} {daysCount === 1 ? 'day' : 'days'}</span>
             <span class="meta-dot">·</span>

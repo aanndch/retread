@@ -411,7 +411,14 @@ export function Editor({ onNavigate }: EditorProps) {
   };
 
   const handleClearLocation = () => {
-    setLocation(null);
+    if (location && location.name) {
+      setLocation({
+        kind: 'named',
+        name: location.name
+      });
+    } else {
+      setLocation(null);
+    }
   };
 
   // Photo uploads & compression
@@ -679,15 +686,24 @@ export function Editor({ onNavigate }: EditorProps) {
               startOdo={startOdo}
               setStartOdo={setStartOdo}
               location={location}
+              setLocation={setLocation}
               gpsLoading={gpsLoading}
               handleDropPin={handleDropPin}
               handleClearLocation={handleClearLocation}
               dayTitle={dayTitle}
               setDayTitle={setDayTitle}
               startLocation={startLocation}
+              setStartLocation={setStartLocation}
               startGpsLoading={startGpsLoading}
               onClearStartLocation={() => {
-                setStartLocation(null);
+                if (startLocation && startLocation.name) {
+                  setStartLocation({
+                    kind: 'named',
+                    name: startLocation.name
+                  });
+                } else {
+                  setStartLocation(null);
+                }
               }}
               onRetryStartGps={() => {
                 if (!navigator.geolocation) {
