@@ -610,9 +610,7 @@ export function Editor({ onNavigate }: EditorProps) {
 
 
 
-  if (loading) {
-    return <p class="loading-text">Loading log details...</p>;
-  }
+
 
   if (!mode) {
     return <p class="loading-text">Invalid editor mode.</p>;
@@ -640,85 +638,99 @@ export function Editor({ onNavigate }: EditorProps) {
         </div>
       )}
 
-      <form onSubmit={handleSave} class="editor-form">
-        {step === 1 && (
-          <MetricsStep
-            mode={mode}
-            tripTitle={tripTitle}
-            setTripTitle={setTripTitle}
-            date={date}
-            setDate={setDate}
-            time={time}
-            setTime={setTime}
-            km={km}
-            setKm={setKm}
-            odo={odo}
-            setOdo={setOdo}
-            distanceMode={distanceMode}
-            setDistanceMode={setDistanceMode}
-            startOdo={startOdo}
-            setStartOdo={setStartOdo}
-            location={location}
-            gpsLoading={gpsLoading}
-            handleDropPin={handleDropPin}
-            handleClearLocation={handleClearLocation}
-            dayTitle={dayTitle}
-            setDayTitle={setDayTitle}
-            startLocation={startLocation}
-            startGpsLoading={startGpsLoading}
-            onClearStartLocation={() => {
-              setStartLocation(null);
-            }}
-            onRetryStartGps={() => {
-              if (!navigator.geolocation) {
-                showToast('Geolocation is not supported by your device.');
-                return;
-              }
-              setStartGpsLoading(true);
-              navigator.geolocation.getCurrentPosition(
-                (position) => {
-                  setStartGpsLoading(false);
-                  setStartLocation({
-                    kind: 'gps',
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                    name: ''
-                  });
-                },
-                () => {
-                  setStartGpsLoading(false);
-                  showToast('GPS auto-detect failed.');
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-              );
-            }}
-            titleError={titleError}
-            setTitleError={setTitleError}
-            handleCancel={handleCancel}
-            handleStepJump={handleStepJump}
-            onOpenMapPicker={handleOpenMapPicker}
-          />
-        )}
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '300px' }}>
+          <div style={{ padding: '60px 0', textAlign: 'center', flex: 1 }}>
+            <p class="loading-text" style={{ margin: 0 }}>Loading details...</p>
+          </div>
+          <div class="form-actions">
+            <Button variant="secondary" onClick={handleCancel} disabled>Cancel</Button>
+            <Button variant="primary" disabled>
+              {mode === 'edit-trip' ? 'Save Changes' : 'Next →'}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSave} class="editor-form">
+          {step === 1 && (
+            <MetricsStep
+              mode={mode}
+              tripTitle={tripTitle}
+              setTripTitle={setTripTitle}
+              date={date}
+              setDate={setDate}
+              time={time}
+              setTime={setTime}
+              km={km}
+              setKm={setKm}
+              odo={odo}
+              setOdo={setOdo}
+              distanceMode={distanceMode}
+              setDistanceMode={setDistanceMode}
+              startOdo={startOdo}
+              setStartOdo={setStartOdo}
+              location={location}
+              gpsLoading={gpsLoading}
+              handleDropPin={handleDropPin}
+              handleClearLocation={handleClearLocation}
+              dayTitle={dayTitle}
+              setDayTitle={setDayTitle}
+              startLocation={startLocation}
+              startGpsLoading={startGpsLoading}
+              onClearStartLocation={() => {
+                setStartLocation(null);
+              }}
+              onRetryStartGps={() => {
+                if (!navigator.geolocation) {
+                  showToast('Geolocation is not supported by your device.');
+                  return;
+                }
+                setStartGpsLoading(true);
+                navigator.geolocation.getCurrentPosition(
+                  (position) => {
+                    setStartGpsLoading(false);
+                    setStartLocation({
+                      kind: 'gps',
+                      lat: position.coords.latitude,
+                      lng: position.coords.longitude,
+                      name: ''
+                    });
+                  },
+                  () => {
+                    setStartGpsLoading(false);
+                    showToast('GPS auto-detect failed.');
+                  },
+                  { enableHighAccuracy: true, timeout: 10000 }
+                );
+              }}
+              titleError={titleError}
+              setTitleError={setTitleError}
+              handleCancel={handleCancel}
+              handleStepJump={handleStepJump}
+              onOpenMapPicker={handleOpenMapPicker}
+            />
+          )}
 
-        {step === 2 && (
-          <PhotosStep
-            photoPreviews={photoPreviews}
-            fileInputRef={fileInputRef}
-            compressing={compressing}
-            handlePhotoChange={handlePhotoChange}
-            handleRemovePhoto={handleRemovePhoto}
-            handleStepJump={handleStepJump}
-          />
-        )}
+          {step === 2 && (
+            <PhotosStep
+              photoPreviews={photoPreviews}
+              fileInputRef={fileInputRef}
+              compressing={compressing}
+              handlePhotoChange={handlePhotoChange}
+              handleRemovePhoto={handleRemovePhoto}
+              handleStepJump={handleStepJump}
+            />
+          )}
 
-        {step === 3 && (
-          <StoryStep
-            note={note}
-            setNote={setNote}
-            handleStepJump={handleStepJump}
-          />
-        )}
-      </form>
+          {step === 3 && (
+            <StoryStep
+              note={note}
+              setNote={setNote}
+              handleStepJump={handleStepJump}
+            />
+          )}
+        </form>
+      )}
 
       {/* Map Picker Modal Backdrop & Overlay */}
       {showMapPicker && (
