@@ -157,11 +157,11 @@ retread/
 - [x] Build JSON importer inside `src/ui/backup.tsx` (clearing existing records, restoring indexes, and reloading states).
 
 ### **Phase 5: Map Squiggle & OSRM Engine**
-- [ ] Write the coordinate-to-viewBox projection utility in `src/squiggle.tsx`.
-- [ ] Connect `src/road.ts` to coordinate routing snapshots from the OSRM public service.
-- [ ] Code the Haversine distance calculator and detour safety filter in `src/road.ts` to reject anomalous Snaps.
-- [ ] Add wobbly textures to map SVG polylines in `src/squiggle.tsx` using custom SVG turbulence displacement filters.
-- [ ] Build background OSRM backfiller task processing offline pins on launch.
+- [x] Write the coordinate-to-viewBox projection utility in `src/ui/squiggle.tsx`.
+- [x] Connect `src/road.ts` to coordinate routing snapshots from the OSRM public service.
+- [x] Code the Haversine distance calculator and detour safety filter in `src/road.ts` to reject anomalous Snaps.
+- [x] Add wobbly textures to map SVG polylines in `src/ui/squiggle.tsx` using custom SVG turbulence displacement filters.
+- [x] Build background OSRM backfiller task processing offline pins on launch.
 
 ### **Phase 6: Integration & Verification**
 - [ ] Connect trip timeline page `src/ui/trip.tsx` displaying chronological day cards and cumulative routes.

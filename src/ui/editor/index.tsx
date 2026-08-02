@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import { db } from '../../db';
 import { compressImage } from '../../images';
 import type { LocationUnion, Page } from '../../types';
+import { backfillTripRoutes } from '../../road';
 import { MetricsStep } from './metrics-step';
 import { PhotosStep } from './photos-step';
 import { StoryStep } from './story-step';
@@ -234,12 +235,14 @@ export function Editor({ onNavigate }: EditorProps) {
         if (!existingPage) throw new Error('Page to update was not found.');
         
         await db.pages.update(pageId, pageData);
+        backfillTripRoutes(existingPage.tripId).catch(err => console.warn('Background backfill failed:', err));
         onNavigate(`#/trip/${existingPage.tripId}`);
       } else {
         await db.pages.add({
           tripId: activeTripId!,
           ...pageData
         } as Page);
+        backfillTripRoutes(activeTripId!).catch(err => console.warn('Background backfill failed:', err));
         onNavigate(`#/trip/${activeTripId}`);
       }
     } catch (err) {
