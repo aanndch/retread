@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { db } from '../../db';
 import { compressImage } from '../../images';
+import { Toast, useToast } from '../../components/toast';
 import type { LocationUnion, Page } from '../../types';
 import type { JSX } from 'preact';
 import { backfillTripRoutes } from '../../road';
@@ -49,6 +50,7 @@ export function Editor({ onNavigate }: EditorProps) {
   const [startGpsLoading, setStartGpsLoading] = useState(false);
   const [showStartNamedFallback, setShowStartNamedFallback] = useState(false);
   const [tempStartPlaceName, setTempStartPlaceName] = useState('');
+  const { toasts, showToast, removeToast } = useToast();
 
   // Auto-capture departure GPS on mount for new trips
   useEffect(() => {
@@ -167,7 +169,7 @@ export function Editor({ onNavigate }: EditorProps) {
   // Geolocation Handler
   const handleDropPin = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your device.');
+      showToast('Geolocation is not supported by your device.');
       setShowNamedFallback(true);
       return;
     }
@@ -226,7 +228,7 @@ export function Editor({ onNavigate }: EditorProps) {
         newPreviews.push(URL.createObjectURL(compressedBlob));
       } catch (err) {
         console.error('Image compression failed:', err);
-        alert(`Failed to upload ${files[i].name}: images must be valid format.`);
+        showToast(`Failed to upload ${files[i].name}: images must be valid format.`);
       }
     }
 
@@ -337,7 +339,7 @@ export function Editor({ onNavigate }: EditorProps) {
       }
     } catch (err) {
       console.error('Failed to save log details:', err);
-      alert('Error saving details to database.');
+      showToast('Error saving details to database.');
     }
   };
 
@@ -475,6 +477,12 @@ export function Editor({ onNavigate }: EditorProps) {
           />
         )}
       </form>
+
+      <div class="toast-container">
+        {toasts.map(t => (
+          <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
+        ))}
+      </div>
     </div>
   );
 }

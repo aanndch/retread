@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { Button } from '../components/button';
+import { Dropdown } from '../components/dropdown';
 import { ArrowRight } from '../components/icons';
 
 interface SetupProps {
@@ -35,9 +36,11 @@ export function Setup({ onComplete }: SetupProps) {
       <div class="setup-card">
         <div class="input-group">
           <label class="input-label">Where do you ride?</label>
-          <select class="input-select" disabled>
-            <option value="IN">India (v1)</option>
-          </select>
+          <Dropdown
+            value="IN"
+            onChange={() => {}}
+            options={[{ value: 'IN', label: 'India (v1)' }]}
+          />
           <span class="input-help">v1 supports snapping routes and odometer units for India.</span>
         </div>
 

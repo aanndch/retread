@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "preact/hooks";
 import { db } from "../db";
 import { Button } from "../components/button";
+import { Toast, useToast } from "../components/toast";
 import {
   ArrowLeft,
   ArrowRight,
@@ -27,6 +28,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [prevPageId, setPrevPageId] = useState<number | null>(null);
   const [nextPageId, setNextPageId] = useState<number | null>(null);
+  const { toasts, showToast, removeToast } = useToast();
 
   const photoUrlsRef = useRef<string[]>([]);
   const touchStartX = useRef(0);
@@ -107,7 +109,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
       onNavigate(`#/trip/${tripId}`);
     } catch (err) {
       console.error("Failed to delete day log:", err);
-      alert("Failed to delete day.");
+      showToast("Failed to delete day.");
     }
   };
 
@@ -328,6 +330,12 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
           </div>
         </div>
       )}
+
+      <div class="toast-container">
+        {toasts.map(t => (
+          <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
+        ))}
+      </div>
     </div>
   );
 }

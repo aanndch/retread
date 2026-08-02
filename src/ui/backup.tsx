@@ -1,6 +1,8 @@
 import { useState, useRef } from 'preact/hooks';
 import { db } from '../db';
 import { Button } from '../components/button';
+import { ConfirmModal } from '../components/confirm-modal';
+import { Toast, useToast } from '../components/toast';
 import { ArrowLeft } from '../components/icons';
 import type { Trip, LocationUnion } from '../types';
 import type { JSX } from 'preact';
@@ -27,7 +29,10 @@ interface BackupPayload {
 export function Backup({ onNavigate }: BackupProps) {
   const [working, setWorking] = useState(false);
   const [statusText, setStatusText] = useState('');
+  const [showConfirmRestore, setShowConfirmRestore] = useState(false);
+  const [pendingRestoreData, setPendingRestoreData] = useState<BackupPayload | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toasts, showToast, removeToast } = useToast();
 
   // Helper: Convert Blob to Base64 Data URL
   const blobToBase64 = (blob: Blob): Promise<string> => {
@@ -106,7 +111,7 @@ export function Backup({ onNavigate }: BackupProps) {
       setStatusText('Backup file generated successfully.');
     } catch (err) {
       console.error('Backup export failed:', err);
-      alert('Failed to generate backup file.');
+      showToast('Failed to generate backup file.');
       setStatusText('Export failed.');
     } finally {
       setWorking(false);
@@ -119,14 +124,8 @@ export function Backup({ onNavigate }: BackupProps) {
     if (!files || files.length === 0) return;
     
     const file = files[0];
-    const confirmRestore = confirm(
-      'WARNING: Restoring this backup will overwrite all current logs and database records on this device. Do you wish to proceed?'
-    );
-    if (!confirmRestore) {
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
+    
+    // Read and validate the file first, then show confirm modal
     setWorking(true);
     setStatusText('Reading backup package...');
     
@@ -151,7 +150,31 @@ export function Backup({ onNavigate }: BackupProps) {
         throw new Error('Unsupported or corrupted backup schema.');
       }
       
-      setStatusText('Restoring database...');
+      // Store data and show confirm modal
+      setPendingRestoreData(parsedData);
+      setShowConfirmRestore(true);
+      setWorking(false);
+      setStatusText('');
+    } catch (err) {
+      console.error('Failed to read backup file:', err);
+      showToast(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setStatusText('');
+      setWorking(false);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!pendingRestoreData) return;
+    
+    setShowConfirmRestore(false);
+    setWorking(true);
+    setStatusText('Restoring database...');
+    
+    try {
+      const parsedData = pendingRestoreData;
+      setPendingRestoreData(null);
 
       await db.transaction('rw', db.trips, db.pages, async () => {
         // Clean DB tables
@@ -202,7 +225,7 @@ export function Backup({ onNavigate }: BackupProps) {
       });
 
       setStatusText('Restore finished successfully.');
-      alert('Logs database successfully restored!');
+      showToast('Logs database successfully restored!', 'success');
       
       // Clear input and redirect
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -210,7 +233,7 @@ export function Backup({ onNavigate }: BackupProps) {
     } catch (err: unknown) {
       console.error('Backup import failed:', err);
       const message = err instanceof Error ? err.message : 'Unknown error';
-      alert(`Import failed: ${message}`);
+      showToast(`Import failed: ${message}`);
       setStatusText('Import failed.');
       if (fileInputRef.current) fileInputRef.current.value = '';
     } finally {
@@ -284,6 +307,25 @@ export function Backup({ onNavigate }: BackupProps) {
           </div>
         </div>
       </main>
+
+      {showConfirmRestore && (
+        <ConfirmModal
+          title="Restore Backup?"
+          message="WARNING: Restoring this backup will overwrite all current logs and database records on this device. Do you wish to proceed?"
+          confirmLabel="Restore"
+          onConfirm={handleConfirmRestore}
+          onCancel={() => {
+            setShowConfirmRestore(false);
+            setPendingRestoreData(null);
+          }}
+        />
+      )}
+
+      <div class="toast-container">
+        {toasts.map(t => (
+          <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
+        ))}
+      </div>
     </div>
   );
 }

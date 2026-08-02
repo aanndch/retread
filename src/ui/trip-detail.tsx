@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "preact/hooks";
 import { db } from "../db";
 import { Button } from "../components/button";
+import { Toast, useToast } from "../components/toast";
 import { ArrowLeft, CloseIcon, EditIcon, TrashIcon } from "../components/icons";
 import { SquiggleMap } from "./squiggle";
 import { computeTotalDistance, formatDistance } from "../lib";
@@ -31,6 +32,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editTitle, setEditTitle] = useState("");
+  const { toasts, showToast, removeToast } = useToast();
 
   const stableNavigate = useCallback((route: string) => {
     onNavigate(route);
@@ -84,7 +86,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
       onNavigate("#/");
     } catch (err) {
       console.error("Failed to delete ride logbook:", err);
-      alert("Failed to delete ride.");
+      showToast("Failed to delete ride.");
     }
   };
 
@@ -97,7 +99,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
       setShowEditModal(false);
     } catch (err) {
       console.error("Failed to update ride title:", err);
-      alert("Failed to save title.");
+      showToast("Failed to save title.");
     }
   };
 
@@ -497,6 +499,12 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           </div>
         </div>
       )}
+
+      <div class="toast-container">
+        {toasts.map(t => (
+          <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
+        ))}
+      </div>
     </div>
   );
 }

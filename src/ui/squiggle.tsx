@@ -76,8 +76,8 @@ export function SquiggleMap({ path, width = 300, height = 150 }: SquiggleMapProp
         <defs>
           {/* Hand-drawn pencil/ink wobbly filter */}
           <filter id="hand-drawn-wobble" x="-10%" y="-10%" width="120%" height="120%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" xChannelSelector="R" yChannelSelector="G" />
+            <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="1" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
 

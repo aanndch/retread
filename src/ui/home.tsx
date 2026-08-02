@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { Button } from '../components/button';
+import { Dropdown } from '../components/dropdown';
+import { Toast, useToast } from '../components/toast';
 import { GearIcon, CloseIcon } from '../components/icons';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -7,7 +9,6 @@ import { computeTotalDistance, formatDistance } from '../lib';
 import { getSavedTheme, saveTheme } from '../theme';
 import { backfillTripRoutes } from '../road';
 import type { Trip } from '../types';
-import type { JSX } from 'preact';
 
 interface HomeProps {
   onNavigate: (route: string) => void;
@@ -16,6 +17,7 @@ interface HomeProps {
 export function Home({ onNavigate }: HomeProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system');
+  const { toasts, showToast, removeToast } = useToast();
 
   // Load saved theme preference on mount
   useEffect(() => {
@@ -51,10 +53,10 @@ export function Home({ onNavigate }: HomeProps) {
     return list;
   });
 
-  const handleThemeChange = (e: JSX.TargetedEvent<HTMLSelectElement>) => {
-    const mode = (e.target as HTMLSelectElement).value as 'system' | 'light' | 'dark';
-    setThemeMode(mode);
-    saveTheme(mode);
+  const handleThemeChange = (mode: string) => {
+    const theme = mode as 'system' | 'light' | 'dark';
+    setThemeMode(theme);
+    saveTheme(theme);
   };
 
   const handleSeedDemoRide = async () => {
@@ -157,7 +159,7 @@ export function Home({ onNavigate }: HomeProps) {
       onNavigate(`#/trip/${newTripId}`);
     } catch (err) {
       console.error("Failed to seed demo data:", err);
-      alert("Error seeding demo data.");
+      showToast("Error seeding demo data.");
     }
   };
 
@@ -193,11 +195,15 @@ export function Home({ onNavigate }: HomeProps) {
               {/* Theme Toggle */}
               <div class="setting-item">
                 <label>Color Theme</label>
-                <select value={themeMode} onChange={handleThemeChange} class="setting-select">
-                  <option value="system">System Default</option>
-                  <option value="light">Light (Cream Paper)</option>
-                  <option value="dark">Dark (Dark Ink/Brown)</option>
-                </select>
+                <Dropdown
+                  value={themeMode}
+                  onChange={handleThemeChange}
+                  options={[
+                    { value: 'system', label: 'System Default' },
+                    { value: 'light', label: 'Light (Cream Paper)' },
+                    { value: 'dark', label: 'Dark (Dark Ink/Brown)' },
+                  ]}
+                />
               </div>
 
               {/* Backup & Restore */}
@@ -265,6 +271,12 @@ export function Home({ onNavigate }: HomeProps) {
         >
           ✦
         </Button>
+      </div>
+
+      <div class="toast-container">
+        {toasts.map(t => (
+          <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
+        ))}
       </div>
     </div>
   );
