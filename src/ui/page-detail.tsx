@@ -12,6 +12,7 @@ import {
 import { SquiggleMap } from "./squiggle";
 import { PageHeader } from "../components/page-header";
 import { MapModal } from "../components/map-modal";
+import { PhotoOverlay } from "../components/photo-overlay";
 import { backfillTripRoutes } from "../road";
 import type { Page } from "../types";
 
@@ -34,19 +35,9 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
 
   // Fullscreen Photo Modal states & handlers
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [imgScale, setImgScale] = useState(1);
-  const [imgOffset, setImgOffset] = useState({ x: 0, y: 0 });
-  const [isPhotoDragging, setIsPhotoDragging] = useState(false);
-  const photoTouchStart = useRef({ x: 0, y: 0 });
-  const photoLastTouchDistance = useRef<number | null>(null);
-
-  // Fullscreen Map Modal states & handlers
-  const [showMapModal, setShowMapModal] = useState(false);
 
   const openPhotoModal = (idx: number) => {
     setActivePhotoIdx(idx);
-    setImgScale(1);
-    setImgOffset({ x: 0, y: 0 });
     setShowPhotoModal(true);
     history.pushState({ modalOpen: "photo" }, "");
   };
@@ -59,6 +50,9 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
       }
     }
   };
+
+  // Fullscreen Map Modal states & handlers
+  const [showMapModal, setShowMapModal] = useState(false);
 
   const openMapModal = () => {
     setShowMapModal(true);
@@ -82,90 +76,6 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [showPhotoModal, showMapModal]);
-
-  // PHOTO GESTURES
-  const togglePhotoZoom = (e: MouseEvent) => {
-    e.stopPropagation();
-    if (imgScale > 1) {
-      setImgScale(1);
-      setImgOffset({ x: 0, y: 0 });
-    } else {
-      setImgScale(2.5);
-    }
-  };
-
-  const handlePhotoTouchStart = (e: TouchEvent) => {
-    if (e.touches.length === 1) {
-      setIsPhotoDragging(true);
-      photoTouchStart.current = {
-        x: e.touches[0].clientX - imgOffset.x,
-        y: e.touches[0].clientY - imgOffset.y,
-      };
-      touchStartX.current = e.touches[0].clientX;
-    } else if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      photoLastTouchDistance.current = dist;
-    }
-  };
-
-  const handlePhotoTouchMove = (e: TouchEvent) => {
-    if (e.touches.length === 1 && isPhotoDragging) {
-      if (imgScale > 1) {
-        const dx = e.touches[0].clientX - photoTouchStart.current.x;
-        const dy = e.touches[0].clientY - photoTouchStart.current.y;
-        setImgOffset({ x: dx, y: dy });
-      }
-    } else if (e.touches.length === 2 && photoLastTouchDistance.current !== null) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const factor = dist / photoLastTouchDistance.current;
-      setImgScale(s => Math.max(1, Math.min(4, s * factor)));
-      photoLastTouchDistance.current = dist;
-    }
-  };
-
-  const handlePhotoTouchEnd = (e: TouchEvent) => {
-    setIsPhotoDragging(false);
-    photoLastTouchDistance.current = null;
-
-    if (imgScale === 1) {
-      const deltaX = touchStartX.current - e.changedTouches[0].clientX;
-      if (Math.abs(deltaX) > 50) {
-        if (deltaX > 0) {
-          setActivePhotoIdx((i) => (i + 1) % photoUrls.length);
-        } else {
-          setActivePhotoIdx((i) => (i - 1 + photoUrls.length) % photoUrls.length);
-        }
-      }
-    }
-  };
-
-  const handlePhotoMouseDown = (e: MouseEvent) => {
-    if (imgScale > 1) {
-      setIsPhotoDragging(true);
-      photoTouchStart.current = {
-        x: e.clientX - imgOffset.x,
-        y: e.clientY - imgOffset.y,
-      };
-    }
-  };
-
-  const handlePhotoMouseMove = (e: MouseEvent) => {
-    if (isPhotoDragging && imgScale > 1) {
-      const dx = e.clientX - photoTouchStart.current.x;
-      const dy = e.clientY - photoTouchStart.current.y;
-      setImgOffset({ x: dx, y: dy });
-    }
-  };
-
-  const handlePhotoMouseUp = () => {
-    setIsPhotoDragging(false);
-  };
 
 
   const photoUrlsRef = useRef<string[]>([]);
@@ -439,41 +349,13 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
       )}
 
       {/* Fullscreen Photo Zoom Overlay */}
-      {showPhotoModal && (
-        <div class="modal-backdrop photo-overlay-backdrop" onClick={closePhotoModal}>
-          <button type="button" class="btn-close-overlay" aria-label="Close photo" onClick={(e) => { e.stopPropagation(); closePhotoModal(); }}>&times;</button>
-          
-          <div 
-            class="photo-zoom-container"
-            onClick={(e) => e.stopPropagation()}
-            onTouchStart={handlePhotoTouchStart}
-            onTouchMove={handlePhotoTouchMove}
-            onTouchEnd={handlePhotoTouchEnd}
-            onMouseDown={handlePhotoMouseDown}
-            onMouseMove={handlePhotoMouseMove}
-            onMouseUp={handlePhotoMouseUp}
-          >
-            <img 
-              src={photoUrls[activePhotoIdx]} 
-              alt="Zoomed Photo" 
-              class="photo-zoomed-img"
-              style={{
-                transform: `translate(${imgOffset.x}px, ${imgOffset.y}px) scale(${imgScale})`,
-                transition: isPhotoDragging ? 'none' : 'transform 0.15s ease-out'
-              }}
-              onDblClick={togglePhotoZoom}
-            />
-          </div>
-          
-          {photoUrls.length > 1 && (
-            <div class="photo-overlay-dots">
-              {photoUrls.map((_, idx) => (
-                <span class={`carousel-dot${idx === activePhotoIdx ? ' active' : ''}`} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <PhotoOverlay
+        isOpen={showPhotoModal}
+        photoUrls={photoUrls}
+        activeIdx={activePhotoIdx}
+        setActiveIdx={setActivePhotoIdx}
+        onClose={closePhotoModal}
+      />
 
       {/* Fullscreen Map Overlay */}
       <MapModal

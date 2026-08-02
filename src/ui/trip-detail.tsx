@@ -7,6 +7,7 @@ import { EditIcon, TrashIcon } from "../components/icons";
 import { SquiggleMap } from "./squiggle";
 import { PageHeader } from "../components/page-header";
 import { MapModal } from "../components/map-modal";
+import { LegCard } from "./trip-detail/leg-card";
 import { HASH_HOME } from "../constants";
 import { computeTotalDistance, formatDistance } from "../lib";
 import type { Trip, Page } from "../types";
@@ -14,18 +15,6 @@ import type { Trip, Page } from "../types";
 interface TripDetailProps {
   tripId: number;
   onNavigate: (route: string) => void;
-}
-
-function PhotoThumb({ blob }: { blob: Blob }) {
-  const [url, setUrl] = useState("");
-  useEffect(() => {
-    const objectUrl = URL.createObjectURL(blob);
-    setUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [blob]);
-
-  if (!url) return null;
-  return <img src={url} alt="preview" class="card-photo-thumbnail" />;
 }
 
 export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
@@ -285,9 +274,6 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                 const uniqueDates = Array.from(new Set(pages.map((p) => p.date))).sort();
 
                 return pages.map((page, index) => {
-                  const dateParts = page.date.split("-");
-                  let weekday = "";
-                  
                   const dayNum = uniqueDates.indexOf(page.date) + 1;
                   const pagesOnDate = pages.filter((p) => p.date === page.date);
                   let label = `Day ${dayNum}`;
@@ -296,121 +282,19 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                     label = `Day ${dayNum} • Leg ${legIdx}`;
                   }
 
-                  if (dateParts.length === 3) {
-                    const d = new Date(
-                      parseInt(dateParts[0], 10),
-                      parseInt(dateParts[1], 10) - 1,
-                      parseInt(dateParts[2], 10),
-                    );
-                    weekday = d.toLocaleDateString(undefined, {
-                      weekday: "short",
-                    });
-                  }
-
-                return (
-                  <a
-                    key={page.id}
-                    href={`#/page/${page.id}`}
-                    class="timeline-card-item"
-                  >
-                    <div class="timeline-card-side">
-                      <span class="day-num">{label}</span>
-                      <span class="day-weekday">{weekday}</span>
-                    </div>
-
-                    <div class="timeline-card-body">
-                      <div class="card-title-row">
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "var(--spacing-sm)",
-                            minWidth: 0,
-                          }}
-                        >
-                          <span class="card-date-badge">{page.date}</span>
-                          {page.location && (
-                            <span
-                              class="card-location-badge"
-                              style={{
-                                textOverflow: "ellipsis",
-                                overflow: "hidden",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              📍{" "}
-                              {page.location.name ||
-                                (page.location.kind === "gps"
-                                  ? `[${page.location.lat.toFixed(4)}, ${page.location.lng.toFixed(4)}]`
-                                  : "Named")}
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          style={{
-                            flexShrink: 0,
-                            display: "flex",
-                            gap: "var(--spacing-xs)",
-                          }}
-                        >
-                          {(() => {
-                            if (page.km !== null && page.km !== undefined) {
-                              return (
-                                <span class="card-stat">{page.km} km</span>
-                              );
-                            }
-                            if (page.odo !== null && page.odo !== undefined) {
-                              let prevOdo: number | null = null;
-                              if (index > 0) {
-                                prevOdo = pages[index - 1].odo ?? null;
-                              } else if (trip?.startOdo !== null && trip?.startOdo !== undefined) {
-                                prevOdo = trip.startOdo;
-                              }
-                              if (prevOdo !== null) {
-                                const delta = page.odo - prevOdo;
-                                if (delta >= 0) {
-                                  return (
-                                    <span class="card-stat">{delta} km</span>
-                                  );
-                                }
-                              }
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      </div>
-
-                      {page.title ? (
-                        <h5 class="card-day-title">{page.title}</h5>
-                      ) : null}
-
-                      {page.note && (
-                        <p class="card-note-excerpt">
-                          {page.note.length > 95
-                            ? `${page.note.slice(0, 95)}...`
-                            : page.note}
-                        </p>
-                      )}
-
-                      {/* Photo previews row */}
-                      {page.photos && page.photos.length > 0 && (
-                        <div class="card-photos-strip">
-                          {page.photos.slice(0, 4).map((blob, idx) => (
-                            <PhotoThumb key={idx} blob={blob} />
-                          ))}
-                          {page.photos.length > 4 && (
-                            <span class="more-photos-indicator">
-                              +{page.photos.length - 4}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </a>
-                );
-              })
-            })()}
-          </div>
+                  return (
+                    <LegCard
+                      key={page.id}
+                      page={page}
+                      index={index}
+                      pages={pages}
+                      trip={trip}
+                      label={label}
+                    />
+                  );
+                });
+              })()}
+            </div>
         )}
         </section>
 

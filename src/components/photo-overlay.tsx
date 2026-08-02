@@ -1,0 +1,163 @@
+import { useState, useRef, useEffect } from 'preact/hooks';
+
+interface PhotoOverlayProps {
+  isOpen: boolean;
+  photoUrls: string[];
+  activeIdx: number;
+  setActiveIdx: (idx: number | ((i: number) => number)) => void;
+  onClose: () => void;
+}
+
+export function PhotoOverlay({
+  isOpen,
+  photoUrls,
+  activeIdx,
+  setActiveIdx,
+  onClose,
+}: PhotoOverlayProps) {
+  if (!isOpen || photoUrls.length === 0) return null;
+
+  const [imgScale, setImgScale] = useState(1);
+  const [imgOffset, setImgOffset] = useState({ x: 0, y: 0 });
+  const [isPhotoDragging, setIsPhotoDragging] = useState(false);
+  const photoTouchStart = useRef({ x: 0, y: 0 });
+  const photoLastTouchDistance = useRef<number | null>(null);
+  const touchStartX = useRef(0);
+
+  // Close modal when hardware back button is pressed
+  useEffect(() => {
+    const handlePopState = () => {
+      onClose();
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [onClose]);
+
+  const togglePhotoZoom = (e: MouseEvent) => {
+    e.stopPropagation();
+    if (imgScale > 1) {
+      setImgScale(1);
+      setImgOffset({ x: 0, y: 0 });
+    } else {
+      setImgScale(2.5);
+    }
+  };
+
+  const handlePhotoTouchStart = (e: TouchEvent) => {
+    if (e.touches.length === 1) {
+      setIsPhotoDragging(true);
+      photoTouchStart.current = {
+        x: e.touches[0].clientX - imgOffset.x,
+        y: e.touches[0].clientY - imgOffset.y,
+      };
+      touchStartX.current = e.touches[0].clientX;
+    } else if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      photoLastTouchDistance.current = dist;
+    }
+  };
+
+  const handlePhotoTouchMove = (e: TouchEvent) => {
+    if (e.touches.length === 1 && isPhotoDragging && imgScale > 1) {
+      const dx = e.touches[0].clientX - photoTouchStart.current.x;
+      const dy = e.touches[0].clientY - photoTouchStart.current.y;
+      setImgOffset({ x: dx, y: dy });
+    } else if (e.touches.length === 2 && photoLastTouchDistance.current !== null) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const factor = dist / photoLastTouchDistance.current;
+      setImgScale((s) => Math.max(1, Math.min(4, s * factor)));
+      photoLastTouchDistance.current = dist;
+    }
+  };
+
+  const handlePhotoTouchEnd = (e: TouchEvent) => {
+    setIsPhotoDragging(false);
+    photoLastTouchDistance.current = null;
+
+    // Swipe navigation when not zoomed in
+    if (imgScale === 1) {
+      const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+      if (Math.abs(deltaX) > 50) {
+        if (deltaX < 0) {
+          // Swipe left -> Next photo
+          setActiveIdx((i) => (i + 1) % photoUrls.length);
+        } else {
+          // Swipe right -> Previous photo
+          setActiveIdx((i) => (i - 1 + photoUrls.length) % photoUrls.length);
+        }
+      }
+    }
+  };
+
+  const handlePhotoMouseDown = (e: MouseEvent) => {
+    setIsPhotoDragging(true);
+    photoTouchStart.current = {
+      x: e.clientX - imgOffset.x,
+      y: e.clientY - imgOffset.y,
+    };
+  };
+
+  const handlePhotoMouseMove = (e: MouseEvent) => {
+    if (isPhotoDragging && imgScale > 1) {
+      const dx = e.clientX - photoTouchStart.current.x;
+      const dy = e.clientY - photoTouchStart.current.y;
+      setImgOffset({ x: dx, y: dy });
+    }
+  };
+
+  const handlePhotoMouseUp = () => {
+    setIsPhotoDragging(false);
+  };
+
+  return (
+    <div class="modal-backdrop photo-overlay-backdrop" onClick={onClose}>
+      <button
+        type="button"
+        class="btn-close-overlay"
+        aria-label="Close photo"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+      >
+        &times;
+      </button>
+
+      <div
+        class="photo-zoom-container"
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={handlePhotoTouchStart}
+        onTouchMove={handlePhotoTouchMove}
+        onTouchEnd={handlePhotoTouchEnd}
+        onMouseDown={handlePhotoMouseDown}
+        onMouseMove={handlePhotoMouseMove}
+        onMouseUp={handlePhotoMouseUp}
+      >
+        <img
+          src={photoUrls[activeIdx]}
+          alt={`Photo overlay ${activeIdx + 1}`}
+          class="photo-zoom-image"
+          style={{
+            transform: `translate(${imgOffset.x}px, ${imgOffset.y}px) scale(${imgScale})`,
+            transition: isPhotoDragging ? 'none' : 'transform 0.15s ease-out',
+          }}
+          onDblClick={togglePhotoZoom}
+        />
+      </div>
+
+      {photoUrls.length > 1 && (
+        <div class="photo-overlay-dots">
+          {photoUrls.map((_, idx) => (
+            <span class={`carousel-dot${idx === activeIdx ? ' active' : ''}`} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

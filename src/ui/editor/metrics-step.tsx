@@ -35,7 +35,7 @@ interface MetricsStepProps {
   setTitleError: (e: string) => void;
   handleCancel: () => void;
   handleStepJump: (s: 1 | 2 | 3) => void;
-  onOpenMapPicker: (target: 'start' | 'dest') => void;
+  onOpenMapPicker: (target: 'start' | 'location') => void;
 }
 
 export function MetricsStep({
@@ -325,7 +325,7 @@ export function MetricsStep({
                   variant="secondary" 
                   size="sm" 
                   style={{ flex: 1 }}
-                  onClick={() => onOpenMapPicker('dest')}
+                  onClick={() => onOpenMapPicker('location')}
                 >
                   🗺 Pick on Map
                 </Button>
