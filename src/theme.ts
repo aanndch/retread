@@ -1,11 +1,15 @@
-export type Theme = 'light' | 'dark';
+export type Theme = 'daylight' | 'nightfall' | 'monotone';
 
 /**
  * Retrieves the user's explicitly saved theme preference.
  */
 export function getSavedTheme(): Theme | null {
   const theme = localStorage.getItem('theme');
-  return theme === 'light' || theme === 'dark' ? theme : null;
+  if (theme === 'daylight' || theme === 'nightfall' || theme === 'monotone') return theme;
+  // Migrate legacy values
+  if (theme === 'light') return 'daylight';
+  if (theme === 'dark') return 'nightfall';
+  return null;
 }
 
 /**
@@ -45,5 +49,5 @@ export function getActiveTheme(): Theme {
   
   // Fall back to system preference
   const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return systemPrefersDark ? 'dark' : 'light';
+  return systemPrefersDark ? 'nightfall' : 'daylight';
 }
