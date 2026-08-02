@@ -319,7 +319,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
         {/* Cumulative Squiggle route map */}
         {cumulativePath.length >= 2 ? (
           <div class="map-interactive-trigger" onClick={openMapModal}>
-            <SquiggleMap path={cumulativePath} />
+            <SquiggleMap path={cumulativePath} width={430} height={160} />
           </div>
         ) : (
           <div class="squiggle-map-empty">

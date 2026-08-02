@@ -31,19 +31,23 @@ export function SquiggleMap({
   const minLng = Math.min(...lngs);
   const maxLng = Math.max(...lngs);
 
-  const padding = 15;
-  const latSpan = maxLat - minLat;
-  const lngSpan = maxLng - minLng;
-  const maxSpan = Math.max(latSpan, lngSpan, 0.0001); // Prevent division by zero
+  const padding = 8;
+  const latSpan = Math.max(maxLat - minLat, 0.0001);
+  const lngSpan = Math.max(maxLng - minLng, 0.0001);
+
+  // Calculate uniform scale factor to fit inside viewport bounds preserving shape proportions
+  const scaleX = (width - 2 * padding) / lngSpan;
+  const scaleY = (height - 2 * padding) / latSpan;
+  const scale = Math.min(scaleX, scaleY);
 
   // Center alignment calculations inside the viewBox
-  const xOffset = (width - 2 * padding - (lngSpan / maxSpan) * (width - 2 * padding)) / 2;
-  const yOffset = (height - 2 * padding - (latSpan / maxSpan) * (height - 2 * padding)) / 2;
+  const xOffset = (width - lngSpan * scale) / 2;
+  const yOffset = (height - latSpan * scale) / 2;
 
   const points2D = path.map(p => {
-    const x = padding + xOffset + ((p.lng - minLng) / maxSpan) * (width - 2 * padding);
+    const x = xOffset + (p.lng - minLng) * scale;
     // Invert y because SVG y goes down, while latitude goes up
-    const y = padding + yOffset + ((maxLat - p.lat) / maxSpan) * (height - 2 * padding);
+    const y = yOffset + (maxLat - p.lat) * scale;
     return { x, y };
   });
 
