@@ -183,8 +183,8 @@ export function MetricsStep({
       )}
 
       {/* Geolocation Section */}
-      <div class="form-group-inline">
-        <label class="input-label" style={{ marginBottom: 0 }}>Location Pin</label>
+      <div class="form-group form-group-bordered">
+        <label class="input-label">Location Pin</label>
         
         {!location && !showNamedFallback ? (
           <Button 

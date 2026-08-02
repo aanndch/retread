@@ -642,16 +642,10 @@ header {
 }
 
 /* Geolocation Section & Badges */
-.form-group-inline {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--spacing-md);
+.form-group-bordered {
   border-top: 1px dashed var(--color-paper-dim);
   padding-top: var(--spacing-md);
   margin-top: var(--spacing-sm);
-  height: 64px;
 }
 
 .btn-icon-text {
@@ -668,9 +662,8 @@ header {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-  align-items: flex-end;
-  flex-grow: 1;
-  max-width: 70%;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .location-coord {
@@ -697,6 +690,7 @@ header {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  width: 100%;
 }
 
 .btn-clear {
