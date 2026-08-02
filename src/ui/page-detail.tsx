@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { db } from "../db";
 import { Button } from "../components/button";
 import { Toast, useToast } from "../components/toast";
+import { ConfirmModal } from "../components/confirm-modal";
 import {
   ArrowLeft,
   ArrowRight,
-  CloseIcon,
   EditIcon,
   TrashIcon,
 } from "../components/icons";
@@ -283,52 +283,13 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
       </main>
 
       {showDeleteModal && (
-        <div class="modal-backdrop" onClick={() => setShowDeleteModal(false)}>
-          <div class="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div class="modal-header">
-              <h3 style={{ color: "#d9534f" }}>Delete Day Log?</h3>
-              <Button
-                variant="icon"
-                aria-label="Close"
-                onClick={() => setShowDeleteModal(false)}
-              >
-                <CloseIcon />
-              </Button>
-            </div>
-
-            <div
-              class="settings-body"
-              style={{ padding: "var(--spacing-md) 0" }}
-            >
-              <p
-                style={{
-                  fontSize: "13px",
-                  color: "var(--color-ink-muted)",
-                  lineHeight: "1.5",
-                }}
-              >
-                This will permanently delete the log entry for{" "}
-                <strong>{page.date}</strong>. This action cannot be undone.
-              </p>
-
-              <div class="page-action-row page-action-modal">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowDeleteModal(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  class="btn-danger-text"
-                  onClick={handleDelete}
-                >
-                  Confirm Delete
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          title="Delete Day Log?"
+          message={`This will permanently delete the log entry for ${page.date}. This action cannot be undone.`}
+          confirmLabel="Confirm Delete"
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteModal(false)}
+        />
       )}
 
       <div class="toast-container">
