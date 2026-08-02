@@ -91,16 +91,31 @@ export function SquiggleMap({ path, width = 300, height = 150 }: SquiggleMapProp
 
         {/* Snapped wobbly path */}
         {pathD && (
-          <path 
-            d={pathD} 
-            fill="none" 
-            stroke="var(--color-ink)" 
-            stroke-width="3" 
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            filter="url(#hand-drawn-wobble)"
-            class="map-route-path"
-          />
+          <>
+            {/* Background Ink Bleed (Feathering) */}
+            <path 
+              d={pathD} 
+              fill="none" 
+              stroke="var(--color-ink)" 
+              stroke-width="5" 
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              opacity="0.12"
+              filter="url(#hand-drawn-wobble)"
+            />
+            {/* Foreground Core Pen Line */}
+            <path 
+              d={pathD} 
+              fill="none" 
+              stroke="var(--color-ink)" 
+              stroke-width="2" 
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              opacity="0.9"
+              filter="url(#hand-drawn-wobble)"
+              class="map-route-path"
+            />
+          </>
         )}
 
         {/* Start Point Marker */}

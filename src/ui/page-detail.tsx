@@ -17,6 +17,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [legDistance, setLegDistance] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -35,10 +36,29 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
         // Set photo object URLs
         const urls = (pageRecord.photos || []).map(blob => URL.createObjectURL(blob));
 
+        // Compute leg distance
+        let computedLeg: number | null = null;
+        if (pageRecord.km !== null && pageRecord.km !== undefined) {
+          computedLeg = pageRecord.km;
+        } else if (pageRecord.odo !== null && pageRecord.odo !== undefined) {
+          // Find previous page by date to compute odo delta
+          const allPages = await db.pages.where('tripId').equals(pageRecord.tripId).toArray();
+          const sorted = [...allPages].sort((a, b) => a.date.localeCompare(b.date));
+          const myIdx = sorted.findIndex(p => p.id === pageRecord.id);
+          if (myIdx > 0) {
+            const prevPage = sorted[myIdx - 1];
+            if (prevPage.odo !== null && prevPage.odo !== undefined) {
+              computedLeg = pageRecord.odo - prevPage.odo;
+              if (computedLeg < 0) computedLeg = null; // Invalid
+            }
+          }
+        }
+
         if (active) {
           setPage(pageRecord);
           setTripTitle(tripName);
           setPhotoUrls(urls);
+          setLegDistance(computedLeg);
           setLoading(false);
         }
       } catch (err) {
@@ -126,16 +146,10 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
 
         {/* Distance Stats Badges */}
         <section class="page-metrics-strip">
-          {page.km !== null && (
+          {legDistance !== null && (
             <div class="metric-badge">
               <span class="badge-label">Leg Distance</span>
-              <span class="badge-value">{page.km} km</span>
-            </div>
-          )}
-          {page.odo !== null && (
-            <div class="metric-badge">
-              <span class="badge-label">Odometer Reading</span>
-              <span class="badge-value">{page.odo} km</span>
+              <span class="badge-value">{legDistance} km</span>
             </div>
           )}
           {page.location && (

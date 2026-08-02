@@ -58,10 +58,11 @@ export function Home({ onNavigate }: HomeProps) {
 
   const handleSeedDemoRide = async () => {
     try {
-      // 1. Create the Trip
+      // 1. Create the Trip with a departure pin
       const newTripId = await db.trips.add({
         title: "Spiti Valley Loop",
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        startLocation: { kind: 'gps', lat: 31.1048, lng: 77.1734, name: "Shimla" }
       }) as number;
 
       // 2. Helper to create SVG mock photos
@@ -77,8 +78,8 @@ export function Home({ onNavigate }: HomeProps) {
         return new Blob([svg], { type: 'image/svg+xml' });
       };
 
-      // 3. Add 5 detailed Pages
-      // Day 1
+      // 3. Add 5 detailed Pages (Day 1 gets a route from Trip.startLocation → Sarahan)
+      // Day 1: Leg 1
       await db.pages.add({
         tripId: newTripId,
         date: "2026-06-10",
@@ -87,12 +88,12 @@ export function Home({ onNavigate }: HomeProps) {
         km: 160,
         location: { kind: 'gps', lat: 31.5173, lng: 77.7958, name: "Sarahan" },
         photos: [
-          createMockPhoto("Day 1: Leaving Shimla", "#4a5d4e"),
+          createMockPhoto("Day 1: Winding roads", "#4a5d4e"),
           createMockPhoto("Day 1: Sutlej River Valley", "#5c6d5f")
         ]
       });
 
-      // Day 2
+      // Day 2: Leg 2
       await db.pages.add({
         tripId: newTripId,
         date: "2026-06-11",
@@ -106,7 +107,7 @@ export function Home({ onNavigate }: HomeProps) {
         ]
       });
 
-      // Day 3
+      // Day 3: Leg 3
       await db.pages.add({
         tripId: newTripId,
         date: "2026-06-12",
@@ -115,11 +116,11 @@ export function Home({ onNavigate }: HomeProps) {
         km: 80,
         location: { kind: 'gps', lat: 31.5385, lng: 78.2561, name: "Kalpa" },
         photos: [
-          createMockPhoto("Day 3: Border Outpost", "#586954")
+          createMockPhoto("Day 3: Border Outpost in Chitkul", "#586954")
         ]
       });
 
-      // Day 4
+      // Day 4: Leg 4
       await db.pages.add({
         tripId: newTripId,
         date: "2026-06-13",
@@ -132,7 +133,7 @@ export function Home({ onNavigate }: HomeProps) {
         ]
       });
 
-      // Day 5
+      // Day 5: Leg 5
       await db.pages.add({
         tripId: newTripId,
         date: "2026-06-14",

@@ -2,6 +2,7 @@ export interface Trip {
   id?: number;
   title: string;
   createdAt: string; // ISO String
+  startLocation?: LocationUnion | null; // Departure pin
 }
 
 export type LocationUnion =

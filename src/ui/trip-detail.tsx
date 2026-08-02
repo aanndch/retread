@@ -77,10 +77,20 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
 
   // Compile cumulative GPS path segments for squiggle map
   const cumulativePath: { lat: number; lng: number }[] = [];
+  // Include trip departure point as the start of the cumulative path
+  if (trip.startLocation?.kind === 'gps') {
+    // Only add departure as standalone point if first page has a roadPath
+    // (if it does, the roadPath already starts from departure)
+  }
+
   pages.forEach(p => {
     if (p.roadPath && p.roadPath.length > 0) {
       cumulativePath.push(...p.roadPath);
     } else if (p.location && p.location.kind === 'gps') {
+      // No roadPath snapped yet — add the GPS pin as a single point
+      if (cumulativePath.length === 0 && trip.startLocation?.kind === 'gps') {
+        cumulativePath.push({ lat: trip.startLocation.lat, lng: trip.startLocation.lng });
+      }
       cumulativePath.push({ lat: p.location.lat, lng: p.location.lng });
     }
   });
@@ -238,8 +248,20 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                           )}
                         </div>
                         <div style={{ flexShrink: 0, display: 'flex', gap: 'var(--spacing-xs)' }}>
-                          {page.km !== null && <span class="card-stat">{page.km} km</span>}
-                          {page.odo !== null && <span class="card-stat">Odo: {page.odo}</span>}
+                          {(() => {
+                            // Compute leg distance: direct km or odo delta
+                            if (page.km !== null && page.km !== undefined) {
+                              return <span class="card-stat">{page.km} km</span>;
+                            }
+                            if (page.odo !== null && page.odo !== undefined && index > 0) {
+                              const prevPage = pages[index - 1];
+                              if (prevPage.odo !== null && prevPage.odo !== undefined) {
+                                const delta = page.odo - prevPage.odo;
+                                if (delta > 0) return <span class="card-stat">{delta} km</span>;
+                              }
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
 

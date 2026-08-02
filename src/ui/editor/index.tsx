@@ -40,6 +40,35 @@ export function Editor({ onNavigate }: EditorProps) {
   const [showNamedFallback, setShowNamedFallback] = useState(false);
   const [tempPlaceName, setTempPlaceName] = useState('');
 
+  // Start Location State (for new-trip departure pin)
+  const [startLocation, setStartLocation] = useState<LocationUnion | null>(null);
+  const [startGpsLoading, setStartGpsLoading] = useState(false);
+  const [showStartNamedFallback, setShowStartNamedFallback] = useState(false);
+  const [tempStartPlaceName, setTempStartPlaceName] = useState('');
+
+  // Auto-capture departure GPS on mount for new trips
+  useEffect(() => {
+    if (mode === 'new-trip' && navigator.geolocation) {
+      setStartGpsLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setStartGpsLoading(false);
+          setStartLocation({
+            kind: 'gps',
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            name: ''
+          });
+        },
+        () => {
+          setStartGpsLoading(false);
+          setShowStartNamedFallback(true);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  }, [mode]);
+
   // Photos State
   const [photos, setPhotos] = useState<Blob[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
@@ -249,9 +278,21 @@ export function Editor({ onNavigate }: EditorProps) {
 
       if (mode === 'new-trip') {
         const finalTitle = tripTitle.trim() || `Ride on ${date}`;
+
+        // Build startLocation payload
+        let startLocPayload: LocationUnion | null = null;
+        if (startLocation) {
+          if (startLocation.kind === 'named' && !startLocation.name.trim()) {
+            startLocPayload = null;
+          } else {
+            startLocPayload = startLocation;
+          }
+        }
+
         activeTripId = await db.trips.add({
           title: finalTitle,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          startLocation: startLocPayload
         }) as number;
       }
 
@@ -361,6 +402,43 @@ export function Editor({ onNavigate }: EditorProps) {
             handleClearLocation={handleClearLocation}
             dayTitle={dayTitle}
             setDayTitle={setDayTitle}
+            startLocation={startLocation}
+            startGpsLoading={startGpsLoading}
+            showStartNamedFallback={showStartNamedFallback}
+            tempStartPlaceName={tempStartPlaceName}
+            onStartPlaceNameChange={(name: string) => {
+              setTempStartPlaceName(name);
+              setStartLocation({ kind: 'named', name });
+            }}
+            onClearStartLocation={() => {
+              setStartLocation(null);
+              setShowStartNamedFallback(false);
+              setTempStartPlaceName('');
+            }}
+            onRetryStartGps={() => {
+              if (!navigator.geolocation) {
+                setShowStartNamedFallback(true);
+                return;
+              }
+              setStartGpsLoading(true);
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  setStartGpsLoading(false);
+                  setShowStartNamedFallback(false);
+                  setStartLocation({
+                    kind: 'gps',
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                    name: ''
+                  });
+                },
+                () => {
+                  setStartGpsLoading(false);
+                  setShowStartNamedFallback(true);
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+              );
+            }}
             titleError={titleError}
             setTitleError={setTitleError}
             handleCancel={handleCancel}

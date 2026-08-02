@@ -22,6 +22,13 @@ interface MetricsStepProps {
   dayTitle: string;
   setDayTitle: (t: string) => void;
   distanceMode: 'both' | 'km' | 'odo';
+  startLocation: LocationUnion | null;
+  startGpsLoading: boolean;
+  showStartNamedFallback: boolean;
+  tempStartPlaceName: string;
+  onStartPlaceNameChange: (n: string) => void;
+  onClearStartLocation: () => void;
+  onRetryStartGps: () => void;
   titleError: string;
   setTitleError: (e: string) => void;
   handleCancel: () => void;
@@ -48,6 +55,13 @@ export function MetricsStep({
   dayTitle,
   setDayTitle,
   distanceMode,
+  startLocation,
+  startGpsLoading,
+  showStartNamedFallback,
+  tempStartPlaceName,
+  onStartPlaceNameChange,
+  onClearStartLocation,
+  onRetryStartGps,
   titleError,
   setTitleError,
   handleCancel,
@@ -70,6 +84,45 @@ export function MetricsStep({
             }}
           />
           {titleError && <span class="error-text">{titleError}</span>}
+        </div>
+      )}
+
+      {/* Starting From - Departure Pin (New Trip Only) */}
+      {mode === 'new-trip' && (
+        <div class="form-group">
+          <label class="input-label">Starting From</label>
+          {startGpsLoading ? (
+            <span class="field-tip">📡 Detecting your location...</span>
+          ) : startLocation ? (
+            <div class="geo-pinned-display">
+              <span class="pinned-text">
+                📍 {startLocation.kind === 'gps'
+                  ? (startLocation.name || `[${startLocation.lat.toFixed(4)}, ${startLocation.lng.toFixed(4)}]`)
+                  : startLocation.name}
+              </span>
+              <Button variant="icon" class="action-tiny" onClick={onClearStartLocation}>×</Button>
+            </div>
+          ) : showStartNamedFallback ? (
+            <div class="form-row">
+              <input 
+                type="text" 
+                class="form-input" 
+                placeholder="Type starting city/town" 
+                value={tempStartPlaceName} 
+                onInput={(e: any) => onStartPlaceNameChange(e.target.value)}
+              />
+              <Button variant="secondary" size="sm" onClick={onRetryStartGps}>
+                <PinIcon size={14} /> Retry GPS
+              </Button>
+            </div>
+          ) : (
+            <div class="form-row">
+              <Button variant="secondary" size="sm" onClick={onRetryStartGps}>
+                <PinIcon size={14} /> Drop Pin
+              </Button>
+              <span class="field-tip">Auto-detect failed. Tap to retry or type manually.</span>
+            </div>
+          )}
         </div>
       )}
 

@@ -79,16 +79,37 @@ export async function backfillTripRoutes(tripId: number): Promise<void> {
   const pages = await db.pages.where('tripId').equals(tripId).toArray();
   const sortedPages = [...pages].sort((a, b) => a.date.localeCompare(b.date));
 
+  // Load the trip record to get the departure pin
+  const tripRecord = await db.trips.get(tripId);
+
   let legUpdated = false;
 
   for (let i = 0; i < sortedPages.length; i++) {
     const currentPage = sortedPages[i];
     
-    // First page has no preceding leg
+    // First page: use Trip.startLocation as the departure point
     if (i === 0) {
-      if (currentPage.roadPath !== null && currentPage.roadPath !== undefined) {
-        await db.pages.update(currentPage.id!, { roadPath: null });
-        legUpdated = true;
+      if (tripRecord?.startLocation?.kind === 'gps' && currentPage.location?.kind === 'gps') {
+        const fromGps = { lat: tripRecord.startLocation.lat, lng: tripRecord.startLocation.lng };
+        const toGps = { lat: currentPage.location.lat, lng: currentPage.location.lng };
+
+        const needsSnap =
+          !currentPage.roadPath ||
+          currentPage.roadPath.length < 2 ||
+          haversineDistance(currentPage.roadPath[0], fromGps) > 0.05 ||
+          haversineDistance(currentPage.roadPath[currentPage.roadPath.length - 1], toGps) > 0.05;
+
+        if (needsSnap) {
+          const snappedPath = await snapLeg(fromGps, toGps);
+          await db.pages.update(currentPage.id!, { roadPath: snappedPath });
+          legUpdated = true;
+        }
+      } else {
+        // No valid startLocation GPS, clear any stale roadPath on first page
+        if (currentPage.roadPath !== null && currentPage.roadPath !== undefined) {
+          await db.pages.update(currentPage.id!, { roadPath: null });
+          legUpdated = true;
+        }
       }
       continue;
     }
