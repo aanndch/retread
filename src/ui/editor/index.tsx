@@ -83,6 +83,46 @@ export function Editor({ onNavigate }: EditorProps) {
     }
   }, [mode, pageId]);
 
+  const [distanceMode, setDistanceMode] = useState<'both' | 'km' | 'odo'>('both');
+
+  // Load existing pages of this trip to check distance configuration (KM vs ODO)
+  useEffect(() => {
+    let active = true;
+
+    async function checkTripDistanceMode() {
+      let resolvedTripId = tripId;
+      if (resolvedTripId === null && pageId !== null) {
+        const pageRecord = await db.pages.get(pageId);
+        if (pageRecord) {
+          resolvedTripId = pageRecord.tripId;
+        }
+      }
+
+      if (resolvedTripId === null) return;
+
+      const pages = await db.pages.where('tripId').equals(resolvedTripId).toArray();
+      // Exclude the current page being edited
+      const otherPages = pages.filter(p => p.id !== pageId);
+      const hasKm = otherPages.some(p => p.km !== null && p.km !== undefined);
+      const hasOdo = otherPages.some(p => p.odo !== null && p.odo !== undefined);
+
+      if (active) {
+        if (hasKm) {
+          setDistanceMode('km');
+        } else if (hasOdo) {
+          setDistanceMode('odo');
+        } else {
+          setDistanceMode('both');
+        }
+      }
+    }
+
+    checkTripDistanceMode();
+    return () => {
+      active = false;
+    };
+  }, [tripId, pageId]);
+
   // Clean up object URLs on unmount to avoid memory leaks
   useEffect(() => {
     return () => {
@@ -267,6 +307,15 @@ export function Editor({ onNavigate }: EditorProps) {
     }
   };
 
+  let effectiveDistanceMode = distanceMode;
+  if (effectiveDistanceMode === 'both') {
+    if (km !== null && km !== undefined) {
+      effectiveDistanceMode = 'km';
+    } else if (odo !== null && odo !== undefined) {
+      effectiveDistanceMode = 'odo';
+    }
+  }
+
   if (loading) {
     return <p class="loading-text">Loading log details...</p>;
   }
@@ -302,6 +351,7 @@ export function Editor({ onNavigate }: EditorProps) {
             setKm={setKm}
             odo={odo}
             setOdo={setOdo}
+            distanceMode={effectiveDistanceMode}
             location={location}
             gpsLoading={gpsLoading}
             handleDropPin={handleDropPin}

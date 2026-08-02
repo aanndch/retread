@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'preact/hooks';
 import { db } from '../db';
 import { Button } from '../components/button';
-import { ArrowLeft } from '../components/icons';
+import { ArrowLeft, TrashIcon, CloseIcon } from '../components/icons';
 import { SquiggleMap } from './squiggle';
-import { backfillTripRoutes } from '../road';
 import type { Trip, Page } from '../types';
 
 interface TripDetailProps {
@@ -15,6 +14,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Load trip and associated page logs on mount/change
   useEffect(() => {
@@ -52,28 +52,9 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
     };
   }, [tripId, onNavigate]);
 
-  const handleDeletePage = async (pageId: number, e: Event) => {
-    e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this day log?')) return;
 
-    try {
-      await db.pages.delete(pageId);
-      // Reload pages
-      const pagesRecords = await db.pages.where('tripId').equals(tripId).toArray();
-      const sortedPages = [...pagesRecords].sort((a, b) => a.date.localeCompare(b.date));
-      setPages(sortedPages);
-
-      // Trigger retroactive OSRM re-snapping on adjacent legs in road.ts
-      await backfillTripRoutes(tripId);
-    } catch (err) {
-      console.error('Failed to delete day log:', err);
-      alert('Failed to delete day log.');
-    }
-  };
 
   const handleDeleteTrip = async () => {
-    if (!confirm('CAUTION: This will delete this ride logbook and all of its daily pages permanently! Proceed?')) return;
-
     try {
       await db.trips.delete(tripId);
       // Cascade delete pages
@@ -237,12 +218,18 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
 
                     <div class="timeline-card-body">
                       <div class="card-title-row">
-                        <span class="card-date-badge">{page.date}</span>
-                        {page.location && (
-                          <span class="card-location-badge">
-                            📍 {page.location.name || (page.location.kind === 'gps' ? 'GPS coordinates' : 'Named Point')}
-                          </span>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', minWidth: 0 }}>
+                          <span class="card-date-badge">{page.date}</span>
+                          {page.location && (
+                            <span class="card-location-badge" style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                              📍 {page.location.name || (page.location.kind === 'gps' ? 'GPS' : 'Named')}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ flexShrink: 0, display: 'flex', gap: 'var(--spacing-xs)' }}>
+                          {page.km !== null && <span class="card-stat">{page.km} km</span>}
+                          {page.odo !== null && <span class="card-stat">Odo: {page.odo}</span>}
+                        </div>
                       </div>
 
                       {page.title ? (
@@ -276,29 +263,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                         </div>
                       )}
 
-                      <div class="card-actions-row">
-                        {page.km !== null && <span class="card-stat">{page.km} km</span>}
-                        {page.odo !== null && <span class="card-stat">Odo: {page.odo}</span>}
-                        <div style="flex-grow: 1;"></div>
-                        
-                        <Button 
-                          variant="icon" 
-                          class="action-tiny"
-                          onClick={(e: Event) => {
-                            e.stopPropagation();
-                            onNavigate(`#/edit?mode=edit&pageId=${page.id}`);
-                          }}
-                        >
-                          ✎
-                        </Button>
-                        <Button 
-                          variant="icon" 
-                          class="action-tiny action-tiny-danger"
-                          onClick={(e: Event) => handleDeletePage(page.id!, e)}
-                        >
-                          ×
-                        </Button>
-                      </div>
+                      {/* Card Actions Removed */}
                     </div>
                   </div>
                 );
@@ -309,8 +274,14 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
 
         {/* Delete logbook block */}
         <section class="danger-zone">
-          <Button variant="secondary" class="btn-danger-text" onClick={handleDeleteTrip}>
-            Delete Ride Logbook
+          <Button 
+            variant="icon" 
+            class="btn-danger-text" 
+            aria-label="Delete Ride" 
+            onClick={() => setShowDeleteModal(true)}
+            style={{ width: '40px', height: '40px' }}
+          >
+            <TrashIcon size={16} />
           </Button>
         </section>
       </main>
@@ -325,6 +296,35 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           >
             ＋
           </Button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal Overlay */}
+      {showDeleteModal && (
+        <div class="modal-backdrop" onClick={() => setShowDeleteModal(false)}>
+          <div class="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div class="modal-header">
+              <h3 style={{ color: '#d9534f' }}>Delete Ride Logbook?</h3>
+              <Button variant="icon" onClick={() => setShowDeleteModal(false)}>
+                <CloseIcon />
+              </Button>
+            </div>
+            
+            <div class="settings-body" style={{ padding: 'var(--spacing-md) 0' }}>
+              <p style={{ fontSize: '13px', color: 'var(--color-ink-muted)', lineHeight: '1.5' }}>
+                This will permanently delete <strong>{trip.title}</strong> and all of its daily pages. This action cannot be undone.
+              </p>
+              
+              <div class="page-action-row" style={{ marginTop: 'var(--spacing-lg)', marginBottom: 0 }}>
+                <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" class="btn-danger-text" onClick={handleDeleteTrip}>
+                  Confirm Delete
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

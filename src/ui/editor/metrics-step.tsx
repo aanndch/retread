@@ -21,6 +21,7 @@ interface MetricsStepProps {
   handleClearLocation: () => void;
   dayTitle: string;
   setDayTitle: (t: string) => void;
+  distanceMode: 'both' | 'km' | 'odo';
   titleError: string;
   setTitleError: (e: string) => void;
   handleCancel: () => void;
@@ -46,6 +47,7 @@ export function MetricsStep({
   handleClearLocation,
   dayTitle,
   setDayTitle,
+  distanceMode,
   titleError,
   setTitleError,
   handleCancel,
@@ -71,7 +73,19 @@ export function MetricsStep({
         </div>
       )}
 
-      {/* Date & Day Label Selector */}
+      {/* Row 1: Day Label (Whole Row) */}
+      <div class="form-group">
+        <label class="input-label">Day Label / Route Leg</label>
+        <input 
+          type="text" 
+          class="form-input" 
+          placeholder="e.g. Manali to Jispa" 
+          value={dayTitle} 
+          onInput={(e: any) => setDayTitle(e.target.value)}
+        />
+      </div>
+
+      {/* Row 2: Date and KM / Odo Selector */}
       <div class="form-row">
         <div class="form-group flex-1">
           <label class="input-label">Date</label>
@@ -83,42 +97,36 @@ export function MetricsStep({
             onChange={(e: any) => setDate(e.target.value)}
           />
         </div>
-        <div class="form-group flex-2">
-          <label class="input-label">Day Label / Route Leg</label>
-          <input 
-            type="text" 
-            class="form-input" 
-            placeholder="e.g. Manali to Jispa" 
-            value={dayTitle} 
-            onInput={(e: any) => setDayTitle(e.target.value)}
-          />
-        </div>
-      </div>
 
-      {/* Distance Metrics: KM / Odo */}
-      <div class="form-row">
-        <div class="form-group flex-1">
-          <label class="input-label">Daily Distance (KM)</label>
-          <input 
-            type="number" 
-            class="form-input" 
-            placeholder="e.g. 120"
-            value={km === null ? '' : km}
-            onInput={(e: any) => setKm(e.target.value ? parseFloat(e.target.value) : null)}
-          />
-        </div>
-        <div class="form-group flex-1">
-          <label class="input-label">Odometer</label>
-          <input 
-            type="number" 
-            class="form-input" 
-            placeholder="e.g. 14320"
-            value={odo === null ? '' : odo}
-            onInput={(e: any) => setOdo(e.target.value ? parseFloat(e.target.value) : null)}
-          />
-        </div>
+        {distanceMode !== 'odo' && (
+          <div class="form-group flex-1">
+            <label class="input-label">Daily Distance (KM)</label>
+            <input 
+              type="number" 
+              class="form-input" 
+              placeholder="e.g. 120"
+              value={km === null ? '' : km}
+              onInput={(e: any) => setKm(e.target.value ? parseFloat(e.target.value) : null)}
+            />
+          </div>
+        )}
+
+        {distanceMode !== 'km' && (
+          <div class="form-group flex-1">
+            <label class="input-label">Odometer</label>
+            <input 
+              type="number" 
+              class="form-input" 
+              placeholder="e.g. 14320"
+              value={odo === null ? '' : odo}
+              onInput={(e: any) => setOdo(e.target.value ? parseFloat(e.target.value) : null)}
+            />
+          </div>
+        )}
       </div>
-      <span class="field-tip">Pick one per ride — km for daily distance, odo for odometer.</span>
+      {distanceMode === 'both' && (
+        <span class="field-tip">Pick one per ride — km for daily distance, odo for odometer.</span>
+      )}
 
       {/* Geolocation Section */}
       <div class="form-group-inline">
