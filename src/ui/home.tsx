@@ -71,13 +71,13 @@ export function Home({ onNavigate }: HomeProps) {
       // 2. Helper to create SVG mock photos
       const createMockPhoto = (title: string, color: string) => {
         const escapedTitle = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
           <rect width="100%" height="100%" fill="${color}"/>
-          <circle cx="400" cy="220" r="100" fill="none" stroke="#fafefe" stroke-width="2" opacity="0.3"/>
-          <line x1="400" y1="50" x2="400" y2="390" stroke="#fafefe" stroke-width="1" opacity="0.2"/>
-          <line x1="100" y1="220" x2="700" y2="220" stroke="#fafefe" stroke-width="1" opacity="0.2"/>
-          <text x="50%" y="450" dominant-baseline="middle" text-anchor="middle" font-family="monospace" font-size="16" fill="#fafefe" letter-spacing="2">${escapedTitle.toUpperCase()}</text>
-          <text x="50%" y="225" dominant-baseline="middle" text-anchor="middle" font-family="serif" font-size="32" font-style="italic" fill="#fafefe">RETREAD LOGS</text>
+          <circle cx="400" cy="260" r="100" fill="none" stroke="#fafefe" stroke-width="2" opacity="0.3"/>
+          <line x1="400" y1="60" x2="400" y2="460" stroke="#fafefe" stroke-width="1" opacity="0.2"/>
+          <line x1="100" y1="260" x2="700" y2="260" stroke="#fafefe" stroke-width="1" opacity="0.2"/>
+          <text x="50%" y="530" dominant-baseline="middle" text-anchor="middle" font-family="monospace" font-size="16" fill="#fafefe" letter-spacing="2">${escapedTitle.toUpperCase()}</text>
+          <text x="50%" y="265" dominant-baseline="middle" text-anchor="middle" font-family="serif" font-size="32" font-style="italic" fill="#fafefe">RETREAD LOGS</text>
         </svg>`;
         return new Blob([svg], { type: 'image/svg+xml' });
       };
