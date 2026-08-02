@@ -25,13 +25,13 @@
 /* System Dark Theme Preference */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-paper: #1c1b18;
-    --color-paper-dim: #2b2926;
-    --color-ink: #ebdcb9;
-    --color-ink-muted: #a39f94;
-    --color-green: #6b8270;
-    --color-green-light: #839d89;
-    --color-shadow: rgba(0, 0, 0, 0.2);
+    --color-paper: #2a2520;
+    --color-paper-dim: #3a342d;
+    --color-ink: #d4c8b0;
+    --color-ink-muted: #908878;
+    --color-green: #5e7563;
+    --color-green-light: #7a9480;
+    --color-shadow: rgba(0, 0, 0, 0.12);
     --color-error: #d9534f;
   }
 }
@@ -48,13 +48,13 @@ html[data-theme="light"] {
 
 /* Explicit Override: Dark Theme */
 html[data-theme="dark"] {
-  --color-paper: #1c1b18;
-  --color-paper-dim: #2b2926;
-  --color-ink: #ebdcb9;
-  --color-ink-muted: #a39f94;
-  --color-green: #6b8270;
-  --color-green-light: #839d89;
-  --color-shadow: rgba(0, 0, 0, 0.2);
+  --color-paper: #2a2520;
+  --color-paper-dim: #3a342d;
+  --color-ink: #d4c8b0;
+  --color-ink-muted: #908878;
+  --color-green: #5e7563;
+  --color-green-light: #7a9480;
+  --color-shadow: rgba(0, 0, 0, 0.12);
   --color-error: #d9534f;
 }
 
