@@ -1359,7 +1359,6 @@ input[type=number] {
 
 /* Gallery Carousel styling */
 .gallery-carousel {
-  border-bottom: 1px solid var(--color-ink-muted);
   overflow: hidden;
   margin-bottom: var(--spacing-md);
 }
@@ -1367,7 +1366,7 @@ input[type=number] {
 .carousel-viewport {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 4 / 3;
   display: flex;
   align-items: center;
   justify-content: center;
