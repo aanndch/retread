@@ -137,18 +137,29 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
 
   return (
     <div class="trip-detail-container">
-      <header class="trip-detail-header">
+      <header class="trip-detail-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', minWidth: 0 }}>
+          <Button 
+            variant="icon" 
+            aria-label="Back" 
+            onClick={() => onNavigate('#/')}
+          >
+            <ArrowLeft />
+          </Button>
+          <div class="header-titles" style={{ minWidth: 0 }}>
+            <h3 style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{trip.title}</h3>
+            <span class="trip-dates-sub">{dateRange}</span>
+          </div>
+        </div>
         <Button 
           variant="icon" 
-          aria-label="Back" 
-          onClick={() => onNavigate('#/')}
+          class="btn-danger-text"
+          aria-label="Delete Ride" 
+          onClick={() => setShowDeleteModal(true)}
+          style={{ flexShrink: 0 }}
         >
-          <ArrowLeft />
+          <TrashIcon size={16} />
         </Button>
-        <div class="header-titles">
-          <h3>{trip.title}</h3>
-          <span class="trip-dates-sub">{dateRange}</span>
-        </div>
       </header>
 
       <main class="trip-detail-content">
@@ -272,18 +283,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           )}
         </section>
 
-        {/* Delete logbook block */}
-        <section class="danger-zone">
-          <Button 
-            variant="icon" 
-            class="btn-danger-text" 
-            aria-label="Delete Ride" 
-            onClick={() => setShowDeleteModal(true)}
-            style={{ width: '40px', height: '40px' }}
-          >
-            <TrashIcon size={16} />
-          </Button>
-        </section>
+        {/* Danger zone bottom block removed */}
       </main>
 
       {/* Floating Action Button to add new day log */}
