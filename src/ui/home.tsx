@@ -16,7 +16,7 @@ interface HomeProps {
 
 export function Home({ onNavigate }: HomeProps) {
   const [showSettings, setShowSettings] = useState(false);
-  const [themeMode, setThemeMode] = useState<'system' | 'daylight' | 'nightfall' | 'monotone' | 'sepia' | 'midnight' | 'slate'>('system');
+  const [themeMode, setThemeMode] = useState<'system' | 'daylight' | 'nightfall' | 'monotone' | 'sepia' | 'midnight' | 'slate' | 'cyberpunk'>('system');
   const { toasts, showToast, removeToast } = useToast();
 
   // Load saved theme preference on mount
@@ -96,7 +96,7 @@ export function Home({ onNavigate }: HomeProps) {
   });
 
   const handleThemeChange = (mode: string) => {
-    const theme = mode as 'system' | 'daylight' | 'nightfall' | 'monotone' | 'sepia' | 'midnight' | 'slate';
+    const theme = mode as 'system' | 'daylight' | 'nightfall' | 'monotone' | 'sepia' | 'midnight' | 'slate' | 'cyberpunk';
     setThemeMode(theme);
     saveTheme(theme);
   };
@@ -253,6 +253,7 @@ export function Home({ onNavigate }: HomeProps) {
                     { value: 'midnight', label: 'Midnight (Blue Night)' },
                     { value: 'slate', label: 'Slate (Warm Gray)' },
                     { value: 'monotone', label: 'Monotone (Grayscale)' },
+                    { value: 'cyberpunk', label: 'Cyberpunk (Neon Noir)' },
                   ]}
                 />
               </div>

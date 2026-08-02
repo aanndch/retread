@@ -1,4 +1,4 @@
-export type Theme = 'daylight' | 'nightfall' | 'monotone' | 'sepia' | 'midnight' | 'slate';
+export type Theme = 'daylight' | 'nightfall' | 'monotone' | 'sepia' | 'midnight' | 'slate' | 'cyberpunk';
 
 /**
  * Retrieves the user's explicitly saved theme preference.
@@ -7,7 +7,7 @@ export function getSavedTheme(): Theme | null {
   const theme = localStorage.getItem('theme');
   if (
     theme === 'daylight' || theme === 'nightfall' || theme === 'monotone' ||
-    theme === 'sepia' || theme === 'midnight' || theme === 'slate'
+    theme === 'sepia' || theme === 'midnight' || theme === 'slate' || theme === 'cyberpunk'
   ) return theme;
   // Migrate legacy values
   if (theme === 'light') return 'daylight';
