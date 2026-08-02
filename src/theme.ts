@@ -24,13 +24,14 @@ const THEME_COLORS: Record<Theme, string> = {
 
 function applyThemeColor(theme: Theme) {
   const color = THEME_COLORS[theme];
-  let meta = document.querySelector('meta[name="theme-color"]');
-  if (!meta) {
-    meta = document.createElement('meta');
-    meta.setAttribute('name', 'theme-color');
-    document.head.appendChild(meta);
-  }
+  // Chrome/Firefox Android ignore setAttribute() on an existing meta tag.
+  // Must remove and recreate the element for the change to take effect.
+  const existing = document.querySelector('meta[name="theme-color"]');
+  if (existing) existing.remove();
+  const meta = document.createElement('meta');
+  meta.setAttribute('name', 'theme-color');
   meta.setAttribute('content', color);
+  document.head.appendChild(meta);
 }
 
 /**
