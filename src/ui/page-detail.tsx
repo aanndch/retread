@@ -25,12 +25,11 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
   const [loading, setLoading] = useState(true);
   const [legDistance, setLegDistance] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [dayIndex, setDayIndex] = useState<number>(0);
-  const [totalDays, setTotalDays] = useState<number>(0);
   const [prevPageId, setPrevPageId] = useState<number | null>(null);
   const [nextPageId, setNextPageId] = useState<number | null>(null);
 
   const photoUrlsRef = useRef<string[]>([]);
+  const touchStartX = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -78,12 +77,8 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
           setPhotoUrls(urls);
           photoUrlsRef.current = urls;
           setLegDistance(computedLeg);
-          setDayIndex(myIdx);
-          setTotalDays(sorted.length);
-          setPrevPageId(myIdx > 0 ? (sorted[myIdx - 1].id ?? null) : null);
-          setNextPageId(
-            myIdx < sorted.length - 1 ? (sorted[myIdx + 1].id ?? null) : null,
-          );
+          setPrevPageId(myIdx > 0 ? sorted[myIdx - 1].id ?? null : null);
+          setNextPageId(myIdx < sorted.length - 1 ? sorted[myIdx + 1].id ?? null : null);
           setLoading(false);
         }
       } catch (err) {
@@ -124,6 +119,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
 
   const dateParts = page.date.split("-");
   let displayDate = page.date;
+  let shortDate = page.date;
   if (dateParts.length === 3) {
     const d = new Date(
       parseInt(dateParts[0], 10),
@@ -135,6 +131,10 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
       month: "long",
       day: "numeric",
       year: "numeric",
+    });
+    shortDate = d.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
     });
   }
 
@@ -199,7 +199,20 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
 
         {photoUrls.length > 0 && (
           <section class="gallery-carousel">
-            <div class="carousel-viewport">
+            <div
+              class="carousel-viewport"
+              onTouchStart={(e: TouchEvent) => { touchStartX.current = e.touches[0].clientX; }}
+              onTouchEnd={(e: TouchEvent) => {
+                const delta = touchStartX.current - e.changedTouches[0].clientX;
+                if (Math.abs(delta) > 50) {
+                  if (delta > 0) {
+                    setActivePhotoIdx((i) => (i + 1) % photoUrls.length);
+                  } else {
+                    setActivePhotoIdx((i) => (i - 1 + photoUrls.length) % photoUrls.length);
+                  }
+                }
+              }}
+            >
               <img
                 src={photoUrls[activePhotoIdx]}
                 alt={`Photo ${activePhotoIdx + 1}`}
@@ -207,33 +220,10 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
               />
 
               {photoUrls.length > 1 && (
-                <div class="carousel-overlay-controls">
-                  <Button
-                    variant="icon"
-                    class="carousel-nav-btn"
-                    aria-label="Previous photo"
-                    onClick={() =>
-                      setActivePhotoIdx(
-                        (activePhotoIdx - 1 + photoUrls.length) %
-                          photoUrls.length,
-                      )
-                    }
-                  >
-                    ←
-                  </Button>
-                  <span class="carousel-photo-index">
-                    {activePhotoIdx + 1} / {photoUrls.length}
-                  </span>
-                  <Button
-                    variant="icon"
-                    class="carousel-nav-btn"
-                    aria-label="Next photo"
-                    onClick={() =>
-                      setActivePhotoIdx((activePhotoIdx + 1) % photoUrls.length)
-                    }
-                  >
-                    →
-                  </Button>
+                <div class="carousel-dots">
+                  {photoUrls.map((_, i) => (
+                    <span class={`carousel-dot${i === activePhotoIdx ? ' active' : ''}`} />
+                  ))}
                 </div>
               )}
             </div>
@@ -249,29 +239,27 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
         {/* Bottom action row */}
         <section class="page-action-row">
           <div class="page-nav-group">
-            <Button
-              variant="icon"
-              aria-label="Previous day"
-              disabled={prevPageId === null}
-              onClick={() =>
-                prevPageId !== null && onNavigate(`#/page/${prevPageId}`)
-              }
-            >
-              <ArrowLeft size={14} />
-            </Button>
+            {prevPageId !== null && (
+              <Button
+                variant="icon"
+                aria-label="Previous day"
+                onClick={() => onNavigate(`#/page/${prevPageId}`)}
+              >
+                <ArrowLeft size={14} />
+              </Button>
+            )}
             <span class="page-nav-label">
-              Day {dayIndex + 1} of {totalDays}
+              {shortDate}
             </span>
-            <Button
-              variant="icon"
-              aria-label="Next day"
-              disabled={nextPageId === null}
-              onClick={() =>
-                nextPageId !== null && onNavigate(`#/page/${nextPageId}`)
-              }
-            >
-              <ArrowRight size={14} />
-            </Button>
+            {nextPageId !== null && (
+              <Button
+                variant="icon"
+                aria-label="Next day"
+                onClick={() => onNavigate(`#/page/${nextPageId}`)}
+              >
+                <ArrowRight size={14} />
+              </Button>
+            )}
           </div>
           <div class="page-edit-group">
             <Button

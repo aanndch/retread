@@ -1355,12 +1355,9 @@ input[type=number] {
 
 /* Gallery Carousel styling */
 .gallery-carousel {
-  border: 1px solid var(--color-ink);
-  border-radius: var(--border-radius);
-  background-color: var(--color-paper);
+  border-bottom: 1px solid var(--color-ink-muted);
   overflow: hidden;
   margin-bottom: var(--spacing-md);
-  box-shadow: 2px 2px 0px var(--color-paper-dim);
 }
 
 .carousel-viewport {
@@ -1370,7 +1367,7 @@ input[type=number] {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #0b0a09;
+  background-color: var(--color-paper);
 }
 
 .carousel-active-image {
@@ -1381,34 +1378,30 @@ input[type=number] {
   object-fit: contain;
 }
 
-.carousel-overlay-controls {
+.carousel-dots {
   position: absolute;
-  bottom: 12px;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  background-color: var(--color-paper);
-  border: 1px solid var(--color-ink);
-  padding: 6px 12px;
-  border-radius: var(--border-radius);
-  box-shadow: 2px 2px 0px var(--color-ink);
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background-color: rgba(0, 0, 0, 0.4);
   z-index: 10;
 }
 
-.carousel-nav-btn {
-  padding: 4px 10px !important;
-  font-size: 11px !important;
-  font-weight: bold;
+.carousel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.4);
+  transition: background-color 0.2s;
 }
 
-.carousel-photo-index {
-  font-family: var(--font-mechanical);
-  font-size: 11px;
-  color: var(--color-ink);
-  font-weight: bold;
-  white-space: nowrap;
+.carousel-dot.active {
+  background-color: rgba(255, 255, 255, 0.9);
 }
 
 /* Typewriter blocks */
