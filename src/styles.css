@@ -575,6 +575,9 @@ header {
 }
 
 .editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: var(--spacing-lg);
   border-bottom: 1px dashed var(--color-paper-dim);
   padding-bottom: var(--spacing-xs);

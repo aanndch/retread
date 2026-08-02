@@ -9,6 +9,7 @@ import { MetricsStep } from './metrics-step';
 import { PhotosStep } from './photos-step';
 import { StoryStep } from './story-step';
 import { Button } from '../../components/button';
+import { CloseIcon } from '../../components/icons';
 
 export function parseCoordinates(text: string): { lat: number; lng: number } | null {
   // 1. Match standard coordinates: e.g. "31.2245, 77.3456"
@@ -598,9 +599,7 @@ export function Editor({ onNavigate }: EditorProps) {
 
   const handleCancel = () => {
     if (mode === 'edit' && pageId !== null) {
-      db.pages.get(pageId).then(page => {
-        if (page) onNavigate(`#/trip/${page.tripId}`);
-      });
+      onNavigate(`#/page/${pageId}`);
     } else if (mode === 'new-day' || mode === 'edit-trip') {
       onNavigate(`#/trip/${tripId}`);
     } else {
@@ -619,12 +618,22 @@ export function Editor({ onNavigate }: EditorProps) {
   return (
     <div class="editor-container">
       <header class="editor-header">
-        <h3>
+        <h3 style={{ margin: 0 }}>
           {mode === 'new-trip' && (tripTitle.trim() || 'New Ride')}
           {mode === 'edit-trip' && 'Edit Ride Details'}
           {mode === 'new-day' && 'Add New Leg'}
           {mode === 'edit' && 'Edit Leg Details'}
         </h3>
+        <Button
+          type="button"
+          variant="icon"
+          class="action-tiny"
+          aria-label="Cancel editor"
+          onClick={handleCancel}
+          style={{ padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <CloseIcon size={16} />
+        </Button>
       </header>
 
       {/* Progress Tab Indicator */}
