@@ -144,11 +144,11 @@ retread/
 - [x] Write integration test checks for DB read/writes and image compression constraints.
 
 ### **Phase 3: Design Tokens & Base UI**
-- [ ] Define light/dark variables in `src/styles.css` (Cream Paper & Dark Ink/Brown, typography scales, monospace overrides).
-- [ ] Implement reactive theme manager (local storage caching + system preference hook).
-- [ ] Build `src/ui/setup.tsx` screen for first-run configuration and Storage Manager persistent registration request.
-- [ ] Create the core dashboard layout `src/ui/home.tsx` displaying the trip list and settings menu (with theme toggle).
-- [ ] Implement the routing controller inside `src/App.tsx` responding to `#/...` hash paths.
+- [x] Define light/dark variables in `src/styles.css` (Cream Paper & Dark Ink/Brown, typography scales, monospace overrides).
+- [x] Implement reactive theme manager (local storage caching + system preference hook).
+- [x] Build `src/ui/setup.tsx` screen for first-run configuration and Storage Manager persistent registration request.
+- [x] Create the core dashboard layout `src/ui/home.tsx` displaying the trip list and settings menu (with theme toggle).
+- [x] Implement the routing controller inside `src/App.tsx` responding to `#/...` hash paths.
 
 ### **Phase 4: Editors & Backup/Restore**
 - [ ] Construct the unified form component `src/ui/editor.tsx` supporting `new-trip`, `new-day`, and `edit` states.
