@@ -70,6 +70,42 @@ html[data-theme="monotone"] {
   --color-error: #c0392b;
 }
 
+/* Explicit Override: Sepia Theme */
+html[data-theme="sepia"] {
+  --color-paper: #f5e6c8;
+  --color-paper-dim: #e6d5b0;
+  --color-ink: #3d2b1f;
+  --color-ink-muted: #7a6652;
+  --color-green: #6b5b3e;
+  --color-green-light: #8a7a5e;
+  --color-shadow: rgba(60, 40, 20, 0.10);
+  --color-error: #c0392b;
+}
+
+/* Explicit Override: Midnight Theme */
+html[data-theme="midnight"] {
+  --color-paper: #1a1d23;
+  --color-paper-dim: #252830;
+  --color-ink: #c8cdd5;
+  --color-ink-muted: #7a8090;
+  --color-green: #5a7a8a;
+  --color-green-light: #7a9aaa;
+  --color-shadow: rgba(0, 0, 0, 0.20);
+  --color-error: #e05545;
+}
+
+/* Explicit Override: Slate Theme */
+html[data-theme="slate"] {
+  --color-paper: #e2dfd8;
+  --color-paper-dim: #cdc8bd;
+  --color-ink: #2d2d2d;
+  --color-ink-muted: #6b6b6b;
+  --color-green: #5a6b5e;
+  --color-green-light: #7a8b7e;
+  --color-shadow: rgba(0, 0, 0, 0.08);
+  --color-error: #c0392b;
+}
+
 /* Global Reset */
 body, h1, h2, h3, h4, p, ul, ol {
   margin: 0;

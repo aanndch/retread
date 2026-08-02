@@ -16,7 +16,7 @@ interface HomeProps {
 
 export function Home({ onNavigate }: HomeProps) {
   const [showSettings, setShowSettings] = useState(false);
-  const [themeMode, setThemeMode] = useState<'system' | 'daylight' | 'nightfall' | 'monotone'>('system');
+  const [themeMode, setThemeMode] = useState<'system' | 'daylight' | 'nightfall' | 'monotone' | 'sepia' | 'midnight' | 'slate'>('system');
   const { toasts, showToast, removeToast } = useToast();
 
   // Load saved theme preference on mount
@@ -96,7 +96,7 @@ export function Home({ onNavigate }: HomeProps) {
   });
 
   const handleThemeChange = (mode: string) => {
-    const theme = mode as 'system' | 'daylight' | 'nightfall' | 'monotone';
+    const theme = mode as 'system' | 'daylight' | 'nightfall' | 'monotone' | 'sepia' | 'midnight' | 'slate';
     setThemeMode(theme);
     saveTheme(theme);
   };
@@ -249,6 +249,9 @@ export function Home({ onNavigate }: HomeProps) {
                     { value: 'system', label: 'System Default' },
                     { value: 'daylight', label: 'Daylight (Cream Paper)' },
                     { value: 'nightfall', label: 'Nightfall (Dark Ink)' },
+                    { value: 'sepia', label: 'Sepia (Aged Parchment)' },
+                    { value: 'midnight', label: 'Midnight (Blue Night)' },
+                    { value: 'slate', label: 'Slate (Warm Gray)' },
                     { value: 'monotone', label: 'Monotone (Grayscale)' },
                   ]}
                 />
