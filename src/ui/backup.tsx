@@ -1,5 +1,7 @@
 import { useState, useRef } from 'preact/hooks';
 import { db } from '../db';
+import { Button } from '../components/button';
+import { ArrowLeft } from '../components/icons';
 import type { Trip, LocationUnion } from '../types';
 
 interface BackupProps {
@@ -217,17 +219,14 @@ export function Backup({ onNavigate }: BackupProps) {
   return (
     <div class="backup-container">
       <header class="backup-header">
-        <button 
-          class="btn-icon" 
+        <Button 
+          variant="icon" 
           aria-label="Back" 
           onClick={() => onNavigate('#/')}
           disabled={working}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="12" x2="2" y2="12"></line>
-            <polyline points="9 19 2 12 9 5"></polyline>
-          </svg>
-        </button>
+          <ArrowLeft />
+        </Button>
         <h3>Backup & Restore</h3>
       </header>
 
@@ -248,13 +247,13 @@ export function Backup({ onNavigate }: BackupProps) {
           <div class="action-section">
             <h4>Export Database</h4>
             <p class="action-help">Downloads all rides, daily logs, coordinates, and photo attachments as a single JSON file.</p>
-            <button 
-              class="btn btn-primary" 
+            <Button 
+              variant="primary" 
               onClick={handleExport} 
               disabled={working}
             >
               {working ? 'Exporting...' : 'Export Backup File'}
-            </button>
+            </Button>
           </div>
 
           <hr class="divider" />
@@ -273,9 +272,13 @@ export function Backup({ onNavigate }: BackupProps) {
               class="file-hidden-input"
               disabled={working}
             />
-            <label for="backup-import" class={`btn btn-secondary ${working ? 'disabled' : ''}`}>
+            <Button 
+              variant="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={working}
+            >
               {working ? 'Restoring...' : 'Select Backup File'}
-            </label>
+            </Button>
           </div>
         </div>
       </main>

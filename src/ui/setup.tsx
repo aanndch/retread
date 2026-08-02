@@ -1,4 +1,6 @@
 import { useState } from 'preact/hooks';
+import { Button } from '../components/button';
+import { ArrowRight } from '../components/icons';
 
 interface SetupProps {
   onComplete: () => void;
@@ -57,15 +59,15 @@ export function Setup({ onComplete }: SetupProps) {
           </div>
         </div>
 
-        <button class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;" onClick={handleStart} disabled={persisting}>
+        <Button 
+          variant="primary" 
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} 
+          onClick={handleStart} 
+          disabled={persisting}
+        >
           <span>{persisting ? 'Configuring persistent storage...' : 'Start Logging'}</span>
-          {!persisting && (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="2" y1="12" x2="22" y2="12"></line>
-              <polyline points="15 5 22 12 15 19"></polyline>
-            </svg>
-          )}
-        </button>
+          {!persisting && <ArrowRight />}
+        </Button>
       </div>
     </div>
   );

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
+import { Button } from '../components/button';
+import { GearIcon, CloseIcon } from '../components/icons';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { computeTotalDistance, formatDistance } from '../lib';
@@ -61,13 +63,13 @@ export function Home({ onNavigate }: HomeProps) {
           <h1 class="logo">retread</h1>
           <p class="tagline">A logbook for well-tread rides.</p>
         </div>
-        <button 
-          class="btn-icon" 
+        <Button 
+          variant="icon" 
           aria-label="Settings" 
           onClick={() => setShowSettings(!showSettings)}
         >
-          ⚙
-        </button>
+          <GearIcon />
+        </Button>
       </header>
 
       {/* Settings Panel Overlay */}
@@ -76,7 +78,9 @@ export function Home({ onNavigate }: HomeProps) {
           <div class="modal-content settings-modal" onClick={(e) => e.stopPropagation()}>
             <div class="modal-header">
               <h3>Settings</h3>
-              <button class="btn-close" onClick={() => setShowSettings(false)}>×</button>
+              <Button variant="icon" class="btn-close" onClick={() => setShowSettings(false)}>
+                <CloseIcon />
+              </Button>
             </div>
             
             <div class="settings-body">
@@ -94,12 +98,13 @@ export function Home({ onNavigate }: HomeProps) {
               <div class="setting-item">
                 <label>Data Management</label>
                 <div class="settings-buttons">
-                  <button 
-                    class="btn btn-secondary btn-sm"
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
                     onClick={() => { setShowSettings(false); onNavigate('#/backup'); }}
                   >
                     Backup & Restore
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -133,13 +138,13 @@ export function Home({ onNavigate }: HomeProps) {
 
       {/* Floating Action Button */}
       <div class="fab-container">
-        <button 
-          class="btn-fab" 
-          aria-label="New Trip" 
+        <Button 
+          variant="fab" 
+          aria-label="New Ride" 
           onClick={() => onNavigate('#/edit?mode=new-trip')}
         >
           ✦
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -630,6 +630,7 @@ header {
   border-top: 1px dashed var(--color-paper-dim);
   padding-top: var(--spacing-md);
   margin-top: var(--spacing-sm);
+  height: 64px;
 }
 
 .btn-icon-text {
@@ -859,4 +860,82 @@ header {
   border-top: 1px dashed var(--color-paper-dim);
   margin: var(--spacing-sm) 0;
 }
+
+/* Wizard Step Progress Tracker */
+.wizard-progress {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  border-bottom: 1px dashed var(--color-paper-dim);
+  padding-bottom: var(--spacing-md);
+  gap: var(--spacing-md);
+}
+
+.progress-step {
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  color: var(--color-ink-muted);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  text-align: center;
+  flex: none;
+}
+
+.progress-step.active {
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+  background-color: var(--color-paper-dim);
+  font-weight: 700;
+  box-shadow: 2px 2px 0px var(--color-paper-dim);
+}
+
+.progress-step:hover:not(.active) {
+  color: var(--color-ink);
+  background-color: var(--color-paper-dim);
+  opacity: 0.8;
+}
+
+.progress-divider {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  opacity: 0.5;
+  user-select: none;
+}
+
+.wizard-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  animation: fade-in 0.2s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Validation Errors */
+.input-error {
+  border-color: #d9534f !important;
+}
+
+.input-error:focus {
+  border-color: #d9534f !important;
+  box-shadow: 3px 3px 0px rgba(217, 83, 79, 0.25) !important;
+}
+
+.error-text {
+  font-family: var(--font-typewriter);
+  font-size: 11px;
+  color: #d9534f;
+  margin-top: var(--spacing-xs);
+  display: block;
+}
+
+
 
