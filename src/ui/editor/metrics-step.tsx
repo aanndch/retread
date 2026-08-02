@@ -4,7 +4,7 @@ import { Button } from '../../components/button';
 import { PinIcon } from '../../components/icons';
 
 interface MetricsStepProps {
-  mode: 'new-trip' | 'new-day' | 'edit';
+  mode: 'new-trip' | 'edit-trip' | 'new-day' | 'edit';
   tripTitle: string;
   setTripTitle: (t: string) => void;
   date: string;
@@ -71,7 +71,7 @@ export function MetricsStep({
   return (
     <div class="wizard-step-content">
       {/* Trip Title (New Trip Only) */}
-      {mode === 'new-trip' && (
+      {(mode === 'new-trip' || mode === 'edit-trip') && (
         <div class="form-group">
           <label class="input-label">Ride Title</label>
           <input 
@@ -88,18 +88,24 @@ export function MetricsStep({
         </div>
       )}
 
-      {/* Starting From - Departure Pin (New Trip Only) */}
-      {mode === 'new-trip' && (
+      {/* Starting From - Departure Pin (New Trip / Edit Trip) */}
+      {(mode === 'new-trip' || mode === 'edit-trip') && (
         <div class="form-group">
           <label class="input-label">Starting From</label>
           {startGpsLoading ? (
             <span class="field-tip">📡 Detecting your location...</span>
           ) : startLocation?.kind === 'gps' ? (
-            <div class="geo-pinned-display">
-              <span class="pinned-text">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'var(--color-paper-dim)', padding: '6px 12px', borderRadius: 'var(--border-radius)', border: '1px solid var(--color-ink-muted)' }}>
+              <span style={{ fontSize: '13px', color: 'var(--color-ink)' }}>
                 📍 [{startLocation.lat.toFixed(4)}, {startLocation.lng.toFixed(4)}]
               </span>
-              <Button variant="icon" class="action-tiny" aria-label="Clear start location" onClick={onClearStartLocation}>×</Button>
+              <button 
+                type="button" 
+                onClick={onClearStartLocation}
+                style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '0 4px', color: 'var(--color-ink-muted)' }}
+              >
+                &times;
+              </button>
             </div>
           ) : (
             <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
@@ -125,8 +131,8 @@ export function MetricsStep({
         </div>
       )}
 
-      {/* Distance Tracking Preference (New Trip Only) */}
-      {mode === 'new-trip' && (
+      {/* Distance Tracking Preference (New Trip / Edit Trip) */}
+      {(mode === 'new-trip' || mode === 'edit-trip') && (
         <div class="form-group animate-fade-in" style={{ marginTop: 'var(--spacing-md)' }}>
           <label class="input-label">Distance Tracking Method</label>
           <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', marginBottom: '8px' }}>
@@ -169,8 +175,8 @@ export function MetricsStep({
         </div>
       )}
 
-      {/* Leg page metrics (Only for existing trips - new-day or edit modes) */}
-      {mode !== 'new-trip' && (
+      {/* Leg page metrics (Only for Leg creation or Leg edit modes) */}
+      {(mode === 'new-day' || mode === 'edit') && (
         <>
           {/* Row 1: Leg Route (Whole Row) */}
           <div class="form-group">
@@ -243,11 +249,17 @@ export function MetricsStep({
             {gpsLoading ? (
               <span class="field-tip">📡 Detecting your location...</span>
             ) : location?.kind === 'gps' ? (
-              <div class="geo-pinned-display">
-                <span class="pinned-text">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'var(--color-paper-dim)', padding: '6px 12px', borderRadius: 'var(--border-radius)', border: '1px solid var(--color-ink-muted)' }}>
+                <span style={{ fontSize: '13px', color: 'var(--color-ink)' }}>
                   📍 [{location.lat.toFixed(4)}, {location.lng.toFixed(4)}]
                 </span>
-                <Button variant="icon" class="action-tiny" aria-label="Clear location" onClick={handleClearLocation}>×</Button>
+                <button 
+                  type="button" 
+                  onClick={handleClearLocation}
+                  style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '0 4px', color: 'var(--color-ink-muted)' }}
+                >
+                  &times;
+                </button>
               </div>
             ) : (
               <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
@@ -279,9 +291,9 @@ export function MetricsStep({
         <Button variant="secondary" onClick={handleCancel}>
           Cancel
         </Button>
-        {mode === 'new-trip' ? (
+        {mode === 'new-trip' || mode === 'edit-trip' ? (
           <Button type="submit" variant="primary">
-            Create Ride
+            {mode === 'new-trip' ? 'Create Ride' : 'Save Changes'}
           </Button>
         ) : (
           <Button variant="primary" onClick={() => handleStepJump(2)}>

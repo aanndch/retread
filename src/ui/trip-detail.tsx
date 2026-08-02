@@ -3,11 +3,10 @@ import { db } from "../db";
 import { Button } from "../components/button";
 import { Toast, useToast } from "../components/toast";
 import { ConfirmModal } from "../components/confirm-modal";
-import { ArrowLeft, CloseIcon, EditIcon, TrashIcon } from "../components/icons";
+import { ArrowLeft, EditIcon, TrashIcon } from "../components/icons";
 import { SquiggleMap } from "./squiggle";
 import { computeTotalDistance, formatDistance } from "../lib";
 import type { Trip, Page } from "../types";
-import type { JSX } from "preact";
 
 interface TripDetailProps {
   tripId: number;
@@ -31,8 +30,6 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
   const { toasts, showToast, removeToast } = useToast();
 
   // Fullscreen Map Modal state and handlers
@@ -196,18 +193,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
     }
   };
 
-  const handleSaveTitle = async () => {
-    const trimmed = editTitle.trim();
-    if (!trimmed) return;
-    try {
-      await db.trips.update(tripId, { title: trimmed });
-      setTrip((prev) => (prev ? { ...prev, title: trimmed } : prev));
-      setShowEditModal(false);
-    } catch (err) {
-      console.error("Failed to update ride title:", err);
-      showToast("Failed to save title.");
-    }
-  };
+
 
   if (loading) {
     return <p class="loading-text">Loading ride details...</p>;
@@ -487,10 +473,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
             <Button
               variant="tertiary"
               class="btn-icon-text"
-              onClick={() => {
-                setEditTitle(trip.title);
-                setShowEditModal(true);
-              }}
+              onClick={() => onNavigate(`#/edit?mode=edit-trip&tripId=${tripId}`)}
             >
               <EditIcon size={14} />
             </Button>
@@ -518,57 +501,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
         </div>
       )}
 
-      {/* Edit Title Modal */}
-      {showEditModal && (
-        <div class="modal-backdrop" onClick={() => setShowEditModal(false)}>
-          <div class="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div class="modal-header">
-              <h3>Edit Ride Title</h3>
-              <Button
-                variant="icon"
-                aria-label="Close"
-                onClick={() => setShowEditModal(false)}
-              >
-                <CloseIcon />
-              </Button>
-            </div>
 
-            <div
-              class="settings-body"
-              style={{ padding: "var(--spacing-md) 0" }}
-            >
-              <div class="form-group">
-                <label class="input-label">Ride Title</label>
-                <input
-                  type="text"
-                  class="form-input"
-                  value={editTitle}
-                  onInput={(e: JSX.TargetedEvent<HTMLInputElement>) =>
-                    setEditTitle((e.target as HTMLInputElement).value)
-                  }
-                  autoFocus
-                />
-              </div>
-
-              <div class="page-action-row page-action-modal">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowEditModal(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleSaveTitle}
-                  disabled={!editTitle.trim()}
-                >
-                  Save
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (

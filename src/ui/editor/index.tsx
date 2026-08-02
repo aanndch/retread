@@ -65,7 +65,7 @@ export function Editor({ onNavigate }: EditorProps) {
   const hashParts = window.location.hash.split('?');
   const params = new URLSearchParams(hashParts[1] || '');
   const rawMode = params.get('mode');
-  const validModes = ['new-trip', 'new-day', 'edit'] as const;
+  const validModes = ['new-trip', 'edit-trip', 'new-day', 'edit'] as const;
   type EditorMode = typeof validModes[number];
   const mode: EditorMode | null = validModes.includes(rawMode as EditorMode) ? (rawMode as EditorMode) : null;
   const tripIdParam = params.get('tripId');
@@ -299,7 +299,7 @@ export function Editor({ onNavigate }: EditorProps) {
   const [compressing, setCompressing] = useState(false);
   
   // App Load State
-  const [loading, setLoading] = useState(mode === 'edit');
+  const [loading, setLoading] = useState(mode === 'edit' || mode === 'edit-trip');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevPreviewsRef = useRef<string[]>([]);
 
@@ -355,9 +355,17 @@ export function Editor({ onNavigate }: EditorProps) {
           if (tripRecord.startOdo !== undefined) {
             setStartOdo(tripRecord.startOdo);
           }
+          if (mode === 'edit-trip') {
+            setTripTitle(tripRecord.title);
+            setStartLocation(tripRecord.startLocation ?? null);
+            setLoading(false);
+          }
         }
       } catch (err) {
         console.warn('Failed to load trip distance mode config:', err);
+        if (mode === 'edit-trip') {
+          setLoading(false);
+        }
       }
     }
 
@@ -458,6 +466,43 @@ export function Editor({ onNavigate }: EditorProps) {
   const handleSave = async (e: Event) => {
     e.preventDefault();
 
+    if (mode === 'edit-trip') {
+      if (!tripTitle.trim()) {
+        setTitleError('Ride Title is required.');
+        return;
+      }
+      try {
+        const finalTitle = tripTitle.trim();
+        let startLocPayload: LocationUnion | null = null;
+        if (startLocation) {
+          if (startLocation.kind === 'named' && !startLocation.name.trim()) {
+            startLocPayload = null;
+          } else {
+            startLocPayload = startLocation;
+          }
+        }
+
+        await db.trips.update(tripId!, {
+          title: finalTitle,
+          startLocation: startLocPayload,
+          distanceMode,
+          startOdo: distanceMode === 'odo' ? (startOdo !== null && !isNaN(startOdo) ? startOdo : 0) : null
+        });
+
+        try {
+          await backfillTripRoutes(tripId!);
+        } catch (snapErr) {
+          console.warn('Snapping routes failed during trip edit save:', snapErr);
+        }
+
+        onNavigate(`#/trip/${tripId}`);
+      } catch (err) {
+        console.error('Failed to update trip details:', err);
+        showToast('Error updating details in database.');
+      }
+      return;
+    }
+
     if (mode === 'new-trip') {
       if (!tripTitle.trim()) {
         setTitleError('Ride Title is required to start a new ride.');
@@ -525,14 +570,24 @@ export function Editor({ onNavigate }: EditorProps) {
         if (!existingPage) throw new Error('Page to update was not found.');
         
         await db.pages.update(pageId, pageData);
-        backfillTripRoutes(existingPage.tripId).catch(err => console.warn('Background backfill failed:', err));
+        try {
+          await backfillTripRoutes(existingPage.tripId);
+        } catch (snapErr) {
+          console.warn('Snapping routes failed during edit save:', snapErr);
+          showToast(`Snapping failed: ${(snapErr as Error).message || snapErr}. Used straight-line fallback.`);
+        }
         onNavigate(`#/trip/${existingPage.tripId}`);
       } else {
         await db.pages.add({
           tripId: activeTripId!,
           ...pageData
         } as Page);
-        backfillTripRoutes(activeTripId!).catch(err => console.warn('Background backfill failed:', err));
+        try {
+          await backfillTripRoutes(activeTripId!);
+        } catch (snapErr) {
+          console.warn('Snapping routes failed during new save:', snapErr);
+          showToast(`Snapping failed: ${(snapErr as Error).message || snapErr}. Used straight-line fallback.`);
+        }
         onNavigate(`#/trip/${activeTripId}`);
       }
     } catch (err) {
@@ -545,9 +600,8 @@ export function Editor({ onNavigate }: EditorProps) {
     if (mode === 'edit' && pageId !== null) {
       db.pages.get(pageId).then(page => {
         if (page) onNavigate(`#/trip/${page.tripId}`);
-        else onNavigate('#/');
       });
-    } else if (tripId) {
+    } else if (mode === 'new-day' || mode === 'edit-trip') {
       onNavigate(`#/trip/${tripId}`);
     } else {
       onNavigate('#/');
@@ -569,13 +623,14 @@ export function Editor({ onNavigate }: EditorProps) {
       <header class="editor-header">
         <h3>
           {mode === 'new-trip' && (tripTitle.trim() || 'New Ride')}
+          {mode === 'edit-trip' && 'Edit Ride Details'}
           {mode === 'new-day' && 'Add New Leg'}
           {mode === 'edit' && 'Edit Leg Details'}
         </h3>
       </header>
 
       {/* Progress Tab Indicator */}
-      {mode !== 'new-trip' && (
+      {mode !== 'new-trip' && mode !== 'edit-trip' && (
         <div class="wizard-progress">
           <span class={`progress-step ${step === 1 ? 'active' : ''}`} onClick={() => handleStepJump(1)}>1. METRICS</span>
           <span class="progress-divider">→</span>

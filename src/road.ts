@@ -26,7 +26,7 @@ export async function snapLeg(
   const directDist = haversineDistance(from, to);
   
   // Safeguard: If points are basically identical, return direct line
-  if (directDist < 0.1) {
+  if (directDist < 0.05) {
     return [from, to];
   }
 
@@ -42,8 +42,9 @@ export async function snapLeg(
       const route = data.routes[0];
       const osrmKm = route.distance / 1000;
       
-      // Safeguard: If OSRM distance is > 5x direct distance, drop snap to prevent erratic loops
-      if (osrmKm > 5 * directDist) {
+      // Safeguard: If OSRM distance is > 5x direct distance AND direct distance is significant (> 1km), drop snap
+      const isDetour = directDist > 1.0 ? (osrmKm > 5 * directDist) : (osrmKm > 5.0);
+      if (isDetour) {
         console.warn(`OSRM detour safety triggered: OSRM is ${osrmKm.toFixed(1)}km vs direct ${directDist.toFixed(1)}km. Dropping snap.`);
         return [from, to];
       }
@@ -59,8 +60,8 @@ export async function snapLeg(
     
     return [from, to];
   } catch (err) {
-    console.warn(`OSRM snapping failed: ${err}. Falling back to direct line.`);
-    return [from, to];
+    console.error(`OSRM snapping failed: ${err}`);
+    throw err;
   }
 }
 
@@ -92,14 +93,21 @@ export async function backfillTripRoutes(tripId: number): Promise<void> {
 
         const needsSnap =
           !currentPage.roadPath ||
-          currentPage.roadPath.length < 2 ||
+          currentPage.roadPath.length <= 2 ||
           haversineDistance(currentPage.roadPath[0], fromGps) > 0.05 ||
           haversineDistance(currentPage.roadPath[currentPage.roadPath.length - 1], toGps) > 0.05;
 
         if (needsSnap) {
-          const snappedPath = await snapLeg(fromGps, toGps);
-          await db.pages.update(currentPage.id!, { roadPath: snappedPath });
-          legUpdated = true;
+          try {
+            console.log(`[OSRM] Snapping Day 1 Leg 1: from [${fromGps.lat}, ${fromGps.lng}] to [${toGps.lat}, ${toGps.lng}]`);
+            const snappedPath = await snapLeg(fromGps, toGps);
+            await db.pages.update(currentPage.id!, { roadPath: snappedPath });
+            legUpdated = true;
+          } catch (snapErr) {
+            console.warn(`[OSRM] Snap failed for first leg, saving straight line fallback:`, snapErr);
+            await db.pages.update(currentPage.id!, { roadPath: [fromGps, toGps] });
+            throw snapErr;
+          }
         }
       } else {
         // No valid startLocation GPS, clear any stale roadPath on first page
@@ -121,14 +129,21 @@ export async function backfillTripRoutes(tripId: number): Promise<void> {
       // Check if we need to snap (either roadPath is missing, or endpoints changed)
       const needsSnap =
         !currentPage.roadPath ||
-        currentPage.roadPath.length < 2 ||
+        currentPage.roadPath.length <= 2 ||
         haversineDistance(currentPage.roadPath[0], fromGps) > 0.05 ||
         haversineDistance(currentPage.roadPath[currentPage.roadPath.length - 1], toGps) > 0.05;
         
       if (needsSnap) {
-        const snappedPath = await snapLeg(fromGps, toGps);
-        await db.pages.update(currentPage.id!, { roadPath: snappedPath });
-        legUpdated = true;
+        try {
+          console.log(`[OSRM] Snapping Day Leg: from [${fromGps.lat}, ${fromGps.lng}] to [${toGps.lat}, ${toGps.lng}]`);
+          const snappedPath = await snapLeg(fromGps, toGps);
+          await db.pages.update(currentPage.id!, { roadPath: snappedPath });
+          legUpdated = true;
+        } catch (snapErr) {
+          console.warn(`[OSRM] Snap failed for leg, saving straight line fallback:`, snapErr);
+          await db.pages.update(currentPage.id!, { roadPath: [fromGps, toGps] });
+          throw snapErr;
+        }
       }
     } else {
       // If either location is named/none, clear any existing snapped path
