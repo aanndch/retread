@@ -12,6 +12,27 @@ export type Theme = typeof Theme[keyof typeof Theme];
 
 const THEME_VALUES = new Set<string>(Object.values(Theme));
 
+const THEME_COLORS: Record<Theme, string> = {
+  [Theme.Daylight]: '#f4efe6',
+  [Theme.Nightfall]: '#2a2520',
+  [Theme.Monotone]: '#e8e8e8',
+  [Theme.Sepia]: '#f5e6c8',
+  [Theme.Midnight]: '#1a1d23',
+  [Theme.Slate]: '#e2dfd8',
+  [Theme.Cyberpunk]: '#0a0a0f',
+};
+
+function applyThemeColor(theme: Theme) {
+  const color = THEME_COLORS[theme];
+  let meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute('name', 'theme-color');
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute('content', color);
+}
+
 /**
  * Retrieves the user's explicitly saved theme preference.
  */
@@ -32,9 +53,11 @@ export function saveTheme(theme: Theme | 'system') {
   if (theme === 'system') {
     localStorage.removeItem('theme');
     document.documentElement.removeAttribute('data-theme');
+    applyThemeColor(getActiveTheme());
   } else {
     localStorage.setItem('theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
+    applyThemeColor(theme);
   }
   // Dispatch a custom event to notify other components of the change
   window.dispatchEvent(new Event('themechange'));
@@ -47,8 +70,10 @@ export function initTheme() {
   const saved = getSavedTheme();
   if (saved) {
     document.documentElement.setAttribute('data-theme', saved);
+    applyThemeColor(saved);
   } else {
     document.documentElement.removeAttribute('data-theme');
+    applyThemeColor(getActiveTheme());
   }
 }
 
