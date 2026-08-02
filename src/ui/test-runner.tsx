@@ -113,7 +113,7 @@ export function TestRunner() {
           ))}
         </ul>
       )}
-      <a href="#/" style={{ display: 'block', marginTop: '20px', color: 'var(--color-green)', textDecoration: 'underline' }}>&larr; Back to Home</a>
+      <a href="#/" style={{ display: 'block', marginTop: '20px', color: 'var(--color-green)', textDecoration: 'underline' }}><- Back to Home</a>
     </div>
   );
 }

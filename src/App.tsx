@@ -57,7 +57,7 @@ export function App() {
         <div class="placeholder-view">
           <h3>Trip Journal (ID: {tripId})</h3>
           <p class="placeholder-text">v1 Trip Detail Screen is under construction.</p>
-          <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}>&larr; Back Home</button>
+          <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}><- Back Home</button>
         </div>
       );
     }
@@ -68,7 +68,7 @@ export function App() {
         <div class="placeholder-view">
           <h3>Page Detail (ID: {pageId})</h3>
           <p class="placeholder-text">v1 Page Detail Screen is under construction.</p>
-          <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}>&larr; Back Home</button>
+          <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}><- Back Home</button>
         </div>
       );
     }
@@ -78,7 +78,7 @@ export function App() {
         <div class="placeholder-view">
           <h3>Editor Form</h3>
           <p class="placeholder-text">v1 Page Editor is under construction.</p>
-          <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}>&larr; Back Home</button>
+          <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}><- Back Home</button>
         </div>
       );
     }
@@ -88,7 +88,7 @@ export function App() {
         <div class="placeholder-view">
           <h3>Backup & Restore Settings</h3>
           <p class="placeholder-text">v1 Backup Engine is under construction.</p>
-          <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}>&larr; Back Home</button>
+          <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}><- Back Home</button>
         </div>
       );
     }
@@ -97,7 +97,7 @@ export function App() {
     return (
       <div class="placeholder-view">
         <h3>Page Not Found</h3>
-        <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}>&larr; Back Home</button>
+        <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}><- Back Home</button>
       </div>
     );
   };

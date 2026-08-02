@@ -58,7 +58,7 @@ export function Setup({ onComplete }: SetupProps) {
         </div>
 
         <button class="btn btn-primary" onClick={handleStart} disabled={persisting}>
-          {persisting ? 'Configuring persistent storage...' : 'Start Journaling &rarr;'}
+          {persisting ? 'Configuring persistent storage...' : 'Start Journaling ->'}
         </button>
       </div>
     </div>
