@@ -301,8 +301,8 @@ export function Editor({ onNavigate }: EditorProps) {
         <span class="field-tip">Pick one per ride — km for daily distance, odo for odometer.</span>
 
         {/* Geolocation Section */}
-        <div class="form-group location-section">
-          <label class="input-label">Location Pin</label>
+        <div class="form-group-inline">
+          <label class="input-label" style={{ marginBottom: 0 }}>Location Pin</label>
           
           {!location && !showNamedFallback ? (
             <button 

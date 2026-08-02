@@ -621,7 +621,12 @@ header {
 }
 
 /* Geolocation Section & Badges */
-.location-section {
+.form-group-inline {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
   border-top: 1px dashed var(--color-paper-dim);
   padding-top: var(--spacing-md);
   margin-top: var(--spacing-sm);
@@ -641,6 +646,9 @@ header {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+  align-items: flex-end;
+  flex-grow: 1;
+  max-width: 70%;
 }
 
 .location-coord {
