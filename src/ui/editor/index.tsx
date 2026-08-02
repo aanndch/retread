@@ -8,6 +8,53 @@ import { backfillTripRoutes } from '../../road';
 import { MetricsStep } from './metrics-step';
 import { PhotosStep } from './photos-step';
 import { StoryStep } from './story-step';
+import { Button } from '../../components/button';
+
+export function parseCoordinates(text: string): { lat: number; lng: number } | null {
+  // 1. Match standard coordinates: e.g. "31.2245, 77.3456"
+  const coordRegex = /(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/;
+  const match = text.match(coordRegex);
+  if (match) {
+    return {
+      lat: parseFloat(match[1]),
+      lng: parseFloat(match[2])
+    };
+  }
+
+  // 2. Match Google Maps URL coordinates: e.g. "@31.2245,77.3456"
+  const urlRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+  const urlMatch = text.match(urlRegex);
+  if (urlMatch) {
+    return {
+      lat: parseFloat(urlMatch[1]),
+      lng: parseFloat(urlMatch[2])
+    };
+  }
+
+  return null;
+}
+
+const loadLeaflet = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if ((window as any).L) {
+      resolve();
+      return;
+    }
+
+    // Load Leaflet CSS
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+
+    // Load Leaflet JS
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => resolve();
+    script.onerror = reject;
+    document.body.appendChild(script);
+  });
+};
 
 interface EditorProps {
   onNavigate: (route: string) => void;
@@ -42,15 +89,178 @@ export function Editor({ onNavigate }: EditorProps) {
   // Location State
   const [location, setLocation] = useState<LocationUnion | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
-  const [showNamedFallback, setShowNamedFallback] = useState(false);
-  const [tempPlaceName, setTempPlaceName] = useState('');
-
-  // Start Location State (for new-trip departure pin)
   const [startLocation, setStartLocation] = useState<LocationUnion | null>(null);
   const [startGpsLoading, setStartGpsLoading] = useState(false);
-  const [showStartNamedFallback, setShowStartNamedFallback] = useState(false);
-  const [tempStartPlaceName, setTempStartPlaceName] = useState('');
   const { toasts, showToast, removeToast } = useToast();
+
+  // Map Picker Modal State
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [mapPickerTarget, setMapPickerTarget] = useState<'start' | 'dest'>('dest');
+  const pickerMapRef = useRef<any>(null);
+  const [fallbackCenter, setFallbackCenter] = useState<[number, number] | null>(null);
+
+  // Pre-load fallback center from previous leg or start location
+  useEffect(() => {
+    let active = true;
+
+    async function loadFallbackCenter() {
+      let resolvedTripId = tripId;
+      if (resolvedTripId === null && pageId !== null) {
+        const pageRecord = await db.pages.get(pageId);
+        if (pageRecord) {
+          resolvedTripId = pageRecord.tripId;
+        }
+      }
+
+      if (resolvedTripId === null) return;
+
+      try {
+        const tripRecord = await db.trips.get(resolvedTripId);
+        const pages = await db.pages.where('tripId').equals(resolvedTripId).toArray();
+        const sorted = [...pages].sort((a, b) => a.date.localeCompare(b.date) || (a.id || 0) - (b.id || 0));
+
+        let foundCenter: [number, number] | null = null;
+
+        if (mode === 'new-day') {
+          if (sorted.length > 0) {
+            const lastPage = sorted[sorted.length - 1];
+            if (lastPage.location?.kind === 'gps') {
+              foundCenter = [lastPage.location.lat, lastPage.location.lng];
+            }
+          }
+          if (!foundCenter && tripRecord?.startLocation?.kind === 'gps') {
+            foundCenter = [tripRecord.startLocation.lat, tripRecord.startLocation.lng];
+          }
+        } else if (mode === 'edit' && pageId !== null) {
+          const myIdx = sorted.findIndex(p => p.id === pageId);
+          if (myIdx > 0) {
+            const prevPage = sorted[myIdx - 1];
+            if (prevPage.location?.kind === 'gps') {
+              foundCenter = [prevPage.location.lat, prevPage.location.lng];
+            }
+          }
+          if (!foundCenter && tripRecord?.startLocation?.kind === 'gps') {
+            foundCenter = [tripRecord.startLocation.lat, tripRecord.startLocation.lng];
+          }
+        }
+
+        if (active && foundCenter) {
+          setFallbackCenter(foundCenter);
+        }
+      } catch (err) {
+        console.warn('Failed to load fallback map center:', err);
+      }
+    }
+
+    loadFallbackCenter();
+    return () => {
+      active = false;
+    };
+  }, [tripId, pageId, mode]);
+
+  const handleOpenMapPicker = async (target: 'start' | 'dest') => {
+    if (!navigator.onLine) {
+      showToast('You are offline. Please paste coordinates from Google Maps instead.');
+      return;
+    }
+    try {
+      await loadLeaflet();
+      setMapPickerTarget(target);
+      setShowMapPicker(true);
+    } catch (err) {
+      console.warn('Failed to load Leaflet library:', err);
+      showToast('Failed to load map picker.');
+      setShowMapPicker(false);
+    }
+  };
+
+  const initializeMap = (el: HTMLDivElement | null) => {
+    if (!el) return;
+    if (!(window as any).L) return;
+    const L = (window as any).L;
+
+    let initialCenter: [number, number] = [31.1048, 77.1734];
+    if (mapPickerTarget === 'start') {
+      if (startLocation?.kind === 'gps') {
+        initialCenter = [startLocation.lat, startLocation.lng];
+      }
+    } else {
+      if (location?.kind === 'gps') {
+        initialCenter = [location.lat, location.lng];
+      } else if (fallbackCenter) {
+        initialCenter = fallbackCenter;
+      }
+    }
+
+    try {
+      if (pickerMapRef.current) {
+        pickerMapRef.current.remove();
+      }
+    } catch (err) {
+      console.warn('Failed to remove existing map instance:', err);
+    }
+
+    const map = L.map(el, {
+      zoomControl: true
+    }).setView(initialCenter, 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    pickerMapRef.current = map;
+  };
+
+  useEffect(() => {
+    if (!showMapPicker && pickerMapRef.current) {
+      try {
+        pickerMapRef.current.remove();
+      } catch (err) {
+        console.warn('Failed to clean up map instance:', err);
+      }
+      pickerMapRef.current = null;
+    }
+  }, [showMapPicker]);
+
+  const handleConfirmPickerLocation = (e: JSX.TargetedMouseEvent<HTMLButtonElement>) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    try {
+      if (!pickerMapRef.current) {
+        console.warn('Map reference is not initialized');
+        return;
+      }
+      
+      const center = pickerMapRef.current.getCenter();
+      if (!center || typeof center.lat !== 'number' || typeof center.lng !== 'number') {
+        throw new Error('Invalid center coordinates from Map Picker');
+      }
+
+      if (mapPickerTarget === 'start') {
+        setStartLocation({
+          kind: 'gps',
+          lat: center.lat,
+          lng: center.lng,
+          name: ''
+        });
+      } else {
+        setLocation({
+          kind: 'gps',
+          lat: center.lat,
+          lng: center.lng,
+          name: ''
+        });
+      }
+    } catch (err) {
+      console.error('Failed to confirm map picker pin:', err);
+      showToast('Error setting coordinates from map.');
+    } finally {
+      setShowMapPicker(false);
+    }
+  };
 
   // Auto-capture departure GPS on mount for new trips
   useEffect(() => {
@@ -68,7 +278,6 @@ export function Editor({ onNavigate }: EditorProps) {
         },
         () => {
           setStartGpsLoading(false);
-          setShowStartNamedFallback(true);
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
@@ -98,14 +307,7 @@ export function Editor({ onNavigate }: EditorProps) {
           setDayTitle(page.title || '');
           setPhotos(page.photos || []);
 
-          if (page.location) {
-            if (page.location.kind === 'named') {
-              setShowNamedFallback(true);
-              setTempPlaceName(page.location.name);
-            } else {
-              setTempPlaceName(page.location.name || '');
-            }
-          }
+
           
           // Generate previews
           const urls = (page.photos || []).map(blob => URL.createObjectURL(blob));
@@ -170,7 +372,6 @@ export function Editor({ onNavigate }: EditorProps) {
   const handleDropPin = () => {
     if (!navigator.geolocation) {
       showToast('Geolocation is not supported by your device.');
-      setShowNamedFallback(true);
       return;
     }
 
@@ -184,32 +385,18 @@ export function Editor({ onNavigate }: EditorProps) {
           lng: position.coords.longitude,
           name: ''
         });
-        setTempPlaceName('');
-        setShowNamedFallback(false);
       },
       (error) => {
         console.warn('Geolocation failed:', error);
         setGpsLoading(false);
-        setShowNamedFallback(true);
         setLocation(null);
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
   };
 
-  const handlePlaceNameChange = (name: string) => {
-    setTempPlaceName(name);
-    if (location && location.kind === 'gps') {
-      setLocation({ ...location, name });
-    } else {
-      setLocation({ kind: 'named', name });
-    }
-  };
-
   const handleClearLocation = () => {
     setLocation(null);
-    setTempPlaceName('');
-    setShowNamedFallback(false);
   };
 
   // Photo uploads & compression
@@ -265,27 +452,14 @@ export function Editor({ onNavigate }: EditorProps) {
   const handleSave = async (e: Event) => {
     e.preventDefault();
 
-    if (step < 3) {
-      if (mode === 'new-trip' && !tripTitle.trim()) {
+    if (mode === 'new-trip') {
+      if (!tripTitle.trim()) {
         setTitleError('Ride Title is required to start a new ride.');
-        setStep(1);
         return;
       }
-      setStep((step + 1) as 1 | 2 | 3);
-      return;
-    }
 
-    if (mode === 'new-trip' && !tripTitle.trim()) {
-      setTitleError('Ride Title is required to start a new ride.');
-      setStep(1);
-      return;
-    }
-
-    try {
-      let activeTripId = tripId;
-
-      if (mode === 'new-trip') {
-        const finalTitle = tripTitle.trim() || `Ride on ${date}`;
+      try {
+        const finalTitle = tripTitle.trim();
 
         // Build startLocation payload
         let startLocPayload: LocationUnion | null = null;
@@ -297,12 +471,27 @@ export function Editor({ onNavigate }: EditorProps) {
           }
         }
 
-        activeTripId = await db.trips.add({
+        const newTripId = await db.trips.add({
           title: finalTitle,
           createdAt: new Date().toISOString(),
           startLocation: startLocPayload
         }) as number;
+
+        onNavigate(`#/trip/${newTripId}`);
+      } catch (err) {
+        console.error('Failed to create trip:', err);
+        showToast('Error saving details to database.');
       }
+      return;
+    }
+
+    if (step < 3) {
+      setStep((step + 1) as 1 | 2 | 3);
+      return;
+    }
+
+    try {
+      let activeTripId = tripId;
 
       if (activeTripId === null && mode !== 'edit') {
         throw new Error('Trip ID context is missing.');
@@ -384,13 +573,15 @@ export function Editor({ onNavigate }: EditorProps) {
       </header>
 
       {/* Progress Tab Indicator */}
-      <div class="wizard-progress">
-        <span class={`progress-step ${step === 1 ? 'active' : ''}`} onClick={() => handleStepJump(1)}>1. METRICS</span>
-        <span class="progress-divider">→</span>
-        <span class={`progress-step ${step === 2 ? 'active' : ''}`} onClick={() => handleStepJump(2)}>2. PHOTOS</span>
-        <span class="progress-divider">→</span>
-        <span class={`progress-step ${step === 3 ? 'active' : ''}`} onClick={() => handleStepJump(3)}>3. STORY</span>
-      </div>
+      {mode !== 'new-trip' && (
+        <div class="wizard-progress">
+          <span class={`progress-step ${step === 1 ? 'active' : ''}`} onClick={() => handleStepJump(1)}>1. METRICS</span>
+          <span class="progress-divider">→</span>
+          <span class={`progress-step ${step === 2 ? 'active' : ''}`} onClick={() => handleStepJump(2)}>2. PHOTOS</span>
+          <span class="progress-divider">→</span>
+          <span class={`progress-step ${step === 3 ? 'active' : ''}`} onClick={() => handleStepJump(3)}>3. STORY</span>
+        </div>
+      )}
 
       <form onSubmit={handleSave} class="editor-form">
         {step === 1 && (
@@ -408,35 +599,23 @@ export function Editor({ onNavigate }: EditorProps) {
             location={location}
             gpsLoading={gpsLoading}
             handleDropPin={handleDropPin}
-            showNamedFallback={showNamedFallback}
-            tempPlaceName={tempPlaceName}
-            handlePlaceNameChange={handlePlaceNameChange}
             handleClearLocation={handleClearLocation}
             dayTitle={dayTitle}
             setDayTitle={setDayTitle}
             startLocation={startLocation}
             startGpsLoading={startGpsLoading}
-            showStartNamedFallback={showStartNamedFallback}
-            tempStartPlaceName={tempStartPlaceName}
-            onStartPlaceNameChange={(name: string) => {
-              setTempStartPlaceName(name);
-              setStartLocation({ kind: 'named', name });
-            }}
             onClearStartLocation={() => {
               setStartLocation(null);
-              setShowStartNamedFallback(false);
-              setTempStartPlaceName('');
             }}
             onRetryStartGps={() => {
               if (!navigator.geolocation) {
-                setShowStartNamedFallback(true);
+                showToast('Geolocation is not supported by your device.');
                 return;
               }
               setStartGpsLoading(true);
               navigator.geolocation.getCurrentPosition(
                 (position) => {
                   setStartGpsLoading(false);
-                  setShowStartNamedFallback(false);
                   setStartLocation({
                     kind: 'gps',
                     lat: position.coords.latitude,
@@ -446,7 +625,7 @@ export function Editor({ onNavigate }: EditorProps) {
                 },
                 () => {
                   setStartGpsLoading(false);
-                  setShowStartNamedFallback(true);
+                  showToast('GPS auto-detect failed.');
                 },
                 { enableHighAccuracy: true, timeout: 10000 }
               );
@@ -455,6 +634,7 @@ export function Editor({ onNavigate }: EditorProps) {
             setTitleError={setTitleError}
             handleCancel={handleCancel}
             handleStepJump={handleStepJump}
+            onOpenMapPicker={handleOpenMapPicker}
           />
         )}
 
@@ -477,6 +657,73 @@ export function Editor({ onNavigate }: EditorProps) {
           />
         )}
       </form>
+
+      {/* Map Picker Modal Backdrop & Overlay */}
+      {showMapPicker && (
+        <div class="modal-backdrop" style={{ zIndex: 3000 }} onClick={() => setShowMapPicker(false)}>
+          <div class="modal-content" onClick={(e) => e.stopPropagation()} style={{ padding: 0, overflow: 'hidden', width: '100%', maxWidth: '480px' }}>
+            <div class="map-picker-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', borderBottom: '1px solid var(--color-ink-muted)' }}>
+              <h4 style={{ margin: 0 }}>Pick Location</h4>
+              <button 
+                type="button" 
+                class="btn-clear" 
+                onClick={() => setShowMapPicker(false)} 
+                style={{ fontSize: '20px', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--color-ink)' }}
+              >
+                &times;
+              </button>
+            </div>
+            
+            <div style={{ position: 'relative', width: '100%', height: '350px' }}>
+              <div 
+                ref={initializeMap} 
+                id="picker-map-el" 
+                style={{ width: '100%', height: '100%', background: 'var(--color-paper-dim)' }}
+              ></div>
+              
+              {/* Crosshair indicator in center */}
+              <div 
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  pointerEvents: 'none',
+                  zIndex: 2000,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="15" cy="15" r="4" stroke="var(--color-green)" stroke-width="2" fill="var(--color-paper)" />
+                  <line x1="15" y1="0" x2="15" y2="10" stroke="var(--color-green)" stroke-width="2" />
+                  <line x1="15" y1="20" x2="15" y2="30" stroke="var(--color-green)" stroke-width="2" />
+                  <line x1="0" y1="15" x2="10" y2="15" stroke="var(--color-green)" stroke-width="2" />
+                  <line x1="20" y1="15" x2="30" y2="15" stroke="var(--color-green)" stroke-width="2" />
+                </svg>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px', padding: '16px', background: 'var(--color-paper-dim)', borderTop: '1px solid var(--color-ink-muted)' }}>
+              <Button 
+                variant="secondary" 
+                style={{ flex: 1 }} 
+                onClick={() => setShowMapPicker(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="primary" 
+                style={{ flex: 1 }} 
+                onClick={handleConfirmPickerLocation}
+              >
+                Confirm Pin
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div class="toast-container">
         {toasts.map(t => (

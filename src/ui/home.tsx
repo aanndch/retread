@@ -38,7 +38,7 @@ export function Home({ onNavigate }: HomeProps) {
       const pages = await db.pages.where('tripId').equals(trip.id!).toArray();
       
       // Find the first page chronologically that has at least one photo
-      const sortedPages = [...pages].sort((a, b) => a.date.localeCompare(b.date));
+      const sortedPages = [...pages].sort((a, b) => a.date.localeCompare(b.date) || (a.id || 0) - (b.id || 0));
       const pageWithPhoto = sortedPages.find(p => p.photos && p.photos.length > 0);
       const firstPhotoBlob = pageWithPhoto ? pageWithPhoto.photos[0] : null;
 

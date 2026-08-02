@@ -16,24 +16,19 @@ interface MetricsStepProps {
   location: LocationUnion | null;
   gpsLoading: boolean;
   handleDropPin: () => void;
-  showNamedFallback: boolean;
-  tempPlaceName: string;
-  handlePlaceNameChange: (n: string) => void;
   handleClearLocation: () => void;
   dayTitle: string;
   setDayTitle: (t: string) => void;
   distanceMode: 'both' | 'km' | 'odo';
   startLocation: LocationUnion | null;
   startGpsLoading: boolean;
-  showStartNamedFallback: boolean;
-  tempStartPlaceName: string;
-  onStartPlaceNameChange: (n: string) => void;
   onClearStartLocation: () => void;
   onRetryStartGps: () => void;
   titleError: string;
   setTitleError: (e: string) => void;
   handleCancel: () => void;
   handleStepJump: (s: 1 | 2 | 3) => void;
+  onOpenMapPicker: (target: 'start' | 'dest') => void;
 }
 
 export function MetricsStep({
@@ -49,24 +44,19 @@ export function MetricsStep({
   location,
   gpsLoading,
   handleDropPin,
-  showNamedFallback,
-  tempPlaceName,
-  handlePlaceNameChange,
   handleClearLocation,
   dayTitle,
   setDayTitle,
   distanceMode,
   startLocation,
   startGpsLoading,
-  showStartNamedFallback,
-  tempStartPlaceName,
-  onStartPlaceNameChange,
   onClearStartLocation,
   onRetryStartGps,
   titleError,
   setTitleError,
   handleCancel,
-  handleStepJump
+  handleStepJump,
+  onOpenMapPicker
 }: MetricsStepProps) {
   return (
     <div class="wizard-step-content">
@@ -94,140 +84,147 @@ export function MetricsStep({
           <label class="input-label">Starting From</label>
           {startGpsLoading ? (
             <span class="field-tip">📡 Detecting your location...</span>
-          ) : startLocation ? (
+          ) : startLocation?.kind === 'gps' ? (
             <div class="geo-pinned-display">
               <span class="pinned-text">
-                📍 {startLocation.kind === 'gps'
-                  ? (startLocation.name || `[${startLocation.lat.toFixed(4)}, ${startLocation.lng.toFixed(4)}]`)
-                  : startLocation.name}
+                📍 [{startLocation.lat.toFixed(4)}, {startLocation.lng.toFixed(4)}]
               </span>
               <Button variant="icon" class="action-tiny" aria-label="Clear start location" onClick={onClearStartLocation}>×</Button>
             </div>
-          ) : showStartNamedFallback ? (
-            <div class="form-row">
-              <input 
-                type="text" 
-                class="form-input" 
-                placeholder="Type starting city/town" 
-                value={tempStartPlaceName} 
-                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => onStartPlaceNameChange((e.target as HTMLInputElement).value)}
-              />
-              <Button variant="secondary" size="sm" onClick={onRetryStartGps}>
-                <PinIcon size={14} /> Retry GPS
-              </Button>
-            </div>
           ) : (
-            <div class="form-row">
-              <Button variant="secondary" size="sm" onClick={onRetryStartGps}>
-                <PinIcon size={14} /> Drop Pin
+            <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                style={{ flex: 1 }}
+                onClick={onRetryStartGps}
+              >
+                <PinIcon size={14} /> Detect GPS
               </Button>
-              <span class="field-tip">Auto-detect failed. Tap to retry or type manually.</span>
+              <Button 
+                type="button"
+                variant="secondary" 
+                size="sm" 
+                style={{ flex: 1 }}
+                onClick={() => onOpenMapPicker('start')}
+              >
+                🗺 Pick on Map
+              </Button>
             </div>
           )}
         </div>
       )}
 
-      {/* Row 1: Day Label (Whole Row) */}
-      <div class="form-group">
-        <label class="input-label">Day Label / Route Leg</label>
-        <input 
-          type="text" 
-          class="form-input" 
-          placeholder="e.g. Manali to Jispa" 
-          value={dayTitle} 
-          onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setDayTitle((e.target as HTMLInputElement).value)}
-        />
-      </div>
-
-      {/* Row 2: Date and KM / Odo Selector */}
-      <div class="form-row">
-        <div class="form-group flex-1">
-          <label class="input-label">Date</label>
-          <input 
-            type="date" 
-            class="form-input" 
-            required 
-            value={date} 
-            onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setDate((e.target as HTMLInputElement).value)}
-          />
-        </div>
-
-        {distanceMode !== 'odo' && (
-          <div class="form-group flex-1">
-            <label class="input-label">Daily Distance (KM)</label>
+      {/* Day page metrics (Only for existing trips - new-day or edit modes) */}
+      {mode !== 'new-trip' && (
+        <>
+          {/* Row 1: Day Label (Whole Row) */}
+          <div class="form-group">
+            <label class="input-label">Day Label / Route Leg</label>
             <input 
-              type="number" 
+              type="text" 
               class="form-input" 
-              placeholder="e.g. 120"
-              value={km === null ? '' : km}
-              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setKm((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
+              placeholder="e.g. Manali to Jispa" 
+              value={dayTitle} 
+              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setDayTitle((e.target as HTMLInputElement).value)}
             />
           </div>
-        )}
 
-        {distanceMode !== 'km' && (
-          <div class="form-group flex-1">
-            <label class="input-label">Odometer</label>
-            <input 
-              type="number" 
-              class="form-input" 
-              placeholder="e.g. 14320"
-              value={odo === null ? '' : odo}
-              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setOdo((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
-            />
-          </div>
-        )}
-      </div>
-      {distanceMode === 'both' && (
-        <span class="field-tip">Pick one per ride — km for daily distance, odo for odometer.</span>
-      )}
+          {/* Row 2: Date and KM / Odo Selector */}
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label class="input-label">Date</label>
+              <input 
+                type="date" 
+                class="form-input" 
+                required 
+                value={date} 
+                onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setDate((e.target as HTMLInputElement).value)}
+              />
+            </div>
 
-      {/* Geolocation Section */}
-      <div class="form-group form-group-bordered">
-        <label class="input-label">Location Pin</label>
-        
-        {!location && !showNamedFallback ? (
-          <Button 
-            variant="secondary" 
-            size="sm"
-            class="btn-icon-text"
-            onClick={handleDropPin}
-            disabled={gpsLoading}
-          >
-            <PinIcon class="location-pin-icon" />
-            <span>{gpsLoading ? 'Locating...' : 'Drop Pin'}</span>
-          </Button>
-        ) : (
-          <div class="location-status">
-            {location?.kind === 'gps' && (
-              <div class="location-coord">
-                <span class="geo-badge">GPS</span>
-                <span>[{location.lat.toFixed(4)}, {location.lng.toFixed(4)}]</span>
+            {distanceMode !== 'odo' && (
+              <div class="form-group flex-1">
+                <label class="input-label">Daily Distance (KM)</label>
+                <input 
+                  type="number" 
+                  class="form-input" 
+                  placeholder="e.g. 120"
+                  value={km === null ? '' : km}
+                  onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setKm((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
+                />
               </div>
             )}
-            
-            <div class="location-input-row">
-              <input 
-                type="text" 
-                class="form-input form-input-sm" 
-                placeholder="Place name"
-                value={tempPlaceName}
-                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => handlePlaceNameChange((e.target as HTMLInputElement).value)}
-              />
-              <button type="button" class="btn-clear" aria-label="Clear location" onClick={handleClearLocation}>&times;</button>
-            </div>
+
+            {distanceMode !== 'km' && (
+              <div class="form-group flex-1">
+                <label class="input-label">Odometer</label>
+                <input 
+                  type="number" 
+                  class="form-input" 
+                  placeholder="e.g. 14320"
+                  value={odo === null ? '' : odo}
+                  onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setOdo((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
+                />
+              </div>
+            )}
           </div>
-        )}
-      </div>
+          {distanceMode === 'both' && (
+            <span class="field-tip">Pick one per ride — km for daily distance, odo for odometer.</span>
+          )}
+
+          {/* Geolocation Section */}
+          <div class="form-group form-group-bordered">
+            <label class="input-label">Location Pin</label>
+            
+            {gpsLoading ? (
+              <span class="field-tip">📡 Detecting your location...</span>
+            ) : location?.kind === 'gps' ? (
+              <div class="geo-pinned-display">
+                <span class="pinned-text">
+                  📍 [{location.lat.toFixed(4)}, {location.lng.toFixed(4)}]
+                </span>
+                <Button variant="icon" class="action-tiny" aria-label="Clear location" onClick={handleClearLocation}>×</Button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  style={{ flex: 1 }}
+                  onClick={handleDropPin}
+                >
+                  <PinIcon size={14} /> Detect GPS
+                </Button>
+                <Button 
+                  type="button"
+                  variant="secondary" 
+                  size="sm" 
+                  style={{ flex: 1 }}
+                  onClick={() => onOpenMapPicker('dest')}
+                >
+                  🗺 Pick on Map
+                </Button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Step 1 Actions */}
       <div class="form-actions">
         <Button variant="secondary" onClick={handleCancel}>
           Cancel
         </Button>
-        <Button variant="primary" onClick={() => handleStepJump(2)}>
-          Next: Photos →
-        </Button>
+        {mode === 'new-trip' ? (
+          <Button type="submit" variant="primary">
+            Create Ride
+          </Button>
+        ) : (
+          <Button variant="primary" onClick={() => handleStepJump(2)}>
+            Next: Photos →
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -156,7 +156,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           .equals(tripId)
           .toArray();
         const sortedPages = [...pagesRecords].sort((a, b) =>
-          a.date.localeCompare(b.date),
+          a.date.localeCompare(b.date) || (a.id || 0) - (b.id || 0)
         );
 
         if (active) {
@@ -341,21 +341,31 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
             </div>
           ) : (
             <div class="timeline-list">
-              {pages.map((page, index) => {
-                const dateParts = page.date.split("-");
-                let weekday = "";
-                let label = `Day ${index + 1}`;
+              {(() => {
+                const uniqueDates = Array.from(new Set(pages.map((p) => p.date))).sort();
 
-                if (dateParts.length === 3) {
-                  const d = new Date(
-                    parseInt(dateParts[0], 10),
-                    parseInt(dateParts[1], 10) - 1,
-                    parseInt(dateParts[2], 10),
-                  );
-                  weekday = d.toLocaleDateString(undefined, {
-                    weekday: "short",
-                  });
-                }
+                return pages.map((page, index) => {
+                  const dateParts = page.date.split("-");
+                  let weekday = "";
+                  
+                  const dayNum = uniqueDates.indexOf(page.date) + 1;
+                  const pagesOnDate = pages.filter((p) => p.date === page.date);
+                  let label = `Day ${dayNum}`;
+                  if (pagesOnDate.length > 1) {
+                    const legIdx = pagesOnDate.indexOf(page) + 1;
+                    label = `Day ${dayNum} • Leg ${legIdx}`;
+                  }
+
+                  if (dateParts.length === 3) {
+                    const d = new Date(
+                      parseInt(dateParts[0], 10),
+                      parseInt(dateParts[1], 10) - 1,
+                      parseInt(dateParts[2], 10),
+                    );
+                    weekday = d.toLocaleDateString(undefined, {
+                      weekday: "short",
+                    });
+                  }
 
                 return (
                   <a
@@ -459,9 +469,10 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                     </div>
                   </a>
                 );
-              })}
-            </div>
-          )}
+              })
+            })()}
+          </div>
+        )}
         </section>
 
         {/* Bottom action row */}

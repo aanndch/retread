@@ -68,7 +68,7 @@ export async function snapLeg(
 export async function backfillTripRoutes(tripId: number): Promise<void> {
   // Query all pages for the trip sorted chronologically
   const pages = await db.pages.where('tripId').equals(tripId).toArray();
-  const sortedPages = [...pages].sort((a, b) => a.date.localeCompare(b.date));
+  const sortedPages = [...pages].sort((a, b) => a.date.localeCompare(b.date) || (a.id || 0) - (b.id || 0));
 
   // Load the trip record to get the departure pin
   const tripRecord = await db.trips.get(tripId);

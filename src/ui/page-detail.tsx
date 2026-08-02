@@ -266,7 +266,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
           .equals(pageRecord.tripId)
           .toArray();
         const sorted = [...allPages].sort((a, b) =>
-          a.date.localeCompare(b.date),
+          a.date.localeCompare(b.date) || (a.id || 0) - (b.id || 0)
         );
         const myIdx = sorted.findIndex((p) => p.id === pageRecord.id);
 
