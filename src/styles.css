@@ -1615,3 +1615,135 @@ input[type=number] {
     gap: var(--spacing-md);
   }
 }
+
+/* ==========================================================================
+   FULLSCREEN INTERACTIVE OVERLAYS (MAP & PHOTO ZOOM)
+   ========================================================================== */
+
+/* Cursor affordance for clickable elements */
+.map-interactive-trigger {
+  cursor: zoom-in;
+  transition: transform 0.1s ease-in-out;
+}
+
+.map-interactive-trigger:hover {
+  opacity: 0.95;
+}
+
+/* Backdrops */
+.photo-overlay-backdrop {
+  background-color: rgba(0, 0, 0, 0.95) !important;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.map-overlay-backdrop {
+  background-color: var(--color-paper) !important;
+  background-image: 
+    linear-gradient(var(--color-paper-dim) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-paper-dim) 1px, transparent 1px) !important;
+  background-size: 20px 20px !important;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* Close overlay button (Typewriter Keycap style) */
+.btn-close-overlay {
+  position: fixed;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--border-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-family: var(--font-typewriter);
+  cursor: pointer;
+  z-index: 1010;
+  box-shadow: 2px 2px 0px var(--color-ink);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.btn-close-overlay:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px var(--color-ink);
+}
+
+/* Accent override for photo close button in dark overlay */
+.photo-overlay-backdrop .btn-close-overlay {
+  background-color: #2b2926;
+  color: #ebdcb9;
+  border: 1px solid #ebdcb9;
+  box-shadow: 2px 2px 0px #ebdcb9;
+}
+
+.photo-overlay-backdrop .btn-close-overlay:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px #ebdcb9;
+}
+
+/* Zoom/Pan Containers */
+.photo-zoom-container,
+.map-zoom-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none; /* Disable native browser pinch-zoom/scroll overrides */
+  overflow: hidden;
+  user-select: none;
+}
+
+.photo-zoomed-img {
+  max-width: 95vw;
+  max-height: 80vh;
+  object-fit: contain;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.photo-zoomed-img:active {
+  cursor: grabbing;
+}
+
+.map-zoom-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+}
+
+.map-zoom-inner:active {
+  cursor: grabbing;
+}
+
+/* Photo overlay dot indicators */
+.photo-overlay-dots {
+  position: fixed;
+  bottom: var(--spacing-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.15);
+  z-index: 1010;
+}

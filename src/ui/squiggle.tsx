@@ -2,9 +2,17 @@ interface SquiggleMapProps {
   path: { lat: number; lng: number }[];
   width?: number;
   height?: number;
+  hideWrapper?: boolean;
+  hideGrid?: boolean;
 }
 
-export function SquiggleMap({ path, width = 300, height = 150 }: SquiggleMapProps) {
+export function SquiggleMap({ 
+  path, 
+  width = 300, 
+  height = 150, 
+  hideWrapper = false, 
+  hideGrid = false 
+}: SquiggleMapProps) {
   if (!path || path.length < 2) {
     return (
       <div class="squiggle-map-empty">
@@ -64,92 +72,111 @@ export function SquiggleMap({ path, width = 300, height = 150 }: SquiggleMapProp
   const startPt = points2D[0];
   const endPt = points2D[points2D.length - 1];
 
-  return (
-    <div class="squiggle-map-wrapper">
-      <svg 
-        width="100%" 
-        height="100%" 
-        viewBox={`0 0 ${width} ${height}`} 
-        class="squiggle-map-svg"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          {/* Hand-drawn pencil/ink wobbly filter */}
-          <filter id="hand-drawn-wobble" x="-10%" y="-10%" width="120%" height="120%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="1" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </defs>
+  const svgContent = (
+    <svg 
+      width="100%" 
+      height="100%" 
+      viewBox={`0 0 ${width} ${height}`} 
+      class="squiggle-map-svg"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        {/* Hand-drawn pencil/ink wobbly filter */}
+        <filter id="hand-drawn-wobble" x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="1" result="noise" />
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </defs>
 
-        {/* Paper Grid Lines (Logbook style) */}
+      {/* Paper Grid Lines (Logbook style) */}
+      {!hideGrid && (
         <g class="map-grid-lines">
           <line x1="0" y1="50" x2={width} y2="50" stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
           <line x1="0" y1="100" x2={width} y2="100" stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
           <line x1="100" y1="0" x2="100" y2={height} stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
           <line x1="200" y1="0" x2="200" y2={height} stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
         </g>
+      )}
 
-        {/* Snapped wobbly path */}
-        {pathD && (
-          <>
-            {/* Background Ink Bleed (Feathering) */}
-            <path 
-              d={pathD} 
-              fill="none" 
-              stroke="var(--color-ink)" 
-              stroke-width="5" 
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              opacity="0.12"
-              filter="url(#hand-drawn-wobble)"
-            />
-            {/* Foreground Core Pen Line */}
-            <path 
-              d={pathD} 
-              fill="none" 
-              stroke="var(--color-ink)" 
-              stroke-width="2" 
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              opacity="0.9"
-              filter="url(#hand-drawn-wobble)"
-              class="map-route-path"
-            />
-          </>
-        )}
+      {/* Snapped wobbly path */}
+      {pathD && (
+        <>
+          {/* Background Ink Bleed (Feathering) */}
+          <path 
+            d={pathD} 
+            fill="none" 
+            stroke="var(--color-ink)" 
+            stroke-width="5" 
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            opacity="0.12"
+            filter="url(#hand-drawn-wobble)"
+          />
+          {/* Foreground Core Pen Line */}
+          <path 
+            d={pathD} 
+            fill="none" 
+            stroke="var(--color-ink)" 
+            stroke-width="2" 
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            opacity="0.9"
+            filter="url(#hand-drawn-wobble)"
+            class="map-route-path"
+          />
+        </>
+      )}
 
-        {/* Start Point Marker */}
-        {startPt && (
+      {/* Start Point Marker (Simple Dot) */}
+      {startPt && (
+        <g filter="url(#hand-drawn-wobble)">
+          <circle 
+            cx={startPt.x} 
+            cy={startPt.y} 
+            r="3.5" 
+            fill="var(--color-ink)" 
+          />
+        </g>
+      )}
+
+      {/* End Point Marker (Traveler's X Mark) */}
+      {endPt && (() => {
+        const cx = endPt.x;
+        const cy = endPt.y;
+        const r = 4.5;
+        return (
           <g filter="url(#hand-drawn-wobble)">
-            <circle 
-              cx={startPt.x} 
-              cy={startPt.y} 
-              r="5" 
-              fill="var(--color-paper)" 
-              stroke="var(--color-ink)" 
-              stroke-width="2" 
+            <line 
+              x1={cx - r} 
+              y1={cy - r} 
+              x2={cx + r} 
+              y2={cy + r} 
+              stroke="var(--color-green)" 
+              stroke-width="2.5" 
+              stroke-linecap="round"
             />
-            <circle 
-              cx={startPt.x} 
-              cy={startPt.y} 
-              r="2" 
-              fill="var(--color-ink)" 
+            <line 
+              x1={cx + r} 
+              y1={cy - r} 
+              x2={cx - r} 
+              y2={cy + r} 
+              stroke="var(--color-green)" 
+              stroke-width="2.5" 
+              stroke-linecap="round"
             />
           </g>
-        )}
+        );
+      })()}
+    </svg>
+  );
 
-        {/* End Point Marker */}
-        {endPt && (
-          <g filter="url(#hand-drawn-wobble)">
-            <polygon 
-              points={`${endPt.x},${endPt.y - 6} ${endPt.x - 5},${endPt.y + 4} ${endPt.x + 5},${endPt.y + 4}`}
-              fill="var(--color-green)" 
-              stroke="var(--color-ink)" 
-              stroke-width="2" 
-            />
-          </g>
-        )}
-      </svg>
+  if (hideWrapper) {
+    return svgContent;
+  }
+
+  return (
+    <div class="squiggle-map-wrapper">
+      {svgContent}
     </div>
   );
 }
