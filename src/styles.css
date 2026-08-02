@@ -535,3 +535,320 @@ header {
   font-size: 12px;
   color: var(--color-ink-muted);
 }
+
+/* Form Styles & Inputs */
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--spacing-md);
+}
+
+.editor-header {
+  margin-bottom: var(--spacing-lg);
+  border-bottom: 1px dashed var(--color-paper-dim);
+  padding-bottom: var(--spacing-xs);
+}
+
+.editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.form-row {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+/* Custom Styled Input Elements */
+.form-input,
+.form-textarea,
+.setting-select,
+.input-select {
+  font-family: var(--font-typewriter);
+  font-size: 14px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  transition: all 0.15s ease-in-out;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.setting-select:focus,
+.input-select:focus {
+  outline: none;
+  border-color: var(--color-green);
+  box-shadow: 3px 3px 0px var(--color-green-light);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--color-ink-muted);
+  opacity: 0.6;
+}
+
+.form-input-sm {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.form-textarea {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.field-tip {
+  font-family: var(--font-typewriter);
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin-top: calc(-1 * var(--spacing-xs));
+  display: block;
+}
+
+/* Geolocation Section & Badges */
+.location-section {
+  border-top: 1px dashed var(--color-paper-dim);
+  padding-top: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.btn-icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.location-pin-icon {
+  color: var(--color-green);
+}
+
+.location-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.location-coord {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mechanical);
+  font-size: 12px;
+  color: var(--color-ink);
+}
+
+.geo-badge {
+  font-family: var(--font-mechanical);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border: 1px solid var(--color-ink);
+  border-radius: 2px;
+  margin-right: var(--spacing-sm);
+  color: var(--color-green);
+  background-color: var(--color-paper-dim);
+}
+
+.location-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.btn-clear {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  padding: 0 var(--spacing-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+}
+
+.btn-clear:hover {
+  color: var(--color-ink);
+}
+
+/* Photo Upload & Previews */
+.file-hidden-input {
+  display: none;
+}
+
+.photo-upload-trigger {
+  display: block;
+  text-align: center;
+  padding: var(--spacing-md);
+  border: 1px dashed var(--color-ink-muted);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-family: var(--font-typewriter);
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  transition: all 0.15s ease-in-out;
+  background-color: var(--color-paper);
+}
+
+.photo-upload-trigger:hover {
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+  background-color: var(--color-paper-dim);
+}
+
+.photo-previews-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+
+.photo-preview-item {
+  position: relative;
+  aspect-ratio: 1;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: 1px 1px 0px var(--color-paper-dim);
+}
+
+.photo-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.btn-photo-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+  border: 1px solid var(--color-paper);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.btn-photo-remove:hover {
+  opacity: 1;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+  border-top: 1px dashed var(--color-paper-dim);
+  padding-top: var(--spacing-lg);
+}
+
+/* Backup Settings Screen styling */
+.backup-container {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--spacing-md);
+}
+
+.backup-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xl);
+  border-bottom: 1px dashed var(--color-paper-dim);
+  padding-bottom: var(--spacing-xs);
+}
+
+.backup-header h3 {
+  font-family: var(--font-typewriter);
+}
+
+.backup-card {
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  background-color: var(--color-paper);
+  padding: var(--spacing-lg);
+  box-shadow: 4px 4px 0px var(--color-paper-dim);
+}
+
+.backup-description {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+  margin-bottom: var(--spacing-lg);
+}
+
+.backup-status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  background-color: var(--color-paper-dim);
+  border: 1px dashed var(--color-green);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-lg);
+  font-size: 12px;
+  color: var(--color-ink);
+}
+
+.status-indicator {
+  color: var(--color-green);
+  font-weight: bold;
+}
+
+.backup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.action-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+}
+
+.action-section h4 {
+  font-family: var(--font-typewriter);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.action-help {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  line-height: 1.4;
+  margin-bottom: var(--spacing-sm);
+}
+
+.divider {
+  border: none;
+  border-top: 1px dashed var(--color-paper-dim);
+  margin: var(--spacing-sm) 0;
+}
+
