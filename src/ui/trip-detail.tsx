@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'preact/hooks';
-import { db } from '../db';
-import { Button } from '../components/button';
-import { ArrowLeft, TrashIcon, CloseIcon } from '../components/icons';
-import { SquiggleMap } from './squiggle';
-import { computeTotalDistance, formatDistance } from '../lib';
-import type { Trip, Page } from '../types';
+import { useState, useEffect, useCallback } from "preact/hooks";
+import { db } from "../db";
+import { Button } from "../components/button";
+import { ArrowLeft, CloseIcon, EditIcon, TrashIcon } from "../components/icons";
+import { SquiggleMap } from "./squiggle";
+import { computeTotalDistance, formatDistance } from "../lib";
+import type { Trip, Page } from "../types";
+import type { JSX } from "preact";
 
 interface TripDetailProps {
   tripId: number;
@@ -12,7 +13,7 @@ interface TripDetailProps {
 }
 
 function PhotoThumb({ blob }: { blob: Blob }) {
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState("");
   useEffect(() => {
     const objectUrl = URL.createObjectURL(blob);
     setUrl(objectUrl);
@@ -28,6 +29,8 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
 
   const stableNavigate = useCallback((route: string) => {
     onNavigate(route);
@@ -40,12 +43,17 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
       try {
         const tripRecord = await db.trips.get(tripId);
         if (!tripRecord) {
-          if (active) stableNavigate('#/');
+          if (active) stableNavigate("#/");
           return;
         }
 
-        const pagesRecords = await db.pages.where('tripId').equals(tripId).toArray();
-        const sortedPages = [...pagesRecords].sort((a, b) => a.date.localeCompare(b.date));
+        const pagesRecords = await db.pages
+          .where("tripId")
+          .equals(tripId)
+          .toArray();
+        const sortedPages = [...pagesRecords].sort((a, b) =>
+          a.date.localeCompare(b.date),
+        );
 
         if (active) {
           setTrip(tripRecord);
@@ -53,10 +61,10 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           setLoading(false);
         }
       } catch (err) {
-        console.error('Failed to load ride details:', err);
+        console.error("Failed to load ride details:", err);
         if (active) {
           setLoading(false);
-          stableNavigate('#/');
+          stableNavigate("#/");
         }
       }
     }
@@ -67,18 +75,29 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
     };
   }, [tripId]);
 
-
-
   const handleDeleteTrip = async () => {
     try {
-      await db.transaction('rw', db.trips, db.pages, async () => {
-        await db.pages.where('tripId').equals(tripId).delete();
+      await db.transaction("rw", db.trips, db.pages, async () => {
+        await db.pages.where("tripId").equals(tripId).delete();
         await db.trips.delete(tripId);
       });
-      onNavigate('#/');
+      onNavigate("#/");
     } catch (err) {
-      console.error('Failed to delete ride logbook:', err);
-      alert('Failed to delete ride.');
+      console.error("Failed to delete ride logbook:", err);
+      alert("Failed to delete ride.");
+    }
+  };
+
+  const handleSaveTitle = async () => {
+    const trimmed = editTitle.trim();
+    if (!trimmed) return;
+    try {
+      await db.trips.update(tripId, { title: trimmed });
+      setTrip((prev) => (prev ? { ...prev, title: trimmed } : prev));
+      setShowEditModal(false);
+    } catch (err) {
+      console.error("Failed to update ride title:", err);
+      alert("Failed to save title.");
     }
   };
 
@@ -91,12 +110,15 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   // Compile cumulative GPS path segments for squiggle map
   const cumulativePath: { lat: number; lng: number }[] = [];
 
-  pages.forEach(p => {
+  pages.forEach((p) => {
     if (p.roadPath && p.roadPath.length > 0) {
       cumulativePath.push(...p.roadPath);
-    } else if (p.location && p.location.kind === 'gps') {
-      if (cumulativePath.length === 0 && trip.startLocation?.kind === 'gps') {
-        cumulativePath.push({ lat: trip.startLocation.lat, lng: trip.startLocation.lng });
+    } else if (p.location && p.location.kind === "gps") {
+      if (cumulativePath.length === 0 && trip.startLocation?.kind === "gps") {
+        cumulativePath.push({
+          lat: trip.startLocation.lat,
+          lng: trip.startLocation.lng,
+        });
       }
       cumulativePath.push({ lat: p.location.lat, lng: p.location.lng });
     }
@@ -108,9 +130,11 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   const hasKm = totalKm > 0;
 
   // Odo range display
-  let odoString = '';
+  let odoString = "";
   if (pages.length > 0) {
-    const odos = pages.map(p => p.odo).filter((o): o is number => o !== null && o !== undefined);
+    const odos = pages
+      .map((p) => p.odo)
+      .filter((o): o is number => o !== null && o !== undefined);
     if (odos.length >= 2) {
       const minOdo = odos[0];
       const maxOdo = odos[odos.length - 1];
@@ -121,17 +145,25 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   }
 
   // Format date range
-  let dateRange = 'No days logged yet.';
+  let dateRange = "No days logged yet.";
   if (pages.length > 0) {
     const formatDate = (isoStr: string) => {
-      const parts = isoStr.split('-');
+      const parts = isoStr.split("-");
       if (parts.length === 3) {
-        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
+        const d = new Date(
+          parseInt(parts[0], 10),
+          parseInt(parts[1], 10) - 1,
+          parseInt(parts[2], 10),
+        );
+        return d.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "2-digit",
+        });
       }
       return isoStr;
     };
-    
+
     if (pages.length === 1) {
       dateRange = formatDate(pages[0].date);
     } else {
@@ -142,23 +174,13 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   return (
     <div class="trip-detail-container">
       <header class="detail-header">
-        <div class="detail-header-nav">
-          <Button 
-            variant="icon" 
-            aria-label="Back" 
-            onClick={() => onNavigate('#/')}
-          >
-            <ArrowLeft />
-          </Button>
-          <Button 
-            variant="icon" 
-            class="btn-danger-text"
-            aria-label="Delete Ride" 
-            onClick={() => setShowDeleteModal(true)}
-          >
-            <TrashIcon size={16} />
-          </Button>
-        </div>
+        <Button
+          variant="icon"
+          aria-label="Back"
+          onClick={() => onNavigate("#/")}
+        >
+          <ArrowLeft />
+        </Button>
         <div class="header-titles">
           <h3>{trip.title}</h3>
           <span class="trip-dates-sub">{dateRange}</span>
@@ -184,7 +206,9 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           </div>
           <div class="stat-item">
             <span class="stat-label">Total Distance</span>
-            <span class="stat-value">{hasKm ? formatDistance(totalKm) : '—'}</span>
+            <span class="stat-value">
+              {hasKm ? formatDistance(totalKm) : "—"}
+            </span>
           </div>
           {odoString && (
             <div class="stat-item">
@@ -200,9 +224,11 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           {pages.length === 0 ? (
             <div class="timeline-empty">
               <p>Write your first day log entry to fill this page.</p>
-              <Button 
-                variant="primary" 
-                onClick={() => onNavigate(`#/edit?mode=new-day&tripId=${tripId}`)}
+              <Button
+                variant="primary"
+                onClick={() =>
+                  onNavigate(`#/edit?mode=new-day&tripId=${tripId}`)
+                }
               >
                 ＋ Add Day 1 Log
               </Button>
@@ -210,18 +236,24 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           ) : (
             <div class="timeline-list">
               {pages.map((page, index) => {
-                const dateParts = page.date.split('-');
-                let weekday = '';
+                const dateParts = page.date.split("-");
+                let weekday = "";
                 let label = `Day ${index + 1}`;
-                
+
                 if (dateParts.length === 3) {
-                  const d = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10));
-                  weekday = d.toLocaleDateString(undefined, { weekday: 'short' });
+                  const d = new Date(
+                    parseInt(dateParts[0], 10),
+                    parseInt(dateParts[1], 10) - 1,
+                    parseInt(dateParts[2], 10),
+                  );
+                  weekday = d.toLocaleDateString(undefined, {
+                    weekday: "short",
+                  });
                 }
 
                 return (
-                  <a 
-                    key={page.id} 
+                  <a
+                    key={page.id}
                     href={`#/page/${page.id}`}
                     class="timeline-card-item"
                   >
@@ -232,24 +264,60 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
 
                     <div class="timeline-card-body">
                       <div class="card-title-row">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', minWidth: 0 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "var(--spacing-sm)",
+                            minWidth: 0,
+                          }}
+                        >
                           <span class="card-date-badge">{page.date}</span>
                           {page.location && (
-                            <span class="card-location-badge" style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                              📍 {page.location.name || (page.location.kind === 'gps' ? 'GPS' : 'Named')}
+                            <span
+                              class="card-location-badge"
+                              style={{
+                                textOverflow: "ellipsis",
+                                overflow: "hidden",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              📍{" "}
+                              {page.location.name ||
+                                (page.location.kind === "gps"
+                                  ? "GPS"
+                                  : "Named")}
                             </span>
                           )}
                         </div>
-                        <div style={{ flexShrink: 0, display: 'flex', gap: 'var(--spacing-xs)' }}>
+                        <div
+                          style={{
+                            flexShrink: 0,
+                            display: "flex",
+                            gap: "var(--spacing-xs)",
+                          }}
+                        >
                           {(() => {
                             if (page.km !== null && page.km !== undefined) {
-                              return <span class="card-stat">{page.km} km</span>;
+                              return (
+                                <span class="card-stat">{page.km} km</span>
+                              );
                             }
-                            if (page.odo !== null && page.odo !== undefined && index > 0) {
+                            if (
+                              page.odo !== null &&
+                              page.odo !== undefined &&
+                              index > 0
+                            ) {
                               const prevPage = pages[index - 1];
-                              if (prevPage.odo !== null && prevPage.odo !== undefined) {
+                              if (
+                                prevPage.odo !== null &&
+                                prevPage.odo !== undefined
+                              ) {
                                 const delta = page.odo - prevPage.odo;
-                                if (delta > 0) return <span class="card-stat">{delta} km</span>;
+                                if (delta > 0)
+                                  return (
+                                    <span class="card-stat">{delta} km</span>
+                                  );
                               }
                             }
                             return null;
@@ -263,7 +331,9 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
 
                       {page.note && (
                         <p class="card-note-excerpt">
-                          {page.note.length > 95 ? `${page.note.slice(0, 95)}...` : page.note}
+                          {page.note.length > 95
+                            ? `${page.note.slice(0, 95)}...`
+                            : page.note}
                         </p>
                       )}
 
@@ -274,7 +344,9 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                             <PhotoThumb key={idx} blob={blob} />
                           ))}
                           {page.photos.length > 4 && (
-                            <span class="more-photos-indicator">+{page.photos.length - 4}</span>
+                            <span class="more-photos-indicator">
+                              +{page.photos.length - 4}
+                            </span>
                           )}
                         </div>
                       )}
@@ -285,14 +357,38 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
             </div>
           )}
         </section>
+
+        {/* Bottom action row */}
+        <section class="page-action-row">
+          <div></div>
+          <div class="page-edit-group">
+            <Button
+              variant="tertiary"
+              class="btn-icon-text"
+              onClick={() => {
+                setEditTitle(trip.title);
+                setShowEditModal(true);
+              }}
+            >
+              <EditIcon size={14} />
+            </Button>
+            <Button
+              variant="tertiary"
+              class="btn-danger-text btn-icon-text"
+              onClick={() => setShowDeleteModal(true)}
+            >
+              <TrashIcon size={14} />
+            </Button>
+          </div>
+        </section>
       </main>
 
       {/* Floating Action Button to add new day log */}
       {pages.length > 0 && (
         <div class="fab-container">
-          <Button 
-            variant="fab" 
-            aria-label="Add Day" 
+          <Button
+            variant="fab"
+            aria-label="Add Day"
             onClick={() => onNavigate(`#/edit?mode=new-day&tripId=${tripId}`)}
           >
             ＋
@@ -300,27 +396,100 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
         </div>
       )}
 
-      {/* Delete Confirmation Modal Overlay */}
+      {/* Edit Title Modal */}
+      {showEditModal && (
+        <div class="modal-backdrop" onClick={() => setShowEditModal(false)}>
+          <div class="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div class="modal-header">
+              <h3>Edit Ride Title</h3>
+              <Button
+                variant="icon"
+                aria-label="Close"
+                onClick={() => setShowEditModal(false)}
+              >
+                <CloseIcon />
+              </Button>
+            </div>
+
+            <div
+              class="settings-body"
+              style={{ padding: "var(--spacing-md) 0" }}
+            >
+              <div class="form-group">
+                <label class="input-label">Ride Title</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  value={editTitle}
+                  onInput={(e: JSX.TargetedEvent<HTMLInputElement>) =>
+                    setEditTitle((e.target as HTMLInputElement).value)
+                  }
+                  autoFocus
+                />
+              </div>
+
+              <div class="page-action-row page-action-modal">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowEditModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSaveTitle}
+                  disabled={!editTitle.trim()}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div class="modal-backdrop" onClick={() => setShowDeleteModal(false)}>
           <div class="modal-content" onClick={(e) => e.stopPropagation()}>
             <div class="modal-header">
-              <h3 style={{ color: '#d9534f' }}>Delete Ride Logbook?</h3>
-              <Button variant="icon" aria-label="Close" onClick={() => setShowDeleteModal(false)}>
+              <h3 style={{ color: "#d9534f" }}>Delete Ride Logbook?</h3>
+              <Button
+                variant="icon"
+                aria-label="Close"
+                onClick={() => setShowDeleteModal(false)}
+              >
                 <CloseIcon />
               </Button>
             </div>
-            
-            <div class="settings-body" style={{ padding: 'var(--spacing-md) 0' }}>
-              <p style={{ fontSize: '13px', color: 'var(--color-ink-muted)', lineHeight: '1.5' }}>
-                This will permanently delete <strong>{trip.title}</strong> and all of its daily pages. This action cannot be undone.
+
+            <div
+              class="settings-body"
+              style={{ padding: "var(--spacing-md) 0" }}
+            >
+              <p
+                style={{
+                  fontSize: "13px",
+                  color: "var(--color-ink-muted)",
+                  lineHeight: "1.5",
+                }}
+              >
+                This will permanently delete <strong>{trip.title}</strong> and
+                all of its daily pages. This action cannot be undone.
               </p>
-              
+
               <div class="page-action-row page-action-modal">
-                <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowDeleteModal(false)}
+                >
                   Cancel
                 </Button>
-                <Button variant="primary" class="btn-danger-text" onClick={handleDeleteTrip}>
+                <Button
+                  variant="primary"
+                  class="btn-danger-text"
+                  onClick={handleDeleteTrip}
+                >
                   Confirm Delete
                 </Button>
               </div>

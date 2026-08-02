@@ -5,7 +5,7 @@ interface ButtonProps {
   children: ComponentChildren;
   onClick?: (e: JSX.TargetedMouseEvent<HTMLButtonElement>) => void;
   type?: 'button' | 'submit' | 'reset';
-  variant?: 'primary' | 'secondary' | 'fab' | 'icon';
+  variant?: 'primary' | 'secondary' | 'tertiary' | 'fab' | 'icon';
   size?: 'sm' | 'md';
   disabled?: boolean;
   class?: string;
