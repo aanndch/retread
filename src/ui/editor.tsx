@@ -242,7 +242,7 @@ export function Editor({ onNavigate }: EditorProps) {
     <div class="editor-container">
       <header class="editor-header">
         <h3>
-          {mode === 'new-trip' && 'New Journey'}
+          {mode === 'new-trip' && 'New Trip'}
           {mode === 'new-day' && 'Add New Day'}
           {mode === 'edit' && 'Edit Day Details'}
         </h3>
@@ -252,7 +252,7 @@ export function Editor({ onNavigate }: EditorProps) {
         {/* Trip Title (New Trip Only) */}
         {mode === 'new-trip' && (
           <div class="form-group">
-            <label class="input-label">Journey Title</label>
+            <label class="input-label">Trip Title</label>
             <input 
               type="text" 
               class="form-input" 
