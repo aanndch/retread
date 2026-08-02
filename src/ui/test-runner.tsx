@@ -113,7 +113,13 @@ export function TestRunner() {
           ))}
         </ul>
       )}
-      <a href="#/" style={{ display: 'block', marginTop: '20px', color: 'var(--color-green)', textDecoration: 'underline' }}><- Back to Home</a>
+      <a href="#/" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '20px', color: 'var(--color-green)', textDecoration: 'underline' }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Back to Home</span>
+      </a>
     </div>
   );
 }

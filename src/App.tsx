@@ -57,7 +57,13 @@ export function App() {
         <div class="placeholder-view">
           <h3>Trip Journal (ID: {tripId})</h3>
           <p class="placeholder-text">v1 Trip Detail Screen is under construction.</p>
-          <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}><- Back Home</button>
+          <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Back Home</span>
+          </button>
         </div>
       );
     }
@@ -68,7 +74,13 @@ export function App() {
         <div class="placeholder-view">
           <h3>Page Detail (ID: {pageId})</h3>
           <p class="placeholder-text">v1 Page Detail Screen is under construction.</p>
-          <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}><- Back Home</button>
+          <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Back Home</span>
+          </button>
         </div>
       );
     }
@@ -78,7 +90,13 @@ export function App() {
         <div class="placeholder-view">
           <h3>Editor Form</h3>
           <p class="placeholder-text">v1 Page Editor is under construction.</p>
-          <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}><- Back Home</button>
+          <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Back Home</span>
+          </button>
         </div>
       );
     }
@@ -88,7 +106,13 @@ export function App() {
         <div class="placeholder-view">
           <h3>Backup & Restore Settings</h3>
           <p class="placeholder-text">v1 Backup Engine is under construction.</p>
-          <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}><- Back Home</button>
+          <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Back Home</span>
+          </button>
         </div>
       );
     }
@@ -97,7 +121,13 @@ export function App() {
     return (
       <div class="placeholder-view">
         <h3>Page Not Found</h3>
-        <button class="btn btn-secondary btn-sm" onClick={() => navigateTo('#/')}><- Back Home</button>
+        <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Back Home</span>
+          </button>
       </div>
     );
   };
