@@ -3,6 +3,8 @@ export interface Trip {
   title: string;
   createdAt: string; // ISO String
   startLocation?: LocationUnion | null; // Departure pin
+  distanceMode?: 'km' | 'odo'; // Preferred distance logging style
+  startOdo?: number | null; // Starting odometer reading (only for odo mode)
 }
 
 export type LocationUnion =

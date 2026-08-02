@@ -230,22 +230,24 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
 
   // Calculate cumulative stats
   const totalDays = pages.length;
-  const totalKm = computeTotalDistance(pages);
+  const totalKm = computeTotalDistance(pages, trip?.startOdo);
   const hasKm = totalKm > 0;
 
   // Odo range display
   let odoString = "";
-  if (pages.length > 0) {
-    const odos = pages
-      .map((p) => p.odo)
-      .filter((o): o is number => o !== null && o !== undefined);
-    if (odos.length >= 2) {
-      const minOdo = odos[0];
-      const maxOdo = odos[odos.length - 1];
+  const odos = pages
+    .map((p) => p.odo)
+    .filter((o): o is number => o !== null && o !== undefined);
+  if (odos.length > 0) {
+    const minOdo = trip?.startOdo ?? odos[0];
+    const maxOdo = odos[odos.length - 1];
+    if (minOdo !== maxOdo) {
       odoString = `${minOdo} → ${maxOdo} km`;
-    } else if (odos.length === 1) {
-      odoString = `${odos[0]} km`;
+    } else {
+      odoString = `${minOdo} km`;
     }
+  } else if (trip?.startOdo != null) {
+    odoString = `${trip.startOdo} km`;
   }
 
   // Format date range
@@ -419,21 +421,20 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                                 <span class="card-stat">{page.km} km</span>
                               );
                             }
-                            if (
-                              page.odo !== null &&
-                              page.odo !== undefined &&
-                              index > 0
-                            ) {
-                              const prevPage = pages[index - 1];
-                              if (
-                                prevPage.odo !== null &&
-                                prevPage.odo !== undefined
-                              ) {
-                                const delta = page.odo - prevPage.odo;
-                                if (delta > 0)
+                            if (page.odo !== null && page.odo !== undefined) {
+                              let prevOdo: number | null = null;
+                              if (index > 0) {
+                                prevOdo = pages[index - 1].odo ?? null;
+                              } else if (trip?.startOdo !== null && trip?.startOdo !== undefined) {
+                                prevOdo = trip.startOdo;
+                              }
+                              if (prevOdo !== null) {
+                                const delta = page.odo - prevOdo;
+                                if (delta >= 0) {
                                   return (
                                     <span class="card-stat">{delta} km</span>
                                   );
+                                }
                               }
                             }
                             return null;

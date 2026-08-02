@@ -85,6 +85,8 @@ export function Editor({ onNavigate }: EditorProps) {
   const [note, setNote] = useState('');
   const [km, setKm] = useState<number | null>(null);
   const [odo, setOdo] = useState<number | null>(null);
+  const [distanceMode, setDistanceMode] = useState<'km' | 'odo'>('km');
+  const [startOdo, setStartOdo] = useState<number | null>(null);
   
   // Location State
   const [location, setLocation] = useState<LocationUnion | null>(null);
@@ -321,13 +323,11 @@ export function Editor({ onNavigate }: EditorProps) {
     }
   }, [mode, pageId]);
 
-  const [distanceMode, setDistanceMode] = useState<'both' | 'km' | 'odo'>('both');
-
-  // Load existing pages of this trip to check distance configuration (KM vs ODO)
+  // Load distance configuration and starting odometer directly from the Trip record
   useEffect(() => {
     let active = true;
 
-    async function checkTripDistanceMode() {
+    async function loadTripConfig() {
       let resolvedTripId = tripId;
       if (resolvedTripId === null && pageId !== null) {
         const pageRecord = await db.pages.get(pageId);
@@ -338,24 +338,22 @@ export function Editor({ onNavigate }: EditorProps) {
 
       if (resolvedTripId === null) return;
 
-      const pages = await db.pages.where('tripId').equals(resolvedTripId).toArray();
-      // Exclude the current page being edited
-      const otherPages = pages.filter(p => p.id !== pageId);
-      const hasKm = otherPages.some(p => p.km !== null && p.km !== undefined);
-      const hasOdo = otherPages.some(p => p.odo !== null && p.odo !== undefined);
-
-      if (active) {
-        if (hasKm) {
-          setDistanceMode('km');
-        } else if (hasOdo) {
-          setDistanceMode('odo');
-        } else {
-          setDistanceMode('both');
+      try {
+        const tripRecord = await db.trips.get(resolvedTripId);
+        if (active && tripRecord) {
+          if (tripRecord.distanceMode) {
+            setDistanceMode(tripRecord.distanceMode);
+          }
+          if (tripRecord.startOdo !== undefined) {
+            setStartOdo(tripRecord.startOdo);
+          }
         }
+      } catch (err) {
+        console.warn('Failed to load trip distance mode config:', err);
       }
     }
 
-    checkTripDistanceMode();
+    loadTripConfig();
     return () => {
       active = false;
     };
@@ -474,7 +472,9 @@ export function Editor({ onNavigate }: EditorProps) {
         const newTripId = await db.trips.add({
           title: finalTitle,
           createdAt: new Date().toISOString(),
-          startLocation: startLocPayload
+          startLocation: startLocPayload,
+          distanceMode,
+          startOdo: distanceMode === 'odo' ? (startOdo !== null && !isNaN(startOdo) ? startOdo : 0) : null
         }) as number;
 
         onNavigate(`#/trip/${newTripId}`);
@@ -545,14 +545,7 @@ export function Editor({ onNavigate }: EditorProps) {
     }
   };
 
-  let effectiveDistanceMode = distanceMode;
-  if (effectiveDistanceMode === 'both') {
-    if (km !== null && km !== undefined) {
-      effectiveDistanceMode = 'km';
-    } else if (odo !== null && odo !== undefined) {
-      effectiveDistanceMode = 'odo';
-    }
-  }
+
 
   if (loading) {
     return <p class="loading-text">Loading log details...</p>;
@@ -595,7 +588,10 @@ export function Editor({ onNavigate }: EditorProps) {
             setKm={setKm}
             odo={odo}
             setOdo={setOdo}
-            distanceMode={effectiveDistanceMode}
+            distanceMode={distanceMode}
+            setDistanceMode={setDistanceMode}
+            startOdo={startOdo}
+            setStartOdo={setStartOdo}
             location={location}
             gpsLoading={gpsLoading}
             handleDropPin={handleDropPin}

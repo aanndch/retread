@@ -19,7 +19,10 @@ interface MetricsStepProps {
   handleClearLocation: () => void;
   dayTitle: string;
   setDayTitle: (t: string) => void;
-  distanceMode: 'both' | 'km' | 'odo';
+  distanceMode: 'km' | 'odo';
+  setDistanceMode: (m: 'km' | 'odo') => void;
+  startOdo: number | null;
+  setStartOdo: (o: number | null) => void;
   startLocation: LocationUnion | null;
   startGpsLoading: boolean;
   onClearStartLocation: () => void;
@@ -48,6 +51,9 @@ export function MetricsStep({
   dayTitle,
   setDayTitle,
   distanceMode,
+  setDistanceMode,
+  startOdo,
+  setStartOdo,
   startLocation,
   startGpsLoading,
   onClearStartLocation,
@@ -115,6 +121,50 @@ export function MetricsStep({
         </div>
       )}
 
+      {/* Distance Tracking Preference (New Trip Only) */}
+      {mode === 'new-trip' && (
+        <div class="form-group animate-fade-in" style={{ marginTop: 'var(--spacing-md)' }}>
+          <label class="input-label">Distance Tracking Method</label>
+          <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', marginBottom: '8px' }}>
+            <Button
+              type="button"
+              variant={distanceMode === 'km' ? 'primary' : 'secondary'}
+              size="sm"
+              style={{ flex: 1 }}
+              onClick={() => setDistanceMode('km')}
+            >
+              Daily km Traveled
+            </Button>
+            <Button
+              type="button"
+              variant={distanceMode === 'odo' ? 'primary' : 'secondary'}
+              size="sm"
+              style={{ flex: 1 }}
+              onClick={() => setDistanceMode('odo')}
+            >
+              Odometer Readings
+            </Button>
+          </div>
+          
+          {distanceMode === 'odo' && (
+            <div class="form-group animate-fade-in" style={{ marginTop: '8px' }}>
+              <label class="input-label" style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--color-ink-muted)' }}>Starting Odometer (km)</label>
+              <input
+                type="number"
+                class="form-input form-input-sm"
+                placeholder="e.g. 5240"
+                value={startOdo === null ? '' : startOdo}
+                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
+                  const val = (e.target as HTMLInputElement).value;
+                  setStartOdo(val ? parseFloat(val) : null);
+                }}
+              />
+              <span class="field-tip">Required to calculate Day 1 distance travelled.</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Day page metrics (Only for existing trips - new-day or edit modes) */}
       {mode !== 'new-trip' && (
         <>
@@ -145,7 +195,7 @@ export function MetricsStep({
 
             {distanceMode !== 'odo' && (
               <div class="form-group flex-1">
-                <label class="input-label">Daily Distance (KM)</label>
+                <label class="input-label">Distance Travelled (KM)</label>
                 <input 
                   type="number" 
                   class="form-input" 
@@ -169,9 +219,7 @@ export function MetricsStep({
               </div>
             )}
           </div>
-          {distanceMode === 'both' && (
-            <span class="field-tip">Pick one per ride — km for daily distance, odo for odometer.</span>
-          )}
+
 
           {/* Geolocation Section */}
           <div class="form-group form-group-bordered">

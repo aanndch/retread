@@ -8,10 +8,10 @@ import type { Page } from './types';
  * - If a page has `odo` (and no `km`), and we have a preceding `lastOdo` anchor, we add (odo - lastOdo) to the total.
  * - Otherwise, if page only has `odo` and no preceding anchor, we establish `lastOdo = odo` and add 0.
  */
-export function computeTotalDistance(pages: Page[]): number {
+export function computeTotalDistance(pages: Page[], startOdo?: number | null): number {
   const sorted = [...pages].sort((a, b) => a.date.localeCompare(b.date));
   let total = 0;
-  let lastOdo: number | null = null;
+  let lastOdo: number | null = startOdo ?? null;
 
   for (const page of sorted) {
     if (page.km != null) {
