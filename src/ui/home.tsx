@@ -2,7 +2,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { Button } from '../components/button';
 import { Dropdown } from '../components/dropdown';
 import { Toast, useToast } from '../components/toast';
-import { GearIcon, CloseIcon } from '../components/icons';
+import { CloseIcon, GearIcon } from '../components/icons';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { computeTotalDistance, formatDistance } from '../lib';
@@ -202,16 +202,9 @@ export function Home({ onNavigate }: HomeProps) {
       {/* Top Header Bar */}
       <header class="home-header">
         <div>
-          <h1 class="logo">retread</h1>
-          <p class="tagline">A logbook for well-tread rides.</p>
+          <h1 class="logo" style={{ margin: 0, lineHeight: 1 }}>retread</h1>
+          <p class="tagline" style={{ margin: 0, marginTop: 'var(--spacing-xs)' }}>A logbook for well-tread rides.</p>
         </div>
-        <Button 
-          variant="icon" 
-          aria-label="Settings" 
-          onClick={() => setShowSettings(!showSettings)}
-        >
-          <GearIcon />
-        </Button>
       </header>
 
       {/* Settings Panel Overlay */}
@@ -294,6 +287,31 @@ export function Home({ onNavigate }: HomeProps) {
             ))}
           </div>
         )}
+
+        {/* Footer Settings Entry */}
+        <div style={{ textAlign: 'left', marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-md)' }}>
+          <button 
+            type="button" 
+            onClick={() => setShowSettings(true)}
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              color: 'var(--color-ink-muted)', 
+              fontFamily: 'var(--font-mechanical)', 
+              fontSize: '11px', 
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              opacity: 0.7,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: 0
+            }}
+          >
+            <GearIcon size={16} />
+            <span>Manage Settings & Backups</span>
+          </button>
+        </div>
       </main>
 
       {/* Floating Action Button */}
