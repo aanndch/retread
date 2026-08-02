@@ -28,7 +28,7 @@ export function Setup({ onComplete }: SetupProps) {
   return (
     <div class="setup-container">
       <h2 class="setup-title">retread</h2>
-      <p class="setup-tagline">A journal for well-tread journeys.</p>
+      <p class="setup-tagline">A logbook for well-tread journeys.</p>
       
       <div class="setup-card">
         <div class="input-group">
@@ -58,7 +58,7 @@ export function Setup({ onComplete }: SetupProps) {
         </div>
 
         <button class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;" onClick={handleStart} disabled={persisting}>
-          <span>{persisting ? 'Configuring persistent storage...' : 'Start Journaling'}</span>
+          <span>{persisting ? 'Configuring persistent storage...' : 'Start Logging'}</span>
           {!persisting && (
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
               <line x1="2" y1="12" x2="22" y2="12"></line>

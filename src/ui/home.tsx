@@ -59,7 +59,7 @@ export function Home({ onNavigate }: HomeProps) {
       <header class="home-header">
         <div>
           <h1 class="logo">retread</h1>
-          <p class="tagline">A journal for well-tread journeys.</p>
+          <p class="tagline">A logbook for well-tread journeys.</p>
         </div>
         <button 
           class="btn-icon" 
@@ -76,7 +76,7 @@ export function Home({ onNavigate }: HomeProps) {
           <div class="modal-content settings-modal" onClick={(e) => e.stopPropagation()}>
             <div class="modal-header">
               <h3>Settings</h3>
-              <button class="btn-close" onClick={() => setShowSettings(false)}>&times;</button>
+              <button class="btn-close" onClick={() => setShowSettings(false)}>×</button>
             </div>
             
             <div class="settings-body">
