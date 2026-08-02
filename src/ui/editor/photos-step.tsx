@@ -1,11 +1,12 @@
 import type { RefObject } from 'preact';
+import type { JSX } from 'preact';
 import { Button } from '../../components/button';
 
 interface PhotosStepProps {
   photoPreviews: string[];
   fileInputRef: RefObject<HTMLInputElement>;
   compressing: boolean;
-  handlePhotoChange: (e: any) => void;
+  handlePhotoChange: (e: JSX.TargetedEvent<HTMLInputElement>) => void;
   handleRemovePhoto: (idx: number) => void;
   handleStepJump: (s: 1 | 2 | 3) => void;
 }
@@ -42,7 +43,7 @@ export function PhotosStep({
             {photoPreviews.map((url, index) => (
               <div key={index} class="photo-preview-item">
                 <img src={url} alt="Upload preview" class="photo-preview-img" />
-                <button type="button" class="btn-photo-remove" onClick={() => handleRemovePhoto(index)}>&times;</button>
+                <button type="button" class="btn-photo-remove" aria-label="Remove photo" onClick={() => handleRemovePhoto(index)}>&times;</button>
               </div>
             ))}
           </div>

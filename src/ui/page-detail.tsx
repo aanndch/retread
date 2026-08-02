@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { db } from '../db';
 import { Button } from '../components/button';
-import { ArrowLeft } from '../components/icons';
+import { ArrowLeft, TrashIcon, CloseIcon, EditIcon } from '../components/icons';
 import { SquiggleMap } from './squiggle';
 import { backfillTripRoutes } from '../road';
 import type { Page } from '../types';
@@ -18,6 +18,9 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [legDistance, setLegDistance] = useState<number | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const photoUrlsRef = useRef<string[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -33,15 +36,12 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
         const tripRecord = await db.trips.get(pageRecord.tripId);
         const tripName = tripRecord ? tripRecord.title : 'Ride Logbook';
 
-        // Set photo object URLs
         const urls = (pageRecord.photos || []).map(blob => URL.createObjectURL(blob));
 
-        // Compute leg distance
         let computedLeg: number | null = null;
         if (pageRecord.km !== null && pageRecord.km !== undefined) {
           computedLeg = pageRecord.km;
         } else if (pageRecord.odo !== null && pageRecord.odo !== undefined) {
-          // Find previous page by date to compute odo delta
           const allPages = await db.pages.where('tripId').equals(pageRecord.tripId).toArray();
           const sorted = [...allPages].sort((a, b) => a.date.localeCompare(b.date));
           const myIdx = sorted.findIndex(p => p.id === pageRecord.id);
@@ -49,7 +49,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
             const prevPage = sorted[myIdx - 1];
             if (prevPage.odo !== null && prevPage.odo !== undefined) {
               computedLeg = pageRecord.odo - prevPage.odo;
-              if (computedLeg < 0) computedLeg = null; // Invalid
+              if (computedLeg < 0) computedLeg = null;
             }
           }
         }
@@ -58,6 +58,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
           setPage(pageRecord);
           setTripTitle(tripName);
           setPhotoUrls(urls);
+          photoUrlsRef.current = urls;
           setLegDistance(computedLeg);
           setLoading(false);
         }
@@ -73,22 +74,17 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
     loadData();
     return () => {
       active = false;
-      // Clean up object URLs to avoid memory leaks
-      photoUrls.forEach(url => URL.revokeObjectURL(url));
+      photoUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
     };
   }, [pageId, onNavigate]);
 
   const handleDelete = async () => {
     if (!page) return;
-    if (!confirm('Are you sure you want to delete this day log entry?')) return;
 
     try {
       const tripId = page.tripId;
       await db.pages.delete(pageId);
-
-      // Trigger retroactive OSRM re-snapping in background
       await backfillTripRoutes(tripId);
-
       onNavigate(`#/trip/${tripId}`);
     } catch (err) {
       console.error('Failed to delete day log:', err);
@@ -102,7 +98,6 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
 
   if (!page) return null;
 
-  // Format date display
   const dateParts = page.date.split('-');
   let displayDate = page.date;
   if (dateParts.length === 3) {
@@ -112,14 +107,33 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
 
   return (
     <div class="page-detail-container">
-      <header class="page-detail-header">
-        <Button 
-          variant="icon" 
-          aria-label="Back" 
-          onClick={() => onNavigate(`#/trip/${page.tripId}`)}
-        >
-          <ArrowLeft />
-        </Button>
+      <header class="detail-header">
+        <div class="detail-header-nav">
+          <Button 
+            variant="icon" 
+            aria-label="Back" 
+            onClick={() => onNavigate(`#/trip/${page.tripId}`)}
+          >
+            <ArrowLeft />
+          </Button>
+          <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
+            <Button 
+              variant="icon" 
+              aria-label="Edit Day Log" 
+              onClick={() => onNavigate(`#/edit?mode=edit&pageId=${pageId}`)}
+            >
+              <EditIcon size={16} />
+            </Button>
+            <Button 
+              variant="icon" 
+              class="btn-danger-text"
+              aria-label="Delete Day Log" 
+              onClick={() => setShowDeleteModal(true)}
+            >
+              <TrashIcon size={16} />
+            </Button>
+          </div>
+        </div>
         <div class="header-titles">
           <h3>{page.title || displayDate}</h3>
           <span class="trip-name-sub">
@@ -129,7 +143,6 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
       </header>
 
       <main class="page-detail-content">
-        {/* Single-day route segment map */}
         {page.roadPath && page.roadPath.length >= 2 ? (
           <div class="segment-map-section">
             <span class="segment-map-title">Route Segment Map</span>
@@ -144,7 +157,6 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
           )
         )}
 
-        {/* Distance Stats Badges */}
         <section class="page-metrics-strip">
           {legDistance !== null && (
             <div class="metric-badge">
@@ -162,7 +174,6 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
           )}
         </section>
 
-        {/* Photo Gallery Slideshow Carousel */}
         {photoUrls.length > 0 && (
           <section class="gallery-carousel">
             <div class="carousel-viewport">
@@ -177,6 +188,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
                   <Button 
                     variant="icon" 
                     class="carousel-nav-btn" 
+                    aria-label="Previous photo"
                     onClick={() => setActivePhotoIdx((activePhotoIdx - 1 + photoUrls.length) % photoUrls.length)}
                   >
                     ←
@@ -187,6 +199,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
                   <Button 
                     variant="icon" 
                     class="carousel-nav-btn" 
+                    aria-label="Next photo"
                     onClick={() => setActivePhotoIdx((activePhotoIdx + 1) % photoUrls.length)}
                   >
                     →
@@ -197,7 +210,6 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
           </section>
         )}
 
-        {/* Journal Narrative Story note */}
         {page.note && (
           <section class="story-note-section">
             <blockquote class="typewriter-blockquote">
@@ -205,24 +217,35 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
             </blockquote>
           </section>
         )}
-
-        {/* Action button row */}
-        <section class="page-action-row">
-          <Button 
-            variant="primary" 
-            onClick={() => onNavigate(`#/edit?mode=edit&pageId=${pageId}`)}
-          >
-            Edit Log Details
-          </Button>
-          <Button 
-            variant="secondary" 
-            class="btn-danger-text"
-            onClick={handleDelete}
-          >
-            Delete Entry
-          </Button>
-        </section>
       </main>
+
+      {showDeleteModal && (
+        <div class="modal-backdrop" onClick={() => setShowDeleteModal(false)}>
+          <div class="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div class="modal-header">
+              <h3 style={{ color: '#d9534f' }}>Delete Day Log?</h3>
+              <Button variant="icon" aria-label="Close" onClick={() => setShowDeleteModal(false)}>
+                <CloseIcon />
+              </Button>
+            </div>
+            
+            <div class="settings-body" style={{ padding: 'var(--spacing-md) 0' }}>
+              <p style={{ fontSize: '13px', color: 'var(--color-ink-muted)', lineHeight: '1.5' }}>
+                This will permanently delete the log entry for <strong>{page.date}</strong>. This action cannot be undone.
+              </p>
+              
+              <div class="page-action-row page-action-modal">
+                <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" class="btn-danger-text" onClick={handleDelete}>
+                  Confirm Delete
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

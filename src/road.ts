@@ -18,15 +18,6 @@ export function haversineDistance(p1: { lat: number; lng: number }, p2: { lat: n
   return R * c;
 }
 
-// Compute cumulative direct distance for a list of coordinates
-export function computeDirectDistance(path: { lat: number; lng: number }[]): number {
-  let total = 0;
-  for (let i = 0; i < path.length - 1; i++) {
-    total += haversineDistance(path[i], path[i + 1]);
-  }
-  return total;
-}
-
 // Query OSRM Routing API for a single leg between from and to coords
 export async function snapLeg(
   from: { lat: number; lng: number },

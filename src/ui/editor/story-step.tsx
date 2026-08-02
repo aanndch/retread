@@ -1,3 +1,4 @@
+import type { JSX } from 'preact';
 import { Button } from '../../components/button';
 
 interface StoryStepProps {
@@ -19,7 +20,7 @@ export function StoryStep({
           class="form-textarea" 
           placeholder="Write a whisper about this ride... (roads, weather, vibes)"
           value={note}
-          onInput={(e: any) => setNote(e.target.value)}
+          onInput={(e: JSX.TargetedEvent<HTMLTextAreaElement>) => setNote((e.target as HTMLTextAreaElement).value)}
           autoFocus
         ></textarea>
       </div>

@@ -1,13 +1,26 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useCallback } from 'preact/hooks';
 import { db } from '../db';
 import { Button } from '../components/button';
 import { ArrowLeft, TrashIcon, CloseIcon } from '../components/icons';
 import { SquiggleMap } from './squiggle';
+import { computeTotalDistance, formatDistance } from '../lib';
 import type { Trip, Page } from '../types';
 
 interface TripDetailProps {
   tripId: number;
   onNavigate: (route: string) => void;
+}
+
+function PhotoThumb({ blob }: { blob: Blob }) {
+  const [url, setUrl] = useState('');
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(blob);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [blob]);
+
+  if (!url) return null;
+  return <img src={url} alt="preview" class="card-photo-thumbnail" />;
 }
 
 export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
@@ -16,7 +29,10 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Load trip and associated page logs on mount/change
+  const stableNavigate = useCallback((route: string) => {
+    onNavigate(route);
+  }, []);
+
   useEffect(() => {
     let active = true;
 
@@ -24,12 +40,11 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
       try {
         const tripRecord = await db.trips.get(tripId);
         if (!tripRecord) {
-          if (active) onNavigate('#/');
+          if (active) stableNavigate('#/');
           return;
         }
 
         const pagesRecords = await db.pages.where('tripId').equals(tripId).toArray();
-        // Sort chronologically by date
         const sortedPages = [...pagesRecords].sort((a, b) => a.date.localeCompare(b.date));
 
         if (active) {
@@ -41,7 +56,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
         console.error('Failed to load ride details:', err);
         if (active) {
           setLoading(false);
-          onNavigate('#/');
+          stableNavigate('#/');
         }
       }
     }
@@ -50,18 +65,16 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
     return () => {
       active = false;
     };
-  }, [tripId, onNavigate]);
+  }, [tripId]);
 
 
 
   const handleDeleteTrip = async () => {
     try {
-      await db.trips.delete(tripId);
-      // Cascade delete pages
-      const pagesToDelete = await db.pages.where('tripId').equals(tripId).toArray();
-      for (const p of pagesToDelete) {
-        await db.pages.delete(p.id!);
-      }
+      await db.transaction('rw', db.trips, db.pages, async () => {
+        await db.pages.where('tripId').equals(tripId).delete();
+        await db.trips.delete(tripId);
+      });
       onNavigate('#/');
     } catch (err) {
       console.error('Failed to delete ride logbook:', err);
@@ -77,17 +90,11 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
 
   // Compile cumulative GPS path segments for squiggle map
   const cumulativePath: { lat: number; lng: number }[] = [];
-  // Include trip departure point as the start of the cumulative path
-  if (trip.startLocation?.kind === 'gps') {
-    // Only add departure as standalone point if first page has a roadPath
-    // (if it does, the roadPath already starts from departure)
-  }
 
   pages.forEach(p => {
     if (p.roadPath && p.roadPath.length > 0) {
       cumulativePath.push(...p.roadPath);
     } else if (p.location && p.location.kind === 'gps') {
-      // No roadPath snapped yet — add the GPS pin as a single point
       if (cumulativePath.length === 0 && trip.startLocation?.kind === 'gps') {
         cumulativePath.push({ lat: trip.startLocation.lat, lng: trip.startLocation.lng });
       }
@@ -97,29 +104,16 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
 
   // Calculate cumulative stats
   const totalDays = pages.length;
-  
-  // Total KM calculations (sum of daily km, or difference in odometer if entered)
-  let totalKm = 0;
-  let hasKm = false;
-  pages.forEach(p => {
-    if (p.km !== null && p.km !== undefined) {
-      totalKm += p.km;
-      hasKm = true;
-    }
-  });
+  const totalKm = computeTotalDistance(pages);
+  const hasKm = totalKm > 0;
 
-  // If no km but odometer endpoints exist, compute difference
+  // Odo range display
   let odoString = '';
   if (pages.length > 0) {
     const odos = pages.map(p => p.odo).filter((o): o is number => o !== null && o !== undefined);
     if (odos.length >= 2) {
       const minOdo = odos[0];
       const maxOdo = odos[odos.length - 1];
-      const diff = maxOdo - minOdo;
-      if (!hasKm && diff > 0) {
-        totalKm = diff;
-        hasKm = true;
-      }
       odoString = `${minOdo} → ${maxOdo} km`;
     } else if (odos.length === 1) {
       odoString = `${odos[0]} km`;
@@ -147,8 +141,8 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
 
   return (
     <div class="trip-detail-container">
-      <header class="trip-detail-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', minWidth: 0 }}>
+      <header class="detail-header">
+        <div class="detail-header-nav">
           <Button 
             variant="icon" 
             aria-label="Back" 
@@ -156,20 +150,19 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           >
             <ArrowLeft />
           </Button>
-          <div class="header-titles" style={{ minWidth: 0 }}>
-            <h3 style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{trip.title}</h3>
-            <span class="trip-dates-sub">{dateRange}</span>
-          </div>
+          <Button 
+            variant="icon" 
+            class="btn-danger-text"
+            aria-label="Delete Ride" 
+            onClick={() => setShowDeleteModal(true)}
+          >
+            <TrashIcon size={16} />
+          </Button>
         </div>
-        <Button 
-          variant="icon" 
-          class="btn-danger-text"
-          aria-label="Delete Ride" 
-          onClick={() => setShowDeleteModal(true)}
-          style={{ flexShrink: 0 }}
-        >
-          <TrashIcon size={16} />
-        </Button>
+        <div class="header-titles">
+          <h3>{trip.title}</h3>
+          <span class="trip-dates-sub">{dateRange}</span>
+        </div>
       </header>
 
       <main class="trip-detail-content">
@@ -191,7 +184,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           </div>
           <div class="stat-item">
             <span class="stat-label">Total Distance</span>
-            <span class="stat-value">{hasKm ? `${totalKm.toLocaleString()} km` : '—'}</span>
+            <span class="stat-value">{hasKm ? formatDistance(totalKm) : '—'}</span>
           </div>
           {odoString && (
             <div class="stat-item">
@@ -227,10 +220,10 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                 }
 
                 return (
-                  <div 
+                  <a 
                     key={page.id} 
+                    href={`#/page/${page.id}`}
                     class="timeline-card-item"
-                    onClick={() => onNavigate(`#/page/${page.id}`)}
                   >
                     <div class="timeline-card-side">
                       <span class="day-num">{label}</span>
@@ -249,7 +242,6 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                         </div>
                         <div style={{ flexShrink: 0, display: 'flex', gap: 'var(--spacing-xs)' }}>
                           {(() => {
-                            // Compute leg distance: direct km or odo delta
                             if (page.km !== null && page.km !== undefined) {
                               return <span class="card-stat">{page.km} km</span>;
                             }
@@ -278,34 +270,21 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                       {/* Photo previews row */}
                       {page.photos && page.photos.length > 0 && (
                         <div class="card-photos-strip">
-                          {page.photos.slice(0, 4).map((blob, idx) => {
-                            const url = URL.createObjectURL(blob);
-                            return (
-                              <img 
-                                key={idx} 
-                                src={url} 
-                                alt="preview" 
-                                class="card-photo-thumbnail" 
-                                onLoad={() => URL.revokeObjectURL(url)}
-                              />
-                            );
-                          })}
+                          {page.photos.slice(0, 4).map((blob, idx) => (
+                            <PhotoThumb key={idx} blob={blob} />
+                          ))}
                           {page.photos.length > 4 && (
                             <span class="more-photos-indicator">+{page.photos.length - 4}</span>
                           )}
                         </div>
                       )}
-
-                      {/* Card Actions Removed */}
                     </div>
-                  </div>
+                  </a>
                 );
               })}
             </div>
           )}
         </section>
-
-        {/* Danger zone bottom block removed */}
       </main>
 
       {/* Floating Action Button to add new day log */}
@@ -327,7 +306,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           <div class="modal-content" onClick={(e) => e.stopPropagation()}>
             <div class="modal-header">
               <h3 style={{ color: '#d9534f' }}>Delete Ride Logbook?</h3>
-              <Button variant="icon" onClick={() => setShowDeleteModal(false)}>
+              <Button variant="icon" aria-label="Close" onClick={() => setShowDeleteModal(false)}>
                 <CloseIcon />
               </Button>
             </div>
@@ -337,7 +316,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                 This will permanently delete <strong>{trip.title}</strong> and all of its daily pages. This action cannot be undone.
               </p>
               
-              <div class="page-action-row" style={{ marginTop: 'var(--spacing-lg)', marginBottom: 0 }}>
+              <div class="page-action-row page-action-modal">
                 <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
                   Cancel
                 </Button>

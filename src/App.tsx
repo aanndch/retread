@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useCallback } from 'preact/hooks';
 import { Setup } from './ui/setup';
 import { Home } from './ui/home';
 import { TestRunner } from './ui/test-runner';
@@ -28,9 +28,9 @@ export function App() {
     };
   }, []);
 
-  const navigateTo = (route: string) => {
+  const navigateTo = useCallback((route: string) => {
     window.location.hash = route;
-  };
+  }, []);
 
   // 1. Force Setup Wizard on first launch
   if (!setupComplete) {
@@ -52,7 +52,10 @@ export function App() {
     }
     
     if (hash === '#/test') {
-      return <TestRunner />;
+      if (import.meta.env.DEV) {
+        return <TestRunner />;
+      }
+      return <Home onNavigate={navigateTo} />;
     }
     
     if (hash.startsWith('#/trip/')) {

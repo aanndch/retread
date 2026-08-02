@@ -38,39 +38,3 @@ export function computeTotalDistance(pages: Page[]): number {
 export function formatDistance(km: number): string {
   return `${Math.round(km).toLocaleString()} km`;
 }
-
-/**
- * Formats a YYYY-MM-DD date string into a readable short date (e.g. "Jul 18" or "18 Jul").
- * Default: India/UK format is common (e.g. "Jul 18"). Let's use simple formatting.
- */
-export function formatDateShort(dateStr: string): string {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return dateStr;
-  
-  const year = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10) - 1;
-  const day = parseInt(parts[2], 10);
-  
-  const date = new Date(year, month, day);
-  if (isNaN(date.getTime())) return dateStr;
-
-  return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
-}
-
-/**
- * Assigns chronological "Day 1", "Day 2", etc. indices to pages.
- * Returns a map of Page ID to Day number.
- */
-export function getPageDayIndices(pages: Page[]): Map<number, number> {
-  const sorted = [...pages].sort((a, b) => a.date.localeCompare(b.date));
-  const map = new Map<number, number>();
-  
-  sorted.forEach((page, index) => {
-    if (page.id != null) {
-      map.set(page.id, index + 1);
-    }
-  });
-
-  return map;
-}

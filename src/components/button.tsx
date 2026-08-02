@@ -1,15 +1,17 @@
 import type { ComponentChildren } from 'preact';
+import type { JSX } from 'preact';
 
 interface ButtonProps {
   children: ComponentChildren;
-  onClick?: (e: any) => void;
+  onClick?: (e: JSX.TargetedMouseEvent<HTMLButtonElement>) => void;
   type?: 'button' | 'submit' | 'reset';
   variant?: 'primary' | 'secondary' | 'fab' | 'icon';
   size?: 'sm' | 'md';
   disabled?: boolean;
   class?: string;
-  style?: any;
+  style?: string | Record<string, string | number>;
   id?: string;
+  'aria-label'?: string;
 }
 
 export function Button({
@@ -21,7 +23,8 @@ export function Button({
   disabled = false,
   class: className = '',
   style,
-  id
+  id,
+  'aria-label': ariaLabel
 }: ButtonProps) {
   let computedClass = '';
   
@@ -46,6 +49,7 @@ export function Button({
       disabled={disabled}
       style={style}
       id={id}
+      aria-label={ariaLabel}
     >
       {children}
     </button>

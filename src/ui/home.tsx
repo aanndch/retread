@@ -7,6 +7,7 @@ import { computeTotalDistance, formatDistance } from '../lib';
 import { getSavedTheme, saveTheme } from '../theme';
 import { backfillTripRoutes } from '../road';
 import type { Trip } from '../types';
+import type { JSX } from 'preact';
 
 interface HomeProps {
   onNavigate: (route: string) => void;
@@ -50,8 +51,8 @@ export function Home({ onNavigate }: HomeProps) {
     return list;
   });
 
-  const handleThemeChange = (e: any) => {
-    const mode = e.target.value as 'system' | 'light' | 'dark';
+  const handleThemeChange = (e: JSX.TargetedEvent<HTMLSelectElement>) => {
+    const mode = (e.target as HTMLSelectElement).value as 'system' | 'light' | 'dark';
     setThemeMode(mode);
     saveTheme(mode);
   };
@@ -67,12 +68,13 @@ export function Home({ onNavigate }: HomeProps) {
 
       // 2. Helper to create SVG mock photos
       const createMockPhoto = (title: string, color: string) => {
+        const escapedTitle = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
           <rect width="100%" height="100%" fill="${color}"/>
           <circle cx="400" cy="220" r="100" fill="none" stroke="#fafefe" stroke-width="2" opacity="0.3"/>
           <line x1="400" y1="50" x2="400" y2="390" stroke="#fafefe" stroke-width="1" opacity="0.2"/>
           <line x1="100" y1="220" x2="700" y2="220" stroke="#fafefe" stroke-width="1" opacity="0.2"/>
-          <text x="50%" y="450" dominant-baseline="middle" text-anchor="middle" font-family="monospace" font-size="16" fill="#fafefe" letter-spacing="2">${title.toUpperCase()}</text>
+          <text x="50%" y="450" dominant-baseline="middle" text-anchor="middle" font-family="monospace" font-size="16" fill="#fafefe" letter-spacing="2">${escapedTitle.toUpperCase()}</text>
           <text x="50%" y="225" dominant-baseline="middle" text-anchor="middle" font-family="serif" font-size="32" font-style="italic" fill="#fafefe">RETREAD LOGS</text>
         </svg>`;
         return new Blob([svg], { type: 'image/svg+xml' });
@@ -182,7 +184,7 @@ export function Home({ onNavigate }: HomeProps) {
           <div class="modal-content settings-modal" onClick={(e) => e.stopPropagation()}>
             <div class="modal-header">
               <h3>Settings</h3>
-              <Button variant="icon" class="btn-close" onClick={() => setShowSettings(false)}>
+              <Button variant="icon" class="btn-close" aria-label="Close settings" onClick={() => setShowSettings(false)}>
                 <CloseIcon />
               </Button>
             </div>

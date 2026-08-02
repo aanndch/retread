@@ -3,6 +3,7 @@ import { db } from '../db';
 import { Button } from '../components/button';
 import { ArrowLeft } from '../components/icons';
 import type { Trip, LocationUnion } from '../types';
+import type { JSX } from 'preact';
 
 interface BackupProps {
   onNavigate: (route: string) => void;
@@ -113,8 +114,8 @@ export function Backup({ onNavigate }: BackupProps) {
   };
 
   // 2. Import Backup Routine
-  const handleImport = async (e: any) => {
-    const files = e.target.files as FileList;
+  const handleImport = async (e: JSX.TargetedEvent<HTMLInputElement>) => {
+    const files = (e.target as HTMLInputElement).files as FileList;
     if (!files || files.length === 0) return;
     
     const file = files[0];
@@ -150,65 +151,66 @@ export function Backup({ onNavigate }: BackupProps) {
         throw new Error('Unsupported or corrupted backup schema.');
       }
       
-      setStatusText('Clearing local database tables...');
-      
-      // Clean DB tables
-      await db.trips.clear();
-      await db.pages.clear();
-      
-      setStatusText('Restoring trip indexes...');
-      
-      // Map old trip IDs to new database auto-incremented IDs
-      const tripIdMapping = new Map<number, number>();
-      for (const trip of parsedData.trips) {
-        const oldId = trip.id;
-        // Strip auto-increment ID to let Dexie assign fresh keys
-        delete trip.id;
-        const newId = await db.trips.add(trip) as number;
-        if (oldId !== undefined) {
-          tripIdMapping.set(oldId, newId);
-        }
-      }
-      
-      setStatusText('Decoding and restoring day logs (this may take a few moments)...');
-      
-      for (const page of parsedData.pages) {
-        const mappedTripId = tripIdMapping.get(page.tripId);
-        if (mappedTripId === undefined) {
-          console.warn(`Skipping page on ${page.date} due to missing trip index.`);
-          continue;
-        }
+      setStatusText('Restoring database...');
+
+      await db.transaction('rw', db.trips, db.pages, async () => {
+        // Clean DB tables
+        await db.trips.clear();
+        await db.pages.clear();
         
-        // Decode base64 strings back to binary Blobs
-        const photoBlobs = [];
-        if (page.photos) {
-          for (const base64 of page.photos) {
-            const blob = await base64ToBlob(base64);
-            photoBlobs.push(blob);
+        setStatusText('Restoring trip indexes...');
+        
+        // Map old trip IDs to new database auto-incremented IDs
+        const tripIdMapping = new Map<number, number>();
+        for (const trip of parsedData.trips) {
+          const { id: _oldId, ...tripData } = trip;
+          const newId = await db.trips.add(tripData) as number;
+          if (_oldId !== undefined) {
+            tripIdMapping.set(_oldId, newId);
           }
         }
         
-        await db.pages.add({
-          tripId: mappedTripId,
-          date: page.date,
-          note: page.note,
-          photos: photoBlobs,
-          km: page.km,
-          odo: page.odo,
-          location: page.location,
-          roadPath: page.roadPath
-        });
-      }
-      
+        setStatusText('Decoding and restoring day logs (this may take a few moments)...');
+        
+        for (const page of parsedData.pages) {
+          const mappedTripId = tripIdMapping.get(page.tripId);
+          if (mappedTripId === undefined) {
+            console.warn(`Skipping page on ${page.date} due to missing trip index.`);
+            continue;
+          }
+          
+          // Decode base64 strings back to binary Blobs
+          const photoBlobs = [];
+          if (page.photos) {
+            for (const base64 of page.photos) {
+              const blob = await base64ToBlob(base64);
+              photoBlobs.push(blob);
+            }
+          }
+          
+          await db.pages.add({
+            tripId: mappedTripId,
+            date: page.date,
+            note: page.note,
+            photos: photoBlobs,
+            km: page.km,
+            odo: page.odo,
+            location: page.location,
+            roadPath: page.roadPath
+          });
+        }
+      });
+
       setStatusText('Restore finished successfully.');
       alert('Logs database successfully restored!');
       
       // Clear input and redirect
       if (fileInputRef.current) fileInputRef.current.value = '';
       onNavigate('#/');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Backup import failed:', err);
-      alert(`Import failed: ${err.message || 'Unknown error'}`);
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      alert(`Import failed: ${message}`);
       setStatusText('Import failed.');
       if (fileInputRef.current) fileInputRef.current.value = '';
     } finally {

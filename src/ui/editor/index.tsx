@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import { db } from '../../db';
 import { compressImage } from '../../images';
 import type { LocationUnion, Page } from '../../types';
+import type { JSX } from 'preact';
 import { backfillTripRoutes } from '../../road';
 import { MetricsStep } from './metrics-step';
 import { PhotosStep } from './photos-step';
@@ -15,7 +16,10 @@ export function Editor({ onNavigate }: EditorProps) {
   // Parse routing parameters from hash
   const hashParts = window.location.hash.split('?');
   const params = new URLSearchParams(hashParts[1] || '');
-  const mode = params.get('mode') as 'new-trip' | 'new-day' | 'edit';
+  const rawMode = params.get('mode');
+  const validModes = ['new-trip', 'new-day', 'edit'] as const;
+  type EditorMode = typeof validModes[number];
+  const mode: EditorMode | null = validModes.includes(rawMode as EditorMode) ? (rawMode as EditorMode) : null;
   const tripIdParam = params.get('tripId');
   const pageIdParam = params.get('pageId');
   
@@ -77,6 +81,7 @@ export function Editor({ onNavigate }: EditorProps) {
   // App Load State
   const [loading, setLoading] = useState(mode === 'edit');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevPreviewsRef = useRef<string[]>([]);
 
   // Load existing data if in Edit Mode
   useEffect(() => {
@@ -155,9 +160,9 @@ export function Editor({ onNavigate }: EditorProps) {
   // Clean up object URLs on unmount to avoid memory leaks
   useEffect(() => {
     return () => {
-      photoPreviews.forEach(url => URL.revokeObjectURL(url));
+      prevPreviewsRef.current.forEach(url => URL.revokeObjectURL(url));
     };
-  }, [photoPreviews]);
+  }, []);
 
   // Geolocation Handler
   const handleDropPin = () => {
@@ -206,8 +211,8 @@ export function Editor({ onNavigate }: EditorProps) {
   };
 
   // Photo uploads & compression
-  const handlePhotoChange = async (e: any) => {
-    const files = e.target.files as FileList;
+  const handlePhotoChange = async (e: JSX.TargetedEvent<HTMLInputElement>) => {
+    const files = (e.target as HTMLInputElement).files as FileList;
     if (!files || files.length === 0) return;
 
     setCompressing(true);
@@ -226,6 +231,7 @@ export function Editor({ onNavigate }: EditorProps) {
     }
 
     setPhotos(newBlobs);
+    prevPreviewsRef.current = [...photoPreviews];
     setPhotoPreviews(newPreviews);
     setCompressing(false);
 
@@ -359,6 +365,10 @@ export function Editor({ onNavigate }: EditorProps) {
 
   if (loading) {
     return <p class="loading-text">Loading log details...</p>;
+  }
+
+  if (!mode) {
+    return <p class="loading-text">Invalid editor mode.</p>;
   }
 
   return (

@@ -1,4 +1,5 @@
 import type { LocationUnion } from '../../types';
+import type { JSX } from 'preact';
 import { Button } from '../../components/button';
 import { PinIcon } from '../../components/icons';
 
@@ -78,9 +79,9 @@ export function MetricsStep({
             class={`form-input ${titleError ? 'input-error' : ''}`}
             placeholder="e.g. Spiti Valley Odyssey" 
             value={tripTitle}
-            onInput={(e: any) => {
-              setTripTitle(e.target.value);
-              if (e.target.value.trim()) setTitleError('');
+            onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
+              setTripTitle((e.target as HTMLInputElement).value);
+              if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
             }}
           />
           {titleError && <span class="error-text">{titleError}</span>}
@@ -100,7 +101,7 @@ export function MetricsStep({
                   ? (startLocation.name || `[${startLocation.lat.toFixed(4)}, ${startLocation.lng.toFixed(4)}]`)
                   : startLocation.name}
               </span>
-              <Button variant="icon" class="action-tiny" onClick={onClearStartLocation}>×</Button>
+              <Button variant="icon" class="action-tiny" aria-label="Clear start location" onClick={onClearStartLocation}>×</Button>
             </div>
           ) : showStartNamedFallback ? (
             <div class="form-row">
@@ -109,7 +110,7 @@ export function MetricsStep({
                 class="form-input" 
                 placeholder="Type starting city/town" 
                 value={tempStartPlaceName} 
-                onInput={(e: any) => onStartPlaceNameChange(e.target.value)}
+                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => onStartPlaceNameChange((e.target as HTMLInputElement).value)}
               />
               <Button variant="secondary" size="sm" onClick={onRetryStartGps}>
                 <PinIcon size={14} /> Retry GPS
@@ -134,7 +135,7 @@ export function MetricsStep({
           class="form-input" 
           placeholder="e.g. Manali to Jispa" 
           value={dayTitle} 
-          onInput={(e: any) => setDayTitle(e.target.value)}
+          onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setDayTitle((e.target as HTMLInputElement).value)}
         />
       </div>
 
@@ -147,7 +148,7 @@ export function MetricsStep({
             class="form-input" 
             required 
             value={date} 
-            onChange={(e: any) => setDate(e.target.value)}
+            onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setDate((e.target as HTMLInputElement).value)}
           />
         </div>
 
@@ -159,7 +160,7 @@ export function MetricsStep({
               class="form-input" 
               placeholder="e.g. 120"
               value={km === null ? '' : km}
-              onInput={(e: any) => setKm(e.target.value ? parseFloat(e.target.value) : null)}
+              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setKm((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
             />
           </div>
         )}
@@ -172,7 +173,7 @@ export function MetricsStep({
               class="form-input" 
               placeholder="e.g. 14320"
               value={odo === null ? '' : odo}
-              onInput={(e: any) => setOdo(e.target.value ? parseFloat(e.target.value) : null)}
+              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setOdo((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
             />
           </div>
         )}
@@ -211,9 +212,9 @@ export function MetricsStep({
                 class="form-input form-input-sm" 
                 placeholder="Place name"
                 value={tempPlaceName}
-                onInput={(e: any) => handlePlaceNameChange(e.target.value)}
+                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => handlePlaceNameChange((e.target as HTMLInputElement).value)}
               />
-              <button type="button" class="btn-clear" onClick={handleClearLocation}>&times;</button>
+              <button type="button" class="btn-clear" aria-label="Clear location" onClick={handleClearLocation}>&times;</button>
             </div>
           </div>
         )}
