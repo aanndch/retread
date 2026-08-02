@@ -186,12 +186,14 @@ header {
 .fab-container {
   position: fixed;
   bottom: var(--spacing-xl);
-  right: var(--spacing-xl);
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 100;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end; /* Align button to the bottom-right of viewport */
   width: 100%;
-  max-width: 480px; /* Align with viewport limit */
+  max-width: 480px; /* Restrict width to match centered viewport */
+  padding-right: var(--spacing-lg); /* Padding from the right edge */
   pointer-events: none;
 }
 
@@ -210,8 +212,6 @@ header {
   justify-content: center;
   box-shadow: 3px 3px 0px var(--color-ink);
   transition: transform 0.1s ease, box-shadow 0.1s ease;
-  margin-right: var(--spacing-lg); /* shift left of right edge */
-  align-self: flex-end;
 }
 
 .btn-fab:hover {
@@ -1419,6 +1419,16 @@ input[type=number] {
   margin-top: var(--spacing-md);
   margin-bottom: var(--spacing-xl);
 }
+
+.card-day-title {
+  font-family: var(--font-typewriter);
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--color-ink);
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+
 
 
 

@@ -19,6 +19,8 @@ interface MetricsStepProps {
   tempPlaceName: string;
   handlePlaceNameChange: (n: string) => void;
   handleClearLocation: () => void;
+  dayTitle: string;
+  setDayTitle: (t: string) => void;
   titleError: string;
   setTitleError: (e: string) => void;
   handleCancel: () => void;
@@ -42,6 +44,8 @@ export function MetricsStep({
   tempPlaceName,
   handlePlaceNameChange,
   handleClearLocation,
+  dayTitle,
+  setDayTitle,
   titleError,
   setTitleError,
   handleCancel,
@@ -67,16 +71,28 @@ export function MetricsStep({
         </div>
       )}
 
-      {/* Date Selector */}
-      <div class="form-group">
-        <label class="input-label">Date</label>
-        <input 
-          type="date" 
-          class="form-input" 
-          required 
-          value={date} 
-          onChange={(e: any) => setDate(e.target.value)}
-        />
+      {/* Date & Day Label Selector */}
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label class="input-label">Date</label>
+          <input 
+            type="date" 
+            class="form-input" 
+            required 
+            value={date} 
+            onChange={(e: any) => setDate(e.target.value)}
+          />
+        </div>
+        <div class="form-group flex-2">
+          <label class="input-label">Day Label / Route Leg</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            placeholder="e.g. Manali to Jispa" 
+            value={dayTitle} 
+            onInput={(e: any) => setDayTitle(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Distance Metrics: KM / Odo */}

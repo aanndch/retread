@@ -18,4 +18,5 @@ export interface Page {
   odo?: number | null;        // Odometer entry
   location?: LocationUnion | null;
   roadPath?: { lat: number; lng: number }[] | null; // OSRM shape coordinates
+  title?: string;
 }

@@ -28,6 +28,7 @@ export function Editor({ onNavigate }: EditorProps) {
 
   // Form State
   const [tripTitle, setTripTitle] = useState('');
+  const [dayTitle, setDayTitle] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
   const [km, setKm] = useState<number | null>(null);
@@ -58,6 +59,7 @@ export function Editor({ onNavigate }: EditorProps) {
           setKm(page.km ?? null);
           setOdo(page.odo ?? null);
           setLocation(page.location ?? null);
+          setDayTitle(page.title || '');
           setPhotos(page.photos || []);
 
           if (page.location) {
@@ -227,7 +229,8 @@ export function Editor({ onNavigate }: EditorProps) {
         photos,
         km: km !== null && !isNaN(km) ? km : null,
         odo: odo !== null && !isNaN(odo) ? odo : null,
-        location: locationPayload
+        location: locationPayload,
+        title: dayTitle.trim()
       };
 
       if (mode === 'edit' && pageId !== null) {
@@ -306,6 +309,8 @@ export function Editor({ onNavigate }: EditorProps) {
             tempPlaceName={tempPlaceName}
             handlePlaceNameChange={handlePlaceNameChange}
             handleClearLocation={handleClearLocation}
+            dayTitle={dayTitle}
+            setDayTitle={setDayTitle}
             titleError={titleError}
             setTitleError={setTitleError}
             handleCancel={handleCancel}

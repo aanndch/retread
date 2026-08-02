@@ -101,8 +101,10 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
           <ArrowLeft />
         </Button>
         <div class="header-titles">
-          <h3>{displayDate}</h3>
-          <span class="trip-name-sub">{tripTitle}</span>
+          <h3>{page.title || displayDate}</h3>
+          <span class="trip-name-sub">
+            {page.title ? `${displayDate} • ${tripTitle}` : tripTitle}
+          </span>
         </div>
       </header>
 

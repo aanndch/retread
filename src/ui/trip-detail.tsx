@@ -245,6 +245,10 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                         )}
                       </div>
 
+                      {page.title ? (
+                        <h5 class="card-day-title">{page.title}</h5>
+                      ) : null}
+
                       {page.note && (
                         <p class="card-note-excerpt">
                           {page.note.length > 95 ? `${page.note.slice(0, 95)}...` : page.note}
