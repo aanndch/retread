@@ -1492,7 +1492,7 @@ input[type=number] {
   line-height: 1.5;
   color: var(--color-ink);
   background-color: var(--color-paper);
-  border: 1px solid var(--color-green);
+  border: 1px solid var(--color-ink-muted);
   border-radius: var(--border-radius);
   padding: 10px 14px;
   margin: 0;
