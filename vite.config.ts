@@ -16,8 +16,8 @@ export default defineConfig({
         id: '/retread/',
         scope: '/retread/',
         description: 'A journal for well-tread journeys.',
-        theme_color: '#f4efe6',
-        background_color: '#f4efe6',
+        theme_color: '#2a2520',
+        background_color: '#2a2520',
         display: 'standalone',
         orientation: 'portrait',
         icons: [
