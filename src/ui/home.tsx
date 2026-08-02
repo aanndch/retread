@@ -243,6 +243,7 @@ export function Home({ onNavigate }: HomeProps) {
               <div class="setting-item">
                 <label>Color Theme</label>
                 <Dropdown
+                  class="drop-up"
                   value={themeMode}
                   onChange={handleThemeChange}
                   options={[

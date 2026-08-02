@@ -1656,6 +1656,13 @@ input[type=number] {
   overflow-y: auto;
 }
 
+.dropdown.drop-up .dropdown-menu {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 2px;
+}
+
 .dropdown-option {
   font-family: var(--font-typewriter);
   font-size: 13px;
