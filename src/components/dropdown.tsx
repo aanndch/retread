@@ -11,9 +11,10 @@ interface DropdownProps {
   value: string;
   onChange: (value: string) => void;
   class?: string;
+  disabled?: boolean;
 }
 
-export function Dropdown({ options, value, onChange, class: className = '' }: DropdownProps) {
+export function Dropdown({ options, value, onChange, class: className = '', disabled = false }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,8 +93,10 @@ export function Dropdown({ options, value, onChange, class: className = '' }: Dr
         class="dropdown-trigger"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-disabled={disabled}
         onClick={handleToggle}
         onKeyDown={handleKeyDown}
+        disabled={disabled}
       >
         <span>{selectedLabel}</span>
         <span class={`dropdown-arrow${isOpen ? ' open' : ''}`}>▾</span>

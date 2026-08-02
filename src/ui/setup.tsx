@@ -40,6 +40,7 @@ export function Setup({ onComplete }: SetupProps) {
             value="IN"
             onChange={() => {}}
             options={[{ value: 'IN', label: 'India (v1)' }]}
+            disabled
           />
           <span class="input-help">v1 supports snapping routes and odometer units for India.</span>
         </div>

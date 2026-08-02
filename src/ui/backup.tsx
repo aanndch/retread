@@ -121,7 +121,7 @@ export function Backup({ onNavigate }: BackupProps) {
 
   // 2. Import Backup Routine
   const handleImport = async (e: JSX.TargetedEvent<HTMLInputElement>) => {
-    const files = (e.target as HTMLInputElement).files as FileList;
+    const files = (e.target as HTMLInputElement).files;
     if (!files || files.length === 0) return;
     
     const file = files[0];

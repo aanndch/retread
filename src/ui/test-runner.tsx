@@ -25,8 +25,8 @@ export function TestRunner() {
       } else {
         list.push({ name: 'Distance calculation (KM only)', status: 'FAIL', message: `Expected 250, got ${distance}` });
       }
-    } catch (e: any) {
-      list.push({ name: 'Distance calculation (KM only)', status: 'FAIL', message: e.message });
+    } catch (e: unknown) {
+      list.push({ name: 'Distance calculation (KM only)', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
     // Test 2: Distance Calculator (ODO only)
@@ -41,8 +41,8 @@ export function TestRunner() {
       } else {
         list.push({ name: 'Distance calculation (ODO only)', status: 'FAIL', message: `Expected 300, got ${distance}` });
       }
-    } catch (e: any) {
-      list.push({ name: 'Distance calculation (ODO only)', status: 'FAIL', message: e.message });
+    } catch (e: unknown) {
+      list.push({ name: 'Distance calculation (ODO only)', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
     // Test 3: Distance Calculator (Mixed KM and ODO)
@@ -58,8 +58,8 @@ export function TestRunner() {
       } else {
         list.push({ name: 'Distance calculation (Mixed KM & ODO)', status: 'FAIL', message: `Expected 200, got ${distance}` });
       }
-    } catch (e: any) {
-      list.push({ name: 'Distance calculation (Mixed KM & ODO)', status: 'FAIL', message: e.message });
+    } catch (e: unknown) {
+      list.push({ name: 'Distance calculation (Mixed KM & ODO)', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
     // Test 4: Dexie DB basic CRUD
@@ -86,8 +86,8 @@ export function TestRunner() {
       await db.pages.delete(pageId);
       list.push({ name: 'IndexedDB CRUD deletion/cleanup', status: 'PASS' });
 
-    } catch (e: any) {
-      list.push({ name: 'IndexedDB CRUD write/read', status: 'FAIL', message: e.message });
+    } catch (e: unknown) {
+      list.push({ name: 'IndexedDB CRUD write/read', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
     setResults(list);

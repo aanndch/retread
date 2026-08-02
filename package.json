@@ -1,12 +1,16 @@
 {
   "name": "retread",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
     "dexie": "^4.4.4",

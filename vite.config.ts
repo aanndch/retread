@@ -13,6 +13,8 @@ export default defineConfig({
       manifest: {
         name: 'Retread',
         short_name: 'Retread',
+        id: '/retread/',
+        scope: '/retread/',
         description: 'A journal for well-tread journeys.',
         theme_color: '#f4efe6',
         background_color: '#f4efe6',
