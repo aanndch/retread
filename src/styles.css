@@ -93,8 +93,8 @@ body {
 }
 
 header {
-  margin-top: var(--spacing-xl);
-  margin-bottom: var(--spacing-xl);
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
 }
 
 .logo {
@@ -245,8 +245,8 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-top: var(--spacing-md);
-  margin-bottom: var(--spacing-xl);
+  margin-top: 0;
+  margin-bottom: var(--spacing-lg);
 }
 
 /* Setup View */
