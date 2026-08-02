@@ -1602,3 +1602,22 @@ input[type=number] {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Responsive adjustments for narrow viewports (e.g. 350px width mobile screens) */
+@media (max-width: 380px) {
+  .wizard-progress {
+    gap: var(--spacing-xs);
+    padding-bottom: var(--spacing-sm);
+  }
+  .progress-step {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+  .progress-divider {
+    font-size: 10px;
+  }
+  .form-row {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+}
