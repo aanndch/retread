@@ -2,6 +2,8 @@ import { useState, useEffect } from 'preact/hooks';
 import { Setup } from './ui/setup';
 import { Home } from './ui/home';
 import { TestRunner } from './ui/test-runner';
+import { Editor } from './ui/editor';
+import { Backup } from './ui/backup';
 
 export function App() {
   const [setupComplete, setSetupComplete] = useState(false);
@@ -86,35 +88,11 @@ export function App() {
     }
 
     if (hash.startsWith('#/edit')) {
-      return (
-        <div class="placeholder-view">
-          <h3>Editor Form</h3>
-          <p class="placeholder-text">v1 Page Editor is under construction.</p>
-          <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="22" y1="12" x2="2" y2="12"></line>
-              <polyline points="9 19 2 12 9 5"></polyline>
-            </svg>
-            <span>Back Home</span>
-          </button>
-        </div>
-      );
+      return <Editor onNavigate={navigateTo} />;
     }
 
     if (hash === '#/backup') {
-      return (
-        <div class="placeholder-view">
-          <h3>Backup & Restore Settings</h3>
-          <p class="placeholder-text">v1 Backup Engine is under construction.</p>
-          <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="22" y1="12" x2="2" y2="12"></line>
-              <polyline points="9 19 2 12 9 5"></polyline>
-            </svg>
-            <span>Back Home</span>
-          </button>
-        </div>
-      );
+      return <Backup onNavigate={navigateTo} />;
     }
 
     // Fallback 404
