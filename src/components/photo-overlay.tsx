@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'preact/hooks';
+import { useState, useRef, useEffect, useCallback } from 'preact/hooks';
 
 interface PhotoOverlayProps {
   isOpen: boolean;
@@ -15,14 +15,14 @@ export function PhotoOverlay({
   setActiveIdx,
   onClose,
 }: PhotoOverlayProps) {
-  if (!isOpen || photoUrls.length === 0) return null;
-
   const [imgScale, setImgScale] = useState(1);
   const [imgOffset, setImgOffset] = useState({ x: 0, y: 0 });
   const [isPhotoDragging, setIsPhotoDragging] = useState(false);
   const photoTouchStart = useRef({ x: 0, y: 0 });
   const photoLastTouchDistance = useRef<number | null>(null);
   const touchStartX = useRef(0);
+  const isPhotoDraggingRef = useRef(false);
+  const imgScaleRef = useRef(1);
 
   // Close modal when hardware back button is pressed
   useEffect(() => {
@@ -33,18 +33,23 @@ export function PhotoOverlay({
     return () => window.removeEventListener("popstate", handlePopState);
   }, [onClose]);
 
+  if (!isOpen || photoUrls.length === 0) return null;
+
   const togglePhotoZoom = (e: MouseEvent) => {
     e.stopPropagation();
     if (imgScale > 1) {
       setImgScale(1);
+      imgScaleRef.current = 1;
       setImgOffset({ x: 0, y: 0 });
     } else {
       setImgScale(2.5);
+      imgScaleRef.current = 2.5;
     }
   };
 
   const handlePhotoTouchStart = (e: TouchEvent) => {
     if (e.touches.length === 1) {
+      isPhotoDraggingRef.current = true;
       setIsPhotoDragging(true);
       photoTouchStart.current = {
         x: e.touches[0].clientX - imgOffset.x,
@@ -61,7 +66,7 @@ export function PhotoOverlay({
   };
 
   const handlePhotoTouchMove = (e: TouchEvent) => {
-    if (e.touches.length === 1 && isPhotoDragging && imgScale > 1) {
+    if (e.touches.length === 1 && isPhotoDraggingRef.current && imgScaleRef.current > 1) {
       const dx = e.touches[0].clientX - photoTouchStart.current.x;
       const dy = e.touches[0].clientY - photoTouchStart.current.y;
       setImgOffset({ x: dx, y: dy });
@@ -71,48 +76,57 @@ export function PhotoOverlay({
         e.touches[0].clientY - e.touches[1].clientY
       );
       const factor = dist / photoLastTouchDistance.current;
-      setImgScale((s) => Math.max(1, Math.min(4, s * factor)));
+      const newScale = Math.max(1, Math.min(4, imgScaleRef.current * factor));
+      imgScaleRef.current = newScale;
+      setImgScale(newScale);
       photoLastTouchDistance.current = dist;
     }
   };
 
   const handlePhotoTouchEnd = (e: TouchEvent) => {
+    isPhotoDraggingRef.current = false;
     setIsPhotoDragging(false);
     photoLastTouchDistance.current = null;
 
     // Swipe navigation when not zoomed in
-    if (imgScale === 1) {
+    if (imgScaleRef.current === 1) {
       const deltaX = e.changedTouches[0].clientX - touchStartX.current;
       if (Math.abs(deltaX) > 50) {
         if (deltaX < 0) {
-          // Swipe left -> Next photo
           setActiveIdx((i) => (i + 1) % photoUrls.length);
         } else {
-          // Swipe right -> Previous photo
           setActiveIdx((i) => (i - 1 + photoUrls.length) % photoUrls.length);
         }
       }
     }
   };
 
+  const handlePhotoMouseMove = useCallback((e: MouseEvent) => {
+    if (isPhotoDraggingRef.current && imgScaleRef.current > 1) {
+      const dx = e.clientX - photoTouchStart.current.x;
+      const dy = e.clientY - photoTouchStart.current.y;
+      setImgOffset({ x: dx, y: dy });
+    }
+  }, []);
+
+  const handlePhotoMouseUp = useCallback(() => {
+    if (isPhotoDraggingRef.current) {
+      isPhotoDraggingRef.current = false;
+      setIsPhotoDragging(false);
+      document.removeEventListener('mousemove', handlePhotoMouseMove);
+      document.removeEventListener('mouseup', handlePhotoMouseUp);
+    }
+  }, [handlePhotoMouseMove]);
+
   const handlePhotoMouseDown = (e: MouseEvent) => {
+    isPhotoDraggingRef.current = true;
     setIsPhotoDragging(true);
     photoTouchStart.current = {
       x: e.clientX - imgOffset.x,
       y: e.clientY - imgOffset.y,
     };
-  };
-
-  const handlePhotoMouseMove = (e: MouseEvent) => {
-    if (isPhotoDragging && imgScale > 1) {
-      const dx = e.clientX - photoTouchStart.current.x;
-      const dy = e.clientY - photoTouchStart.current.y;
-      setImgOffset({ x: dx, y: dy });
-    }
-  };
-
-  const handlePhotoMouseUp = () => {
-    setIsPhotoDragging(false);
+    document.addEventListener('mousemove', handlePhotoMouseMove);
+    document.addEventListener('mouseup', handlePhotoMouseUp);
   };
 
   return (
@@ -136,8 +150,6 @@ export function PhotoOverlay({
         onTouchMove={handlePhotoTouchMove}
         onTouchEnd={handlePhotoTouchEnd}
         onMouseDown={handlePhotoMouseDown}
-        onMouseMove={handlePhotoMouseMove}
-        onMouseUp={handlePhotoMouseUp}
       >
         <img
           src={photoUrls[activeIdx]}
@@ -154,7 +166,7 @@ export function PhotoOverlay({
       {photoUrls.length > 1 && (
         <div class="photo-overlay-dots">
           {photoUrls.map((_, idx) => (
-            <span class={`carousel-dot${idx === activeIdx ? ' active' : ''}`} />
+            <span key={idx} class={`carousel-dot${idx === activeIdx ? ' active' : ''}`} />
           ))}
         </div>
       )}

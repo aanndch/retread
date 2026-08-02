@@ -280,7 +280,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
               {photoUrls.length > 1 && (
                 <div class="carousel-dots">
                   {photoUrls.map((_, i) => (
-                    <span class={`carousel-dot${i === activePhotoIdx ? ' active' : ''}`} />
+                    <span key={i} class={`carousel-dot${i === activePhotoIdx ? ' active' : ''}`} />
                   ))}
                 </div>
               )}

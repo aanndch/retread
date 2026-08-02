@@ -8,8 +8,6 @@ interface MapModalProps {
 }
 
 export function MapModal({ isOpen, path, onClose }: MapModalProps) {
-  if (!isOpen) return null;
-
   const [isDragging, setIsDragging] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const zoomInnerRef = useRef<HTMLDivElement>(null);
@@ -17,18 +15,19 @@ export function MapModal({ isOpen, path, onClose }: MapModalProps) {
   const offsetRef = useRef({ x: 0, y: 0 });
   const mapTouchStart = useRef({ x: 0, y: 0 });
   const mapLastTouchDistance = useRef<number | null>(null);
-
-  const updateTransform = useCallback(() => {
-    if (!zoomInnerRef.current) return;
-    const el = zoomInnerRef.current;
-    el.style.transform = `translate(${offsetRef.current.x}px, ${offsetRef.current.y}px) scale(${scaleRef.current})`;
-  }, []);
+  const isDraggingRef = useRef(false);
 
   useEffect(() => {
     const handlePopState = () => onClose();
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [onClose]);
+
+  const updateTransform = useCallback(() => {
+    if (!zoomInnerRef.current) return;
+    const el = zoomInnerRef.current;
+    el.style.transform = `translate(${offsetRef.current.x}px, ${offsetRef.current.y}px) scale(${scaleRef.current})`;
+  }, []);
 
   const toggleMapZoom = (e: MouseEvent) => {
     e.stopPropagation();
@@ -48,6 +47,7 @@ export function MapModal({ isOpen, path, onClose }: MapModalProps) {
 
   const handleMapTouchStart = (e: TouchEvent) => {
     if (e.touches.length === 1) {
+      isDraggingRef.current = true;
       setIsDragging(true);
       mapTouchStart.current = {
         x: e.touches[0].clientX - offsetRef.current.x,
@@ -65,7 +65,7 @@ export function MapModal({ isOpen, path, onClose }: MapModalProps) {
   };
 
   const handleMapTouchMove = (e: TouchEvent) => {
-    if (e.touches.length === 1 && isDragging) {
+    if (e.touches.length === 1 && isDraggingRef.current) {
       offsetRef.current = {
         x: e.touches[0].clientX - mapTouchStart.current.x,
         y: e.touches[0].clientY - mapTouchStart.current.y,
@@ -85,32 +85,43 @@ export function MapModal({ isOpen, path, onClose }: MapModalProps) {
   };
 
   const handleMapTouchEnd = () => {
+    isDraggingRef.current = false;
     setIsDragging(false);
     mapLastTouchDistance.current = null;
   };
 
-  const handleMapMouseDown = (e: MouseEvent) => {
-    setIsDragging(true);
-    mapTouchStart.current = {
-      x: e.clientX - offsetRef.current.x,
-      y: e.clientY - offsetRef.current.y,
-    };
-    if (zoomInnerRef.current) zoomInnerRef.current.style.transition = 'none';
-  };
-
-  const handleMapMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
+  const handleMapMouseMove = useCallback((e: MouseEvent) => {
+    if (isDraggingRef.current) {
       offsetRef.current = {
         x: e.clientX - mapTouchStart.current.x,
         y: e.clientY - mapTouchStart.current.y,
       };
       updateTransform();
     }
+  }, [updateTransform]);
+
+  const handleMapMouseUp = useCallback(() => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      setIsDragging(false);
+      document.removeEventListener('mousemove', handleMapMouseMove);
+      document.removeEventListener('mouseup', handleMapMouseUp);
+    }
+  }, [handleMapMouseMove]);
+
+  const handleMapMouseDown = (e: MouseEvent) => {
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    mapTouchStart.current = {
+      x: e.clientX - offsetRef.current.x,
+      y: e.clientY - offsetRef.current.y,
+    };
+    if (zoomInnerRef.current) zoomInnerRef.current.style.transition = 'none';
+    document.addEventListener('mousemove', handleMapMouseMove);
+    document.addEventListener('mouseup', handleMapMouseUp);
   };
 
-  const handleMapMouseUp = () => {
-    setIsDragging(false);
-  };
+  if (!isOpen) return null;
 
   return (
     <div class="modal-backdrop map-overlay-backdrop" onClick={onClose}>
@@ -130,8 +141,6 @@ export function MapModal({ isOpen, path, onClose }: MapModalProps) {
         onTouchMove={handleMapTouchMove}
         onTouchEnd={handleMapTouchEnd}
         onMouseDown={handleMapMouseDown}
-        onMouseMove={handleMapMouseMove}
-        onMouseUp={handleMapMouseUp}
       >
         <div 
           ref={zoomInnerRef}

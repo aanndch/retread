@@ -20,8 +20,6 @@ export function MapPicker({
   onClose,
   showToast,
 }: MapPickerProps) {
-  if (!isOpen) return null;
-
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const pickerMapRef = useRef<any>(null);
 
@@ -54,6 +52,8 @@ export function MapPicker({
       }
     };
   }, []);
+
+  if (!isOpen) return null;
 
   const initializeMap = (el: HTMLDivElement | null) => {
     if (!el) return;

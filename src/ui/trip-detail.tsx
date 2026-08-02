@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "preact/hooks";
+import { useState, useEffect, useCallback, useRef } from "preact/hooks";
 import { db } from "../db";
 import { Button } from "../components/button";
 import { Toast, useToast } from "../components/toast";
@@ -41,8 +41,11 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
     }
   };
 
+  const onNavigateRef = useRef(onNavigate);
+  onNavigateRef.current = onNavigate;
+
   const stableNavigate = useCallback((route: string) => {
-    onNavigate(route);
+    onNavigateRef.current(route);
   }, []);
 
   useEffect(() => {

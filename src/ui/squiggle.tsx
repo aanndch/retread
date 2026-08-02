@@ -64,18 +64,14 @@ export function SquiggleMap({
   hideGrid = false,
   skipFilter = false
 }: SquiggleMapProps) {
-  if (!path || path.length < 2) {
-    return (
-      <div class="squiggle-map-empty">
-        <span class="empty-icon">🗺</span>
-        <p>No map path available.</p>
-      </div>
-    );
-  }
-
-  const simplified = useMemo(() => simplifyPath(path, 200), [path]);
+  const simplified = useMemo(() => {
+    if (!path || path.length < 2) return [];
+    return simplifyPath(path, 200);
+  }, [path]);
 
   const { pathD, startPt, endPt } = useMemo(() => {
+    if (simplified.length < 2) return { pathD: '', startPt: null, endPt: null };
+
     const lats = simplified.map(p => p.lat);
     const lngs = simplified.map(p => p.lng);
     
@@ -120,6 +116,15 @@ export function SquiggleMap({
       endPt: points2D[points2D.length - 1],
     };
   }, [simplified, width, height]);
+
+  if (!path || path.length < 2) {
+    return (
+      <div class="squiggle-map-empty">
+        <span class="empty-icon">🗺</span>
+        <p>No map path available.</p>
+      </div>
+    );
+  }
 
   const filterAttr = skipFilter ? undefined : 'url(#hand-drawn-wobble)';
 

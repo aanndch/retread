@@ -7,6 +7,7 @@
   --color-green: #4a5d4e;
   --color-green-light: #6b8270;
   --color-shadow: rgba(0, 0, 0, 0.08);
+  --color-error: #d9534f;
 
   --font-typewriter: 'Space Mono', 'Courier Prime', Courier, monospace;
   --font-mechanical: 'JetBrains Mono', monospace;
@@ -31,10 +32,9 @@
     --color-green: #6b8270;
     --color-green-light: #839d89;
     --color-shadow: rgba(0, 0, 0, 0.2);
+    --color-error: #d9534f;
   }
 }
-
-/* Explicit Override: Light Theme */
 html[data-theme="light"] {
   --color-paper: #f4efe6;
   --color-paper-dim: #ebdcb9;
@@ -43,6 +43,7 @@ html[data-theme="light"] {
   --color-green: #4a5d4e;
   --color-green-light: #6b8270;
   --color-shadow: rgba(0, 0, 0, 0.08);
+  --color-error: #d9534f;
 }
 
 /* Explicit Override: Dark Theme */
@@ -54,6 +55,7 @@ html[data-theme="dark"] {
   --color-green: #6b8270;
   --color-green-light: #839d89;
   --color-shadow: rgba(0, 0, 0, 0.2);
+  --color-error: #d9534f;
 }
 
 /* Global Reset */
@@ -631,6 +633,12 @@ header {
   box-shadow: 3px 3px 0px var(--color-green-light);
 }
 
+/* Focus-visible for keyboard users */
+:focus-visible {
+  outline: 2px solid var(--color-green);
+  outline-offset: 2px;
+}
+
 .form-input::placeholder,
 .form-textarea::placeholder {
   color: var(--color-ink-muted);
@@ -795,7 +803,7 @@ header {
 }
 
 .btn-photo-remove:hover {
-  background-color: #d9534f;
+  background-color: var(--color-error);
   color: var(--color-paper);
 }
 
@@ -958,19 +966,25 @@ header {
 }
 
 /* Validation Errors */
-.input-error {
-  border-color: #d9534f !important;
+.form-input.input-error,
+.form-textarea.input-error,
+.setting-select.input-error,
+.input-select.input-error {
+  border-color: var(--color-error);
 }
 
-.input-error:focus {
-  border-color: #d9534f !important;
-  box-shadow: 3px 3px 0px rgba(217, 83, 79, 0.25) !important;
+.form-input.input-error:focus,
+.form-textarea.input-error:focus,
+.setting-select.input-error:focus,
+.input-select.input-error:focus {
+  border-color: var(--color-error);
+  box-shadow: 3px 3px 0px rgba(217, 83, 79, 0.25);
 }
 
 .error-text {
   font-family: var(--font-typewriter);
   font-size: 11px;
-  color: #d9534f;
+  color: var(--color-error);
   margin-top: var(--spacing-xs);
   display: block;
 }
@@ -1288,14 +1302,14 @@ input[type=number] {
 }
 
 .action-tiny {
-  padding: 2px 6px !important;
-  font-size: 10px !important;
-  height: auto !important;
-  width: auto !important;
+  padding: 2px 6px;
+  font-size: 10px;
+  height: auto;
+  width: auto;
 }
 
 .action-tiny-danger {
-  color: #d9534f !important;
+  color: var(--color-error);
 }
 
 .danger-zone {
@@ -1308,13 +1322,13 @@ input[type=number] {
 }
 
 .btn-danger-text {
-  color: #d9534f !important;
-  border-color: rgba(217, 83, 79, 0.25) !important;
+  color: var(--color-error);
+  border-color: rgba(217, 83, 79, 0.25);
 }
 
 .btn-danger-text:hover {
-  background-color: rgba(217, 83, 79, 0.05) !important;
-  border-color: #d9534f !important;
+  background-color: rgba(217, 83, 79, 0.05);
+  border-color: var(--color-error);
 }
 
 /* Page Detail layout */
@@ -1598,7 +1612,7 @@ input[type=number] {
 }
 
 .toast.error {
-  border-color: #d9534f;
+  border-color: var(--color-error);
 }
 
 .toast.success {
@@ -1635,6 +1649,21 @@ input[type=number] {
   }
 }
 
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .map-route-path {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
+
 /* ==========================================================================
    FULLSCREEN INTERACTIVE OVERLAYS (MAP & PHOTO ZOOM)
    ========================================================================== */
@@ -1651,7 +1680,7 @@ input[type=number] {
 
 /* Backdrops */
 .photo-overlay-backdrop {
-  background-color: rgba(0, 0, 0, 0.95) !important;
+  background-color: rgba(0, 0, 0, 0.95);
   z-index: 1000;
   display: flex;
   flex-direction: column;
@@ -1661,11 +1690,11 @@ input[type=number] {
 }
 
 .map-overlay-backdrop {
-  background-color: var(--color-paper) !important;
+  background-color: var(--color-paper);
   background-image: 
     linear-gradient(var(--color-paper-dim) 1px, transparent 1px),
-    linear-gradient(90deg, var(--color-paper-dim) 1px, transparent 1px) !important;
-  background-size: 20px 20px !important;
+    linear-gradient(90deg, var(--color-paper-dim) 1px, transparent 1px);
+  background-size: 20px 20px;
   z-index: 1000;
   display: flex;
   flex-direction: column;
@@ -1703,15 +1732,15 @@ input[type=number] {
 
 /* Accent override for photo close button in dark overlay */
 .photo-overlay-backdrop .btn-close-overlay {
-  background-color: #2b2926;
-  color: #ebdcb9;
-  border: 1px solid #ebdcb9;
-  box-shadow: 2px 2px 0px #ebdcb9;
+  background-color: var(--color-paper-dim);
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  box-shadow: 2px 2px 0px var(--color-ink);
 }
 
 .photo-overlay-backdrop .btn-close-overlay:active {
   transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0px #ebdcb9;
+  box-shadow: 1px 1px 0px var(--color-ink);
 }
 
 /* Zoom/Pan Containers */

@@ -90,13 +90,8 @@ export function Editor({ onNavigate }: EditorProps) {
   const tripId = tripIdParam ? parseInt(tripIdParam, 10) : null;
   const pageId = pageIdParam ? parseInt(pageIdParam, 10) : null;
 
-  if (!mode) {
-    return <p class="loading-text">Invalid editor mode.</p>;
-  }
-
   const { toasts, showToast, removeToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const prevPreviewsRef = useRef<string[]>([]);
 
   // Initialize unified merging state tree
   const [state, dispatch] = useReducer(formReducer, {
@@ -128,6 +123,11 @@ export function Editor({ onNavigate }: EditorProps) {
     loading,
     photos,
   } = state;
+
+  const photosRef = useRef<Blob[]>([]);
+  photosRef.current = photos;
+  const photoPreviewsRef = useRef<string[]>([]);
+  photoPreviewsRef.current = photoPreviews;
 
   // Auto-capture departure GPS on mount for new trips
   useEffect(() => {
@@ -268,8 +268,12 @@ export function Editor({ onNavigate }: EditorProps) {
 
   // Clean up Object URLs on unmount to avoid memory leaks
   useEffect(() => {
-    return () => { prevPreviewsRef.current.forEach(url => URL.revokeObjectURL(url)); };
+    return () => { photoPreviewsRef.current.forEach(url => URL.revokeObjectURL(url)); };
   }, []);
+
+  if (!mode) {
+    return <p class="loading-text">Invalid editor mode.</p>;
+  }
 
   // Geolocation Handler
   const handleDropPin = () => {
@@ -337,11 +341,10 @@ export function Editor({ onNavigate }: EditorProps) {
     }
 
     dispatch({
-      photos: [...photos, ...newBlobs],
-      photoPreviews: [...photoPreviews, ...newPreviews],
+      photos: [...photosRef.current, ...newBlobs],
+      photoPreviews: [...photoPreviewsRef.current, ...newPreviews],
       compressing: false
     });
-    prevPreviewsRef.current = [...photoPreviews];
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
