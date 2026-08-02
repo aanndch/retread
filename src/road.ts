@@ -42,8 +42,8 @@ export async function snapLeg(
       const route = data.routes[0];
       const osrmKm = route.distance / 1000;
       
-      // Safeguard: If OSRM distance is > 5x direct distance AND direct distance is significant (> 1km), drop snap
-      const isDetour = directDist > 1.0 ? (osrmKm > 5 * directDist) : (osrmKm > 5.0);
+      // Safeguard: If OSRM distance is > 10x direct distance AND direct distance is significant (> 1km), drop snap
+      const isDetour = directDist > 1.0 ? (osrmKm > 10 * directDist) : (osrmKm > 15.0);
       if (isDetour) {
         console.warn(`OSRM detour safety triggered: OSRM is ${osrmKm.toFixed(1)}km vs direct ${directDist.toFixed(1)}km. Dropping snap.`);
         return [from, to];
