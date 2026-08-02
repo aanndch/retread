@@ -1003,9 +1003,9 @@ input[type=number] {
 }
 
 .map-route-path {
-  stroke-dasharray: 1000;
-  stroke-dashoffset: 1000;
-  animation: draw-map-path 2s ease-in-out forwards;
+  stroke-dasharray: 10000;
+  stroke-dashoffset: 10000;
+  animation: draw-map-path 4.5s ease-in-out forwards;
 }
 
 @keyframes draw-map-path {
