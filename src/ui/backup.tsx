@@ -247,7 +247,7 @@ export function Backup({ onNavigate }: BackupProps) {
           {/* Export Action */}
           <div class="action-section">
             <h4>Export Database</h4>
-            <p class="action-help">Downloads all trips, daily logs, coordinates, and photo attachments as a single JSON file.</p>
+            <p class="action-help">Downloads all rides, daily logs, coordinates, and photo attachments as a single JSON file.</p>
             <button 
               class="btn btn-primary" 
               onClick={handleExport} 
@@ -262,7 +262,7 @@ export function Backup({ onNavigate }: BackupProps) {
           {/* Import Action */}
           <div class="action-section">
             <h4>Import Database</h4>
-            <p class="action-help">Restores trips from a previously exported JSON backup. This replaces all logs currently on this device.</p>
+            <p class="action-help">Restores rides from a previously exported JSON backup. This replaces all logs currently on this device.</p>
             
             <input 
               type="file" 

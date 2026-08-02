@@ -113,8 +113,8 @@ export function Home({ onNavigate }: HomeProps) {
           <p class="loading-text">Reading logbooks...</p>
         ) : tripsData.length === 0 ? (
           <div class="empty-state">
-            <p>No trips logged yet.</p>
-            <span class="empty-hint">Tap the ✦ below to start your first trip.</span>
+            <p>No rides logged yet.</p>
+            <span class="empty-hint">Tap the ✦ below to start your first ride.</span>
           </div>
         ) : (
           <div class="trips-grid">
@@ -176,7 +176,7 @@ function TripCard({ trip, daysCount, totalKm, firstPhotoBlob }: TripCardProps) {
           )}
         </div>
         <div class="trip-card-details">
-          <h4 class="trip-card-title">{trip.title || 'Untitled Trip'}</h4>
+          <h4 class="trip-card-title">{trip.title || 'Untitled Ride'}</h4>
           <div class="trip-card-meta">
             <span>{daysCount} {daysCount === 1 ? 'day' : 'days'}</span>
             <span class="meta-dot">·</span>

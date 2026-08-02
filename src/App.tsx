@@ -57,7 +57,7 @@ export function App() {
       const tripId = hash.split('/').pop();
       return (
         <div class="placeholder-view">
-          <h3>Trip Log (ID: {tripId})</h3>
+          <h3>Ride Log (ID: {tripId})</h3>
           <p class="placeholder-text">v1 Trip Detail Screen is under construction.</p>
           <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">

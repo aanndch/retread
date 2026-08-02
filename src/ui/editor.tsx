@@ -176,7 +176,7 @@ export function Editor({ onNavigate }: EditorProps) {
 
       if (mode === 'new-trip') {
         // 1. Create the trip
-        const finalTitle = tripTitle.trim() || `Trip on ${date}`;
+        const finalTitle = tripTitle.trim() || `Ride on ${date}`;
         activeTripId = await db.trips.add({
           title: finalTitle,
           createdAt: new Date().toISOString()
@@ -242,7 +242,7 @@ export function Editor({ onNavigate }: EditorProps) {
     <div class="editor-container">
       <header class="editor-header">
         <h3>
-          {mode === 'new-trip' && 'New Trip'}
+          {mode === 'new-trip' && 'New Ride'}
           {mode === 'new-day' && 'Add New Day'}
           {mode === 'edit' && 'Edit Day Details'}
         </h3>
@@ -252,7 +252,7 @@ export function Editor({ onNavigate }: EditorProps) {
         {/* Trip Title (New Trip Only) */}
         {mode === 'new-trip' && (
           <div class="form-group">
-            <label class="input-label">Trip Title</label>
+            <label class="input-label">Ride Title</label>
             <input 
               type="text" 
               class="form-input" 
@@ -298,7 +298,7 @@ export function Editor({ onNavigate }: EditorProps) {
             />
           </div>
         </div>
-        <span class="field-tip">Pick one per trip — km for daily distance, odo for odometer.</span>
+        <span class="field-tip">Pick one per ride — km for daily distance, odo for odometer.</span>
 
         {/* Geolocation Section */}
         <div class="form-group location-section">
