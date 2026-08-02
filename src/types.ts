@@ -15,6 +15,7 @@ export interface Page {
   id?: number;
   tripId: number;
   date: string;               // YYYY-MM-DD
+  time?: string;              // HH:MM (24-hour)
   note: string;               // Freeform textarea content
   photos: Blob[];             // Compressed photo blobs
   km?: number | null;         // Direct distance entry

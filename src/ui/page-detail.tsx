@@ -265,9 +265,13 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
           .where("tripId")
           .equals(pageRecord.tripId)
           .toArray();
-        const sorted = [...allPages].sort((a, b) =>
-          a.date.localeCompare(b.date) || (a.id || 0) - (b.id || 0)
-        );
+        const sorted = [...allPages].sort((a, b) => {
+          const dComp = a.date.localeCompare(b.date);
+          if (dComp !== 0) return dComp;
+          const tA = a.time || '00:00';
+          const tB = b.time || '00:00';
+          return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
+        });
         const myIdx = sorted.findIndex((p) => p.id === pageRecord.id);
 
         let computedLeg: number | null = null;
@@ -280,6 +284,9 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
               computedLeg = pageRecord.odo - prevPage.odo;
               if (computedLeg < 0) computedLeg = null;
             }
+          } else if (tripRecord?.startOdo !== null && tripRecord?.startOdo !== undefined) {
+            computedLeg = pageRecord.odo - tripRecord.startOdo;
+            if (computedLeg < 0) computedLeg = null;
           }
         }
 

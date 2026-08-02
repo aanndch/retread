@@ -82,6 +82,7 @@ export function Editor({ onNavigate }: EditorProps) {
   const [tripTitle, setTripTitle] = useState('');
   const [dayTitle, setDayTitle] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [time, setTime] = useState('');
   const [note, setNote] = useState('');
   const [km, setKm] = useState<number | null>(null);
   const [odo, setOdo] = useState<number | null>(null);
@@ -119,7 +120,13 @@ export function Editor({ onNavigate }: EditorProps) {
       try {
         const tripRecord = await db.trips.get(resolvedTripId);
         const pages = await db.pages.where('tripId').equals(resolvedTripId).toArray();
-        const sorted = [...pages].sort((a, b) => a.date.localeCompare(b.date) || (a.id || 0) - (b.id || 0));
+        const sorted = [...pages].sort((a, b) => {
+          const dComp = a.date.localeCompare(b.date);
+          if (dComp !== 0) return dComp;
+          const tA = a.time || '00:00';
+          const tB = b.time || '00:00';
+          return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
+        });
 
         let foundCenter: [number, number] | null = null;
 
@@ -302,14 +309,13 @@ export function Editor({ onNavigate }: EditorProps) {
       db.pages.get(pageId).then(async (page) => {
         if (page) {
           setDate(page.date);
+          setTime(page.time || '12:00');
           setNote(page.note);
           setKm(page.km ?? null);
           setOdo(page.odo ?? null);
           setLocation(page.location ?? null);
           setDayTitle(page.title || '');
           setPhotos(page.photos || []);
-
-
           
           // Generate previews
           const urls = (page.photos || []).map(blob => URL.createObjectURL(blob));
@@ -320,6 +326,8 @@ export function Editor({ onNavigate }: EditorProps) {
         console.error('Failed to load page for edit:', err);
         setLoading(false);
       });
+    } else if (mode === 'new-day') {
+      setTime(new Date().toTimeString().slice(0, 5));
     }
   }, [mode, pageId]);
 
@@ -503,6 +511,7 @@ export function Editor({ onNavigate }: EditorProps) {
 
       const pageData: Partial<Page> = {
         date,
+        time,
         note: note.trim(),
         photos,
         km: km !== null && !isNaN(km) ? km : null,
@@ -560,8 +569,8 @@ export function Editor({ onNavigate }: EditorProps) {
       <header class="editor-header">
         <h3>
           {mode === 'new-trip' && (tripTitle.trim() || 'New Ride')}
-          {mode === 'new-day' && 'Add New Day'}
-          {mode === 'edit' && 'Edit Day Details'}
+          {mode === 'new-day' && 'Add New Leg'}
+          {mode === 'edit' && 'Edit Leg Details'}
         </h3>
       </header>
 
@@ -584,6 +593,8 @@ export function Editor({ onNavigate }: EditorProps) {
             setTripTitle={setTripTitle}
             date={date}
             setDate={setDate}
+            time={time}
+            setTime={setTime}
             km={km}
             setKm={setKm}
             odo={odo}

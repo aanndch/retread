@@ -9,6 +9,8 @@ interface MetricsStepProps {
   setTripTitle: (t: string) => void;
   date: string;
   setDate: (d: string) => void;
+  time: string;
+  setTime: (t: string) => void;
   km: number | null;
   setKm: (k: number | null) => void;
   odo: number | null;
@@ -40,6 +42,8 @@ export function MetricsStep({
   setTripTitle,
   date,
   setDate,
+  time,
+  setTime,
   km,
   setKm,
   odo,
@@ -165,12 +169,12 @@ export function MetricsStep({
         </div>
       )}
 
-      {/* Day page metrics (Only for existing trips - new-day or edit modes) */}
+      {/* Leg page metrics (Only for existing trips - new-day or edit modes) */}
       {mode !== 'new-trip' && (
         <>
-          {/* Row 1: Day Label (Whole Row) */}
+          {/* Row 1: Leg Route (Whole Row) */}
           <div class="form-group">
-            <label class="input-label">Day Label / Route Leg</label>
+            <label class="input-label">Leg Route / Destination</label>
             <input 
               type="text" 
               class="form-input" 
@@ -180,17 +184,28 @@ export function MetricsStep({
             />
           </div>
 
-          {/* Row 2: Date and KM / Odo Selector */}
+          {/* Row 2: Date/Time and KM / Odo Selector */}
           <div class="form-row">
             <div class="form-group flex-1">
-              <label class="input-label">Date</label>
-              <input 
-                type="date" 
-                class="form-input" 
-                required 
-                value={date} 
-                onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setDate((e.target as HTMLInputElement).value)}
-              />
+              <label class="input-label">Date & Time</label>
+              <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
+                <input 
+                  type="date" 
+                  class="form-input" 
+                  required 
+                  style={{ flex: 1.8 }}
+                  value={date} 
+                  onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setDate((e.target as HTMLInputElement).value)}
+                />
+                <input 
+                  type="time" 
+                  class="form-input" 
+                  required 
+                  style={{ flex: 1.2 }}
+                  value={time || ''} 
+                  onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setTime((e.target as HTMLInputElement).value)}
+                />
+              </div>
             </div>
 
             {distanceMode !== 'odo' && (

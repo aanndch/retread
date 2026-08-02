@@ -155,9 +155,13 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           .where("tripId")
           .equals(tripId)
           .toArray();
-        const sortedPages = [...pagesRecords].sort((a, b) =>
-          a.date.localeCompare(b.date) || (a.id || 0) - (b.id || 0)
-        );
+        const sortedPages = [...pagesRecords].sort((a, b) => {
+          const dComp = a.date.localeCompare(b.date);
+          if (dComp !== 0) return dComp;
+          const tA = a.time || '00:00';
+          const tB = b.time || '00:00';
+          return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
+        });
 
         if (active) {
           setTrip(tripRecord);
@@ -229,7 +233,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   });
 
   // Calculate cumulative stats
-  const totalDays = pages.length;
+  const totalDays = new Set(pages.map(p => p.date)).size;
   const totalKm = computeTotalDistance(pages, trip?.startOdo);
   const hasKm = totalKm > 0;
 
@@ -328,17 +332,17 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
 
         {/* Timeline Page logs */}
         <section class="trip-timeline">
-          <h4>Daily Logs</h4>
+          <h4>Ride Timeline</h4>
           {pages.length === 0 ? (
             <div class="timeline-empty">
-              <p>Write your first day log entry to fill this page.</p>
+              <p>Write your first leg log entry to start your ride book.</p>
               <Button
                 variant="primary"
                 onClick={() =>
                   onNavigate(`#/edit?mode=new-day&tripId=${tripId}`)
                 }
               >
-                ＋ Add Day 1 Log
+                ＋ Log First Leg
               </Button>
             </div>
           ) : (
@@ -506,7 +510,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
         <div class="fab-container">
           <Button
             variant="fab"
-            aria-label="Add Day"
+            aria-label="Add Leg"
             onClick={() => onNavigate(`#/edit?mode=new-day&tripId=${tripId}`)}
           >
             ＋

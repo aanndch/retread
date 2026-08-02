@@ -38,14 +38,20 @@ export function Home({ onNavigate }: HomeProps) {
       const pages = await db.pages.where('tripId').equals(trip.id!).toArray();
       
       // Find the first page chronologically that has at least one photo
-      const sortedPages = [...pages].sort((a, b) => a.date.localeCompare(b.date) || (a.id || 0) - (b.id || 0));
+      const sortedPages = [...pages].sort((a, b) => {
+        const dComp = a.date.localeCompare(b.date);
+        if (dComp !== 0) return dComp;
+        const tA = a.time || '00:00';
+        const tB = b.time || '00:00';
+        return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
+      });
       const pageWithPhoto = sortedPages.find(p => p.photos && p.photos.length > 0);
       const firstPhotoBlob = pageWithPhoto ? pageWithPhoto.photos[0] : null;
 
       list.push({
         trip,
-        daysCount: pages.length,
-        totalKm: computeTotalDistance(pages),
+        daysCount: new Set(pages.map(p => p.date)).size,
+        totalKm: computeTotalDistance(pages, trip.startOdo),
         firstPhotoBlob
       });
     }
