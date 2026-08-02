@@ -8,7 +8,9 @@ This document details the architecture, file structures, core algorithms, and st
 > [!IMPORTANT]
 > **Extreme Minimalism & UX Excellence:** The application must feel incredibly clean, fast, and quiet. There should be no visual noise, excess borders, or decorative clutter. Generous whitespace, elegant typewriter typography, and fluid micro-interactions define the premium, tactile feel.
 *   **Concept:** "Field notes, not dashboards." A tactile digital travel log.
-*   **Palette:** Warm paper (`#f4efe6`), dark ink (`#2b2926`), muted forest green (`#4a5d4e`).
+*   **Palette:** Dual-mode warm colors (system preferred + manual override):
+    *   *Light Mode (Cream Paper):* Background `#f4efe6`, text `#2b2926`, accent `#4a5d4e`.
+    *   *Dark Mode (Dark Ink/Brown):* Background `#1c1b18`, text `#ebdcb9`, accent `#6b8270`.
 *   **Typography:** Space Mono or Courier Prime (Typewriter monospace) for journal notes and entry text; JetBrains Mono (clean mechanical monospace) for odometer numbers, dates, and labels.
 *   **Motion:** Subtle page transitions and soft fades. Nothing flashy.
 
@@ -142,9 +144,10 @@ retread/
 - [x] Write integration test checks for DB read/writes and image compression constraints.
 
 ### **Phase 3: Design Tokens & Base UI**
-- [ ] Define variables in `src/styles.css` (Warm Paper tones, typography scales, monospace overrides).
+- [ ] Define light/dark variables in `src/styles.css` (Cream Paper & Dark Ink/Brown, typography scales, monospace overrides).
+- [ ] Implement reactive theme manager (local storage caching + system preference hook).
 - [ ] Build `src/ui/setup.tsx` screen for first-run configuration and Storage Manager persistent registration request.
-- [ ] Create the core dashboard layout `src/ui/home.tsx` displaying the trip list and settings menu.
+- [ ] Create the core dashboard layout `src/ui/home.tsx` displaying the trip list and settings menu (with theme toggle).
 - [ ] Implement the routing controller inside `src/App.tsx` responding to `#/...` hash paths.
 
 ### **Phase 4: Editors & Backup/Restore**

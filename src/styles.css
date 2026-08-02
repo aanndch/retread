@@ -1,4 +1,4 @@
-/* Design Tokens */
+/* Design Tokens - Light Theme (Default) */
 :root {
   --color-paper: #f4efe6;
   --color-paper-dim: #ebdcb9;
@@ -17,6 +17,38 @@
   --spacing-xl: 32px;
   
   --border-radius: 4px; /* minimal, sharp */
+}
+
+/* System Dark Theme Preference */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper: #1c1b18;
+    --color-paper-dim: #2b2926;
+    --color-ink: #ebdcb9;
+    --color-ink-muted: #a39f94;
+    --color-green: #6b8270;
+    --color-green-light: #839d89;
+  }
+}
+
+/* Explicit Override: Light Theme */
+html[data-theme="light"] {
+  --color-paper: #f4efe6;
+  --color-paper-dim: #ebdcb9;
+  --color-ink: #2b2926;
+  --color-ink-muted: #6e6a61;
+  --color-green: #4a5d4e;
+  --color-green-light: #6b8270;
+}
+
+/* Explicit Override: Dark Theme */
+html[data-theme="dark"] {
+  --color-paper: #1c1b18;
+  --color-paper-dim: #2b2926;
+  --color-ink: #ebdcb9;
+  --color-ink-muted: #a39f94;
+  --color-green: #6b8270;
+  --color-green-light: #839d89;
 }
 
 /* Global Reset */
