@@ -1,0 +1,84 @@
+/* Design Tokens */
+:root {
+  --color-paper: #f4efe6;
+  --color-paper-dim: #ebdcb9;
+  --color-ink: #2b2926;
+  --color-ink-muted: #6e6a61;
+  --color-green: #4a5d4e;
+  --color-green-light: #6b8270;
+  
+  --font-typewriter: 'Space Mono', 'Courier Prime', Courier, monospace;
+  --font-mechanical: 'JetBrains Mono', monospace;
+  
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  --border-radius: 4px; /* minimal, sharp */
+}
+
+/* Global Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-typewriter);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.app-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.viewport {
+  width: 100%;
+  max-width: 480px; /* Mobile-first bounds */
+  min-height: 100vh;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+header {
+  margin-top: var(--spacing-xl);
+  margin-bottom: var(--spacing-xl);
+}
+
+.logo {
+  font-family: var(--font-typewriter);
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: -1px;
+}
+
+.tagline {
+  font-family: var(--font-typewriter);
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  margin-top: var(--spacing-xs);
+}
+
+.placeholder-section {
+  font-family: var(--font-mechanical);
+  border: 1px dashed var(--color-ink-muted);
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+  font-size: 12px;
+  color: var(--color-green);
+}
