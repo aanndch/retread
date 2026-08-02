@@ -1000,6 +1000,7 @@ input[type=number] {
   box-shadow: 2px 2px 0px var(--color-shadow);
   margin-top: var(--spacing-md);
   margin-bottom: var(--spacing-md);
+  contain: layout paint;
 }
 
 .squiggle-map-empty {
@@ -1745,6 +1746,8 @@ input[type=number] {
   justify-content: center;
   cursor: grab;
   user-select: none;
+  will-change: transform;
+  contain: layout;
 }
 
 .map-zoom-inner:active {

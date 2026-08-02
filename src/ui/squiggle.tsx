@@ -1,9 +1,59 @@
+import { useMemo } from 'preact/hooks';
+
 interface SquiggleMapProps {
   path: { lat: number; lng: number }[];
   width?: number;
   height?: number;
   hideWrapper?: boolean;
   hideGrid?: boolean;
+  skipFilter?: boolean;
+}
+
+function simplifyPath(pts: { lat: number; lng: number }[], maxPoints: number): { lat: number; lng: number }[] {
+  if (pts.length <= maxPoints) return pts;
+
+  const sqSegDist = (p: { lat: number; lng: number }, a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+    let x = a.lng, y = a.lat;
+    let dx = b.lng - x, dy = b.lat - y;
+    if (dx !== 0 || dy !== 0) {
+      const t = ((p.lng - x) * dx + (p.lat - y) * dy) / (dx * dx + dy * dy);
+      if (t > 1) { x = b.lng; y = b.lat; }
+      else if (t > 0) { x += dx * t; y += dy * t; }
+    }
+    dx = p.lng - x;
+    dy = p.lat - y;
+    return dx * dx + dy * dy;
+  };
+
+  // Simple Douglas-Peucker: keep endpoints, recursively keep farthest points
+  const keep = new Set<number>([0, pts.length - 1]);
+
+  const recurse = (start: number, end: number) => {
+    if (end - start < 2) return;
+    let maxSqDist = 0;
+    let maxIdx = start;
+    for (let i = start + 1; i < end; i++) {
+      const d = sqSegDist(pts[i], pts[start], pts[end]);
+      if (d > maxSqDist) {
+        maxSqDist = d;
+        maxIdx = i;
+      }
+    }
+    if (maxIdx !== start && maxIdx !== end) {
+      keep.add(maxIdx);
+      recurse(start, maxIdx);
+      recurse(maxIdx, end);
+    }
+  };
+
+  recurse(0, pts.length - 1);
+
+  // If still too many points, sample evenly from kept points
+  const kept = Array.from(keep).sort((a, b) => a - b).map(i => pts[i]);
+  if (kept.length <= maxPoints) return kept;
+
+  const step = Math.ceil(kept.length / maxPoints);
+  return kept.filter((_, i) => i % step === 0 || i === kept.length - 1);
 }
 
 export function SquiggleMap({ 
@@ -11,7 +61,8 @@ export function SquiggleMap({
   width = 300, 
   height = 150, 
   hideWrapper = false, 
-  hideGrid = false 
+  hideGrid = false,
+  skipFilter = false
 }: SquiggleMapProps) {
   if (!path || path.length < 2) {
     return (
@@ -22,59 +73,55 @@ export function SquiggleMap({
     );
   }
 
-  // 1. Project spherical coordinates onto a flat aspect-ratio-locked SVG viewport
-  const lats = path.map(p => p.lat);
-  const lngs = path.map(p => p.lng);
-  
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
+  const simplified = useMemo(() => simplifyPath(path, 200), [path]);
 
-  const padding = 8;
-  const latSpan = Math.max(maxLat - minLat, 0.0001);
-  const lngSpan = Math.max(maxLng - minLng, 0.0001);
+  const { pathD, startPt, endPt } = useMemo(() => {
+    const lats = simplified.map(p => p.lat);
+    const lngs = simplified.map(p => p.lng);
+    
+    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+    for (let i = 0; i < lats.length; i++) {
+      if (lats[i] < minLat) minLat = lats[i];
+      if (lats[i] > maxLat) maxLat = lats[i];
+      if (lngs[i] < minLng) minLng = lngs[i];
+      if (lngs[i] > maxLng) maxLng = lngs[i];
+    }
 
-  // Calculate uniform scale factor to fit inside viewport bounds preserving shape proportions
-  const scaleX = (width - 2 * padding) / lngSpan;
-  const scaleY = (height - 2 * padding) / latSpan;
-  const scale = Math.min(scaleX, scaleY);
+    const padding = 8;
+    const latSpan = Math.max(maxLat - minLat, 0.0001);
+    const lngSpan = Math.max(maxLng - minLng, 0.0001);
 
-  // Center alignment calculations inside the viewBox
-  const xOffset = (width - lngSpan * scale) / 2;
-  const yOffset = (height - latSpan * scale) / 2;
+    const scaleX = (width - 2 * padding) / lngSpan;
+    const scaleY = (height - 2 * padding) / latSpan;
+    const scale = Math.min(scaleX, scaleY);
 
-  const points2D = path.map(p => {
-    const x = xOffset + (p.lng - minLng) * scale;
-    // Invert y because SVG y goes down, while latitude goes up
-    const y = yOffset + (maxLat - p.lat) * scale;
-    return { x, y };
-  });
+    const xOffset = (width - lngSpan * scale) / 2;
+    const yOffset = (height - latSpan * scale) / 2;
 
-  // 2. Generate smooth Bezier control points for the wobbly spline route
-  const getSplinePath = (pts: { x: number; y: number }[]): string => {
-    if (pts.length < 2) return '';
-    if (pts.length === 2) return `M ${pts[0].x} ${pts[0].y} L ${pts[1].x} ${pts[1].y}`;
+    const points2D = simplified.map(p => ({
+      x: xOffset + (p.lng - minLng) * scale,
+      y: yOffset + (maxLat - p.lat) * scale,
+    }));
 
-    let d = `M ${pts[0].x} ${pts[0].y}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[i];
-      const p1 = pts[i + 1];
-      
-      // Control points for a smooth Bezier spline
+    let d = `M ${points2D[0].x} ${points2D[0].y}`;
+    for (let i = 0; i < points2D.length - 1; i++) {
+      const p0 = points2D[i];
+      const p1 = points2D[i + 1];
       const cpX1 = p0.x + (p1.x - p0.x) / 3;
       const cpY1 = p0.y + (p1.y - p0.y) / 3;
       const cpX2 = p0.x + (2 * (p1.x - p0.x)) / 3;
       const cpY2 = p0.y + (2 * (p1.y - p0.y)) / 3;
-      
       d += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${p1.x} ${p1.y}`;
     }
-    return d;
-  };
 
-  const pathD = getSplinePath(points2D);
-  const startPt = points2D[0];
-  const endPt = points2D[points2D.length - 1];
+    return {
+      pathD: d,
+      startPt: points2D[0],
+      endPt: points2D[points2D.length - 1],
+    };
+  }, [simplified, width, height]);
+
+  const filterAttr = skipFilter ? undefined : 'url(#hand-drawn-wobble)';
 
   const svgContent = (
     <svg 
@@ -84,15 +131,15 @@ export function SquiggleMap({
       class="squiggle-map-svg"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <defs>
-        {/* Hand-drawn pencil/ink wobbly filter */}
-        <filter id="hand-drawn-wobble" x="-10%" y="-10%" width="120%" height="120%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="1" result="noise" />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-      </defs>
+      {!skipFilter && (
+        <defs>
+          <filter id="hand-drawn-wobble" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="1" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      )}
 
-      {/* Paper Grid Lines (Logbook style) */}
       {!hideGrid && (
         <g class="map-grid-lines">
           <line x1="0" y1="50" x2={width} y2="50" stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
@@ -102,10 +149,8 @@ export function SquiggleMap({
         </g>
       )}
 
-      {/* Snapped wobbly path */}
       {pathD && (
         <>
-          {/* Background Ink Bleed (Feathering) */}
           <path 
             d={pathD} 
             fill="none" 
@@ -114,9 +159,8 @@ export function SquiggleMap({
             stroke-linecap="round"
             stroke-linejoin="round"
             opacity="0.12"
-            filter="url(#hand-drawn-wobble)"
+            filter={filterAttr}
           />
-          {/* Foreground Core Pen Line */}
           <path 
             d={pathD} 
             fill="none" 
@@ -125,15 +169,14 @@ export function SquiggleMap({
             stroke-linecap="round"
             stroke-linejoin="round"
             opacity="0.9"
-            filter="url(#hand-drawn-wobble)"
-            class="map-route-path"
+            filter={filterAttr}
+            class={skipFilter ? undefined : 'map-route-path'}
           />
         </>
       )}
 
-      {/* Start Point Marker (Simple Dot) */}
       {startPt && (
-        <g filter="url(#hand-drawn-wobble)">
+        <g filter={filterAttr}>
           <circle 
             cx={startPt.x} 
             cy={startPt.y} 
@@ -143,30 +186,19 @@ export function SquiggleMap({
         </g>
       )}
 
-      {/* End Point Marker (Traveler's X Mark) */}
       {endPt && (() => {
         const cx = endPt.x;
         const cy = endPt.y;
         const r = 4.5;
         return (
-          <g filter="url(#hand-drawn-wobble)">
+          <g filter={filterAttr}>
             <line 
-              x1={cx - r} 
-              y1={cy - r} 
-              x2={cx + r} 
-              y2={cy + r} 
-              stroke="var(--color-green)" 
-              stroke-width="2.5" 
-              stroke-linecap="round"
+              x1={cx - r} y1={cy - r} x2={cx + r} y2={cy + r} 
+              stroke="var(--color-green)" stroke-width="2.5" stroke-linecap="round"
             />
             <line 
-              x1={cx + r} 
-              y1={cy - r} 
-              x2={cx - r} 
-              y2={cy + r} 
-              stroke="var(--color-green)" 
-              stroke-width="2.5" 
-              stroke-linecap="round"
+              x1={cx + r} y1={cy - r} x2={cx - r} y2={cy + r} 
+              stroke="var(--color-green)" stroke-width="2.5" stroke-linecap="round"
             />
           </g>
         );
@@ -174,9 +206,7 @@ export function SquiggleMap({
     </svg>
   );
 
-  if (hideWrapper) {
-    return svgContent;
-  }
+  if (hideWrapper) return svgContent;
 
   return (
     <div class="squiggle-map-wrapper">

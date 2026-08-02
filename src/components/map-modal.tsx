@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'preact/hooks';
+import { useState, useRef, useEffect, useCallback } from 'preact/hooks';
 import { SquiggleMap } from '../ui/squiggle';
 
 interface MapModalProps {
@@ -10,28 +10,39 @@ interface MapModalProps {
 export function MapModal({ isOpen, path, onClose }: MapModalProps) {
   if (!isOpen) return null;
 
-  const [mapScale, setMapScale] = useState(1);
-  const [mapOffset, setMapOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const zoomInnerRef = useRef<HTMLDivElement>(null);
+  const scaleRef = useRef(1);
+  const offsetRef = useRef({ x: 0, y: 0 });
   const mapTouchStart = useRef({ x: 0, y: 0 });
   const mapLastTouchDistance = useRef<number | null>(null);
 
-  // Bind popstate listener inside the modal itself so hardware back button closes it!
+  const updateTransform = useCallback(() => {
+    if (!zoomInnerRef.current) return;
+    const el = zoomInnerRef.current;
+    el.style.transform = `translate(${offsetRef.current.x}px, ${offsetRef.current.y}px) scale(${scaleRef.current})`;
+  }, []);
+
   useEffect(() => {
-    const handlePopState = () => {
-      onClose();
-    };
+    const handlePopState = () => onClose();
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [onClose]);
 
   const toggleMapZoom = (e: MouseEvent) => {
     e.stopPropagation();
-    if (mapScale > 1) {
-      setMapScale(1);
-      setMapOffset({ x: 0, y: 0 });
+    if (scaleRef.current > 1) {
+      scaleRef.current = 1;
+      offsetRef.current = { x: 0, y: 0 };
+      setIsZoomed(false);
     } else {
-      setMapScale(2.5);
+      scaleRef.current = 2.5;
+      setIsZoomed(true);
+    }
+    if (zoomInnerRef.current) {
+      zoomInnerRef.current.style.transition = 'transform 0.15s ease-out';
+      updateTransform();
     }
   };
 
@@ -39,31 +50,37 @@ export function MapModal({ isOpen, path, onClose }: MapModalProps) {
     if (e.touches.length === 1) {
       setIsDragging(true);
       mapTouchStart.current = {
-        x: e.touches[0].clientX - mapOffset.x,
-        y: e.touches[0].clientY - mapOffset.y,
+        x: e.touches[0].clientX - offsetRef.current.x,
+        y: e.touches[0].clientY - offsetRef.current.y,
       };
+      if (zoomInnerRef.current) zoomInnerRef.current.style.transition = 'none';
     } else if (e.touches.length === 2) {
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
       mapLastTouchDistance.current = dist;
+      if (zoomInnerRef.current) zoomInnerRef.current.style.transition = 'none';
     }
   };
 
   const handleMapTouchMove = (e: TouchEvent) => {
     if (e.touches.length === 1 && isDragging) {
-      const dx = e.touches[0].clientX - mapTouchStart.current.x;
-      const dy = e.touches[0].clientY - mapTouchStart.current.y;
-      setMapOffset({ x: dx, y: dy });
+      offsetRef.current = {
+        x: e.touches[0].clientX - mapTouchStart.current.x,
+        y: e.touches[0].clientY - mapTouchStart.current.y,
+      };
+      updateTransform();
     } else if (e.touches.length === 2 && mapLastTouchDistance.current !== null) {
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
       const factor = dist / mapLastTouchDistance.current;
-      setMapScale(s => Math.max(1, Math.min(4, s * factor)));
+      scaleRef.current = Math.max(1, Math.min(4, scaleRef.current * factor));
       mapLastTouchDistance.current = dist;
+      setIsZoomed(scaleRef.current > 1);
+      updateTransform();
     }
   };
 
@@ -75,16 +92,19 @@ export function MapModal({ isOpen, path, onClose }: MapModalProps) {
   const handleMapMouseDown = (e: MouseEvent) => {
     setIsDragging(true);
     mapTouchStart.current = {
-      x: e.clientX - mapOffset.x,
-      y: e.clientY - mapOffset.y,
+      x: e.clientX - offsetRef.current.x,
+      y: e.clientY - offsetRef.current.y,
     };
+    if (zoomInnerRef.current) zoomInnerRef.current.style.transition = 'none';
   };
 
   const handleMapMouseMove = (e: MouseEvent) => {
     if (isDragging) {
-      const dx = e.clientX - mapTouchStart.current.x;
-      const dy = e.clientY - mapTouchStart.current.y;
-      setMapOffset({ x: dx, y: dy });
+      offsetRef.current = {
+        x: e.clientX - mapTouchStart.current.x,
+        y: e.clientY - mapTouchStart.current.y,
+      };
+      updateTransform();
     }
   };
 
@@ -114,10 +134,9 @@ export function MapModal({ isOpen, path, onClose }: MapModalProps) {
         onMouseUp={handleMapMouseUp}
       >
         <div 
+          ref={zoomInnerRef}
           class="map-zoom-inner"
           style={{
-            transform: `translate(${mapOffset.x}px, ${mapOffset.y}px) scale(${mapScale})`,
-            transition: isDragging ? 'none' : 'transform 0.15s ease-out',
             width: '90vw',
             height: '70vh',
             maxWidth: '440px',
@@ -125,7 +144,7 @@ export function MapModal({ isOpen, path, onClose }: MapModalProps) {
           }}
           onDblClick={toggleMapZoom}
         >
-          <SquiggleMap path={path} width={400} height={400} hideWrapper hideGrid />
+          <SquiggleMap path={path} width={400} height={400} hideWrapper hideGrid skipFilter={isDragging || isZoomed} />
         </div>
       </div>
     </div>
