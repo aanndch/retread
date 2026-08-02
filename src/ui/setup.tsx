@@ -61,8 +61,8 @@ export function Setup({ onComplete }: SetupProps) {
           <span>{persisting ? 'Configuring persistent storage...' : 'Start Journaling'}</span>
           {!persisting && (
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <polyline points="15 5 22 12 15 19"></polyline>
             </svg>
           )}
         </button>

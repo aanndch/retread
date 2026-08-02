@@ -59,8 +59,8 @@ export function App() {
           <p class="placeholder-text">v1 Trip Detail Screen is under construction.</p>
           <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
+              <line x1="22" y1="12" x2="2" y2="12"></line>
+              <polyline points="9 19 2 12 9 5"></polyline>
             </svg>
             <span>Back Home</span>
           </button>
@@ -76,8 +76,8 @@ export function App() {
           <p class="placeholder-text">v1 Page Detail Screen is under construction.</p>
           <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
+              <line x1="22" y1="12" x2="2" y2="12"></line>
+              <polyline points="9 19 2 12 9 5"></polyline>
             </svg>
             <span>Back Home</span>
           </button>
@@ -92,8 +92,8 @@ export function App() {
           <p class="placeholder-text">v1 Page Editor is under construction.</p>
           <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
+              <line x1="22" y1="12" x2="2" y2="12"></line>
+              <polyline points="9 19 2 12 9 5"></polyline>
             </svg>
             <span>Back Home</span>
           </button>
@@ -108,8 +108,8 @@ export function App() {
           <p class="placeholder-text">v1 Backup Engine is under construction.</p>
           <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
+              <line x1="22" y1="12" x2="2" y2="12"></line>
+              <polyline points="9 19 2 12 9 5"></polyline>
             </svg>
             <span>Back Home</span>
           </button>
@@ -123,8 +123,8 @@ export function App() {
         <h3>Page Not Found</h3>
         <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
+              <line x1="22" y1="12" x2="2" y2="12"></line>
+              <polyline points="9 19 2 12 9 5"></polyline>
             </svg>
             <span>Back Home</span>
           </button>
