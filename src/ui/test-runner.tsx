@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'preact/hooks';
+import { ArrowLeft } from '../components/icons';
 import { computeTotalDistance } from '../lib';
 import { db } from '../db';
 
@@ -114,10 +115,7 @@ export function TestRunner() {
         </ul>
       )}
       <a href="#/" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '20px', color: 'var(--color-green)', textDecoration: 'underline' }}>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="22" y1="12" x2="2" y2="12"></line>
-          <polyline points="9 19 2 12 9 5"></polyline>
-        </svg>
+        <ArrowLeft size={12} />
         <span>Back to Home</span>
       </a>
     </div>

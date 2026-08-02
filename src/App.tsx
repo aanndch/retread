@@ -4,6 +4,8 @@ import { Home } from './ui/home';
 import { TestRunner } from './ui/test-runner';
 import { Editor } from './ui/editor';
 import { Backup } from './ui/backup';
+import { TripDetail } from './ui/trip-detail';
+import { PageDetail } from './ui/page-detail';
 
 export function App() {
   const [setupComplete, setSetupComplete] = useState(false);
@@ -55,36 +57,16 @@ export function App() {
     
     if (hash.startsWith('#/trip/')) {
       const tripId = hash.split('/').pop();
-      return (
-        <div class="placeholder-view">
-          <h3>Ride Log (ID: {tripId})</h3>
-          <p class="placeholder-text">v1 Trip Detail Screen is under construction.</p>
-          <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="22" y1="12" x2="2" y2="12"></line>
-              <polyline points="9 19 2 12 9 5"></polyline>
-            </svg>
-            <span>Back Home</span>
-          </button>
-        </div>
-      );
+      const parsedId = tripId ? parseInt(tripId, 10) : NaN;
+      if (isNaN(parsedId)) return <Home onNavigate={navigateTo} />;
+      return <TripDetail tripId={parsedId} onNavigate={navigateTo} />;
     }
 
     if (hash.startsWith('#/page/')) {
       const pageId = hash.split('/').pop();
-      return (
-        <div class="placeholder-view">
-          <h3>Page Detail (ID: {pageId})</h3>
-          <p class="placeholder-text">v1 Page Detail Screen is under construction.</p>
-          <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="22" y1="12" x2="2" y2="12"></line>
-              <polyline points="9 19 2 12 9 5"></polyline>
-            </svg>
-            <span>Back Home</span>
-          </button>
-        </div>
-      );
+      const parsedId = pageId ? parseInt(pageId, 10) : NaN;
+      if (isNaN(parsedId)) return <Home onNavigate={navigateTo} />;
+      return <PageDetail pageId={parsedId} onNavigate={navigateTo} />;
     }
 
     if (hash.startsWith('#/edit')) {

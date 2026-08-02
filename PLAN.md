@@ -164,7 +164,7 @@ retread/
 - [x] Build background OSRM backfiller task processing offline pins on launch.
 
 ### **Phase 6: Integration & Verification**
-- [ ] Connect trip timeline page `src/ui/trip.tsx` displaying chronological day cards and cumulative routes.
-- [ ] Assemble single-day screen `src/ui/page.tsx` showing notes, full photo carousels, and highlighted segment maps.
-- [ ] Perform offline simulation runs to check route fallbacks (named waypoints, straight lines, deferred snaps).
-- [ ] Run typescript compiler check (`npm run build`) and refine micro-animations.
+- [x] Connect trip timeline page `src/ui/trip-detail.tsx` displaying chronological day cards and cumulative routes.
+- [x] Assemble single-day screen `src/ui/page-detail.tsx` showing notes, full photo carousels, and highlighted segment maps.
+- [x] Perform offline simulation runs to check route fallbacks (named waypoints, straight lines, deferred snaps).
+- [x] Run typescript compiler check (`npm run build`) and refine micro-animations.
