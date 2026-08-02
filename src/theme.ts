@@ -1,17 +1,26 @@
-export type Theme = 'daylight' | 'nightfall' | 'monotone' | 'sepia' | 'midnight' | 'slate' | 'cyberpunk';
+export const Theme = {
+  Daylight: 'daylight',
+  Nightfall: 'nightfall',
+  Monotone: 'monotone',
+  Sepia: 'sepia',
+  Midnight: 'midnight',
+  Slate: 'slate',
+  Cyberpunk: 'cyberpunk',
+} as const;
+
+export type Theme = typeof Theme[keyof typeof Theme];
+
+const THEME_VALUES = new Set<string>(Object.values(Theme));
 
 /**
  * Retrieves the user's explicitly saved theme preference.
  */
 export function getSavedTheme(): Theme | null {
   const theme = localStorage.getItem('theme');
-  if (
-    theme === 'daylight' || theme === 'nightfall' || theme === 'monotone' ||
-    theme === 'sepia' || theme === 'midnight' || theme === 'slate' || theme === 'cyberpunk'
-  ) return theme;
+  if (theme && THEME_VALUES.has(theme)) return theme as Theme;
   // Migrate legacy values
-  if (theme === 'light') return 'daylight';
-  if (theme === 'dark') return 'nightfall';
+  if (theme === 'light') return Theme.Daylight;
+  if (theme === 'dark') return Theme.Nightfall;
   return null;
 }
 
@@ -52,5 +61,5 @@ export function getActiveTheme(): Theme {
   
   // Fall back to system preference
   const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return systemPrefersDark ? 'nightfall' : 'daylight';
+  return systemPrefersDark ? Theme.Nightfall : Theme.Daylight;
 }
