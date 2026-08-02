@@ -13,10 +13,12 @@ import {
   HASH_TRIP_PREFIX,
   HASH_PAGE_PREFIX,
 } from './constants';
+import { getSWUpdate } from './main';
 
 export function App() {
   const [setupComplete, setSetupComplete] = useState(false);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
+  const [hasSWUpdate, setHasSWUpdate] = useState(false);
 
   // Check setup status and monitor hash changes
   useEffect(() => {
@@ -29,9 +31,13 @@ export function App() {
       setSetupComplete(checkedSetup);
     };
 
+    const handleSWUpdate = () => setHasSWUpdate(true);
+
     window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('sw-update', handleSWUpdate);
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('sw-update', handleSWUpdate);
     };
   }, []);
 
@@ -104,6 +110,12 @@ export function App() {
 
   return (
     <div class="app-container">
+      {hasSWUpdate && (
+        <div class="sw-update-banner">
+          <span>New version available</span>
+          <button class="btn btn-primary btn-sm" onClick={() => getSWUpdate()?.()}>Refresh</button>
+        </div>
+      )}
       <main class="viewport">
         {renderRoute()}
       </main>

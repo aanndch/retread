@@ -287,7 +287,18 @@ export function Home({ onNavigate }: HomeProps) {
 
       <main class="trips-section">
         {tripsData === undefined ? (
-          <p class="loading-text">Reading logbooks...</p>
+          <div class="trips-grid">
+            {[1, 2, 3].map(i => (
+              <div key={i} class="skeleton-card">
+                <div class="skeleton-cover" />
+                <div class="skeleton-details">
+                  <div class="skeleton-line w60" />
+                  <div class="skeleton-line w80" />
+                  <div class="skeleton-line w40" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : tripsData.length === 0 ? (
           <div class="empty-state">
             <p>No rides logged yet.</p>
@@ -303,6 +314,7 @@ export function Home({ onNavigate }: HomeProps) {
                 totalKm={totalKm} 
                 firstPhotoBlob={firstPhotoBlob} 
                 routeSummary={routeSummary}
+                onNavigate={onNavigate}
               />
             ))}
           </div>
@@ -348,9 +360,10 @@ interface TripCardProps {
   totalKm: number;
   firstPhotoBlob: Blob | null;
   routeSummary: string;
+  onNavigate: (route: string) => void;
 }
 
-function TripCard({ trip, daysCount, totalKm, firstPhotoBlob, routeSummary }: TripCardProps) {
+function TripCard({ trip, daysCount, totalKm, firstPhotoBlob, routeSummary, onNavigate }: TripCardProps) {
   const [imgUrl, setImgUrl] = useState('');
 
   // Handle object URL lifecycle to prevent memory leaks
@@ -362,7 +375,7 @@ function TripCard({ trip, daysCount, totalKm, firstPhotoBlob, routeSummary }: Tr
   }, [firstPhotoBlob]);
 
   return (
-    <a href={`#/trip/${trip.id}`} class="trip-card-link">
+    <div class="trip-card-link" onClick={() => onNavigate(`#/trip/${trip.id}`)}>
       <div class="trip-card">
         <div class="trip-cover-container">
           {imgUrl ? (
@@ -387,6 +400,6 @@ function TripCard({ trip, daysCount, totalKm, firstPhotoBlob, routeSummary }: Tr
           </div>
         </div>
       </div>
-    </a>
+    </div>
   );
 }

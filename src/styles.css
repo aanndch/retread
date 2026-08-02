@@ -86,9 +86,28 @@ body {
   width: 100%;
 }
 
+.sw-update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background-color: var(--color-green);
+  color: var(--color-paper);
+  font-family: var(--font-mechanical);
+  font-size: 12px;
+}
+
+/* Mobile-only container: max-width 480px is intentional for phone layouts.
+   Desktop browsers see the same phone-width card, centered via body rules above. */
 .viewport {
   width: 100%;
-  max-width: 480px; /* Mobile-first bounds */
+  max-width: 480px;
   min-height: 100vh;
   padding: var(--spacing-lg);
   display: flex;
@@ -449,6 +468,7 @@ header {
 .trip-card-link {
   text-decoration: none;
   color: inherit;
+  cursor: pointer;
 }
 
 .trip-card {
@@ -524,6 +544,51 @@ header {
   color: var(--color-ink-muted);
   text-align: center;
   margin-top: var(--spacing-xl);
+}
+
+.skeleton-card {
+  display: flex;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  background-color: var(--color-paper);
+  overflow: hidden;
+  height: 90px;
+  box-shadow: 2px 2px 0px var(--color-shadow);
+}
+
+.skeleton-cover {
+  width: 90px;
+  height: 100%;
+  border-right: 1px solid var(--color-ink);
+  background: linear-gradient(90deg, var(--color-paper-dim) 25%, var(--color-ink-muted) 50%, var(--color-paper-dim) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+.skeleton-details {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+
+.skeleton-line {
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--color-paper-dim) 25%, var(--color-ink-muted) 50%, var(--color-paper-dim) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+.skeleton-line.w60 { width: 60%; }
+.skeleton-line.w40 { width: 40%; }
+.skeleton-line.w80 { width: 80%; }
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .empty-state {
