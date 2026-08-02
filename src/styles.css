@@ -1424,16 +1424,15 @@ input[type=number] {
 
 .typewriter-blockquote {
   font-family: var(--font-typewriter);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--color-ink);
   background-color: var(--color-paper);
-  border: 1px solid var(--color-ink);
-  border-left: 4px solid var(--color-ink);
-  padding: var(--spacing-md) var(--spacing-lg);
-  margin: 0;
-  box-shadow: 2px 2px 0px var(--color-shadow);
+  border: 1px solid var(--color-green);
   border-radius: var(--border-radius);
+  padding: 10px 14px;
+  margin: 0;
+  box-shadow: 3px 3px 0px var(--color-shadow);
   white-space: pre-wrap; /* Preserve rider paragraph breaks */
 }
 
