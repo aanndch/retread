@@ -9,7 +9,7 @@ import { MetricsStep } from './metrics-step';
 import { PhotosStep } from './photos-step';
 import { StoryStep } from './story-step';
 import { Button } from '../../components/button';
-import { CloseIcon } from '../../components/icons';
+import { PageHeader } from '../../components/page-header';
 
 export function parseCoordinates(text: string): { lat: number; lng: number } | null {
   // 1. Match standard coordinates: e.g. "31.2245, 77.3456"
@@ -624,24 +624,16 @@ export function Editor({ onNavigate }: EditorProps) {
 
   return (
     <div class="editor-container">
-      <header class="editor-header">
-        <h3 style={{ margin: 0 }}>
-          {mode === 'new-trip' && (tripTitle.trim() || 'New Ride')}
-          {mode === 'edit-trip' && 'Edit Ride Details'}
-          {mode === 'new-day' && 'Add New Leg'}
-          {mode === 'edit' && 'Edit Leg Details'}
-        </h3>
-        <Button
-          type="button"
-          variant="icon"
-          class="action-tiny"
-          aria-label="Cancel editor"
-          onClick={handleCancel}
-          style={{ padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <CloseIcon size={16} />
-        </Button>
-      </header>
+      <PageHeader
+        title={
+          mode === 'new-trip' ? (tripTitle.trim() || 'New Ride') :
+          mode === 'edit-trip' ? 'Edit Ride Details' :
+          mode === 'new-day' ? 'Add New Leg' :
+          mode === 'edit' ? 'Edit Leg Details' : ''
+        }
+        onBack={handleCancel}
+        classType="editor"
+      />
 
       {/* Progress Tab Indicator */}
       {mode !== 'new-trip' && mode !== 'edit-trip' && (

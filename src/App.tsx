@@ -6,6 +6,13 @@ import { Editor } from './ui/editor';
 import { Backup } from './ui/backup';
 import { TripDetail } from './ui/trip-detail';
 import { PageDetail } from './ui/page-detail';
+import {
+  HASH_HOME,
+  HASH_BACKUP,
+  HASH_EDIT,
+  HASH_TRIP_PREFIX,
+  HASH_PAGE_PREFIX,
+} from './constants';
 
 export function App() {
   const [setupComplete, setSetupComplete] = useState(false);
@@ -45,9 +52,9 @@ export function App() {
 
   // 2. Hash Route Router
   const renderRoute = () => {
-    const hash = currentHash || '#/';
+    const hash = currentHash || HASH_HOME;
 
-    if (hash === '#/' || hash === '') {
+    if (hash === HASH_HOME || hash === '') {
       return <Home onNavigate={navigateTo} />;
     }
     
@@ -58,25 +65,25 @@ export function App() {
       return <Home onNavigate={navigateTo} />;
     }
     
-    if (hash.startsWith('#/trip/')) {
+    if (hash.startsWith(HASH_TRIP_PREFIX)) {
       const tripId = hash.split('/').pop();
       const parsedId = tripId ? parseInt(tripId, 10) : NaN;
       if (isNaN(parsedId)) return <Home onNavigate={navigateTo} />;
       return <TripDetail tripId={parsedId} onNavigate={navigateTo} />;
     }
 
-    if (hash.startsWith('#/page/')) {
+    if (hash.startsWith(HASH_PAGE_PREFIX)) {
       const pageId = hash.split('/').pop();
       const parsedId = pageId ? parseInt(pageId, 10) : NaN;
       if (isNaN(parsedId)) return <Home onNavigate={navigateTo} />;
       return <PageDetail pageId={parsedId} onNavigate={navigateTo} />;
     }
 
-    if (hash.startsWith('#/edit')) {
+    if (hash.startsWith(HASH_EDIT)) {
       return <Editor onNavigate={navigateTo} />;
     }
 
-    if (hash === '#/backup') {
+    if (hash === HASH_BACKUP) {
       return <Backup onNavigate={navigateTo} />;
     }
 
@@ -84,7 +91,7 @@ export function App() {
     return (
       <div class="placeholder-view">
         <h3>Page Not Found</h3>
-        <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo('#/')}>
+        <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo(HASH_HOME)}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
               <line x1="22" y1="12" x2="2" y2="12"></line>
               <polyline points="9 19 2 12 9 5"></polyline>

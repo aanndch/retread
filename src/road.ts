@@ -1,5 +1,11 @@
 import { db } from './db';
-
+import { 
+  SNAP_THRESHOLD_KM, 
+  OSRM_DRIVING_BASE_URL, 
+  DIRECT_DIST_LIMIT_KM, 
+  DETOUR_RATIO_LONG, 
+  DETOUR_FLAT_SHORT_KM 
+} from './constants';
 
 // Compute Haversine distance in kilometers between two GPS points
 export function haversineDistance(p1: { lat: number; lng: number }, p2: { lat: number; lng: number }): number {
@@ -26,12 +32,12 @@ export async function snapLeg(
   const directDist = haversineDistance(from, to);
   
   // Safeguard: If points are basically identical, return direct line
-  if (directDist < 0.05) {
+  if (directDist < SNAP_THRESHOLD_KM) {
     return [from, to];
   }
 
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
+    const url = `${OSRM_DRIVING_BASE_URL}${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`OSRM API error: ${res.statusText}`);
@@ -42,8 +48,10 @@ export async function snapLeg(
       const route = data.routes[0];
       const osrmKm = route.distance / 1000;
       
-      // Safeguard: If OSRM distance is > 10x direct distance AND direct distance is significant (> 1km), drop snap
-      const isDetour = directDist > 1.0 ? (osrmKm > 10 * directDist) : (osrmKm > 15.0);
+      // Safeguard: If OSRM distance is > DETOUR_RATIO_LONG * direct distance AND direct distance is significant, drop snap
+      const isDetour = directDist > DIRECT_DIST_LIMIT_KM 
+        ? (osrmKm > DETOUR_RATIO_LONG * directDist) 
+        : (osrmKm > DETOUR_FLAT_SHORT_KM);
       if (isDetour) {
         console.warn(`OSRM detour safety triggered: OSRM is ${osrmKm.toFixed(1)}km vs direct ${directDist.toFixed(1)}km. Dropping snap.`);
         return [from, to];

@@ -1,7 +1,9 @@
+import { MAX_IMAGE_EDGE, IMAGE_COMPRESSION_QUALITY } from './constants';
+
 /**
  * Compresses an uploaded image file client-side.
- * Resizes the image to have a maximum edge length of 1600px
- * and exports it as a 80% quality JPEG blob.
+ * Resizes the image to have a maximum edge length of MAX_IMAGE_EDGE
+ * and exports it as a IMAGE_COMPRESSION_QUALITY quality JPEG blob.
  */
 export function compressImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -18,16 +20,15 @@ export function compressImage(file: File): Promise<Blob> {
 
       let width = img.width;
       let height = img.height;
-      const maxEdge = 1600;
 
       // Calculate new dimensions maintaining aspect ratio
-      if (width > maxEdge || height > maxEdge) {
+      if (width > MAX_IMAGE_EDGE || height > MAX_IMAGE_EDGE) {
         if (width > height) {
-          height = Math.round((height * maxEdge) / width);
-          width = maxEdge;
+          height = Math.round((height * MAX_IMAGE_EDGE) / width);
+          width = MAX_IMAGE_EDGE;
         } else {
-          width = Math.round((width * maxEdge) / height);
-          height = maxEdge;
+          width = Math.round((width * MAX_IMAGE_EDGE) / height);
+          height = MAX_IMAGE_EDGE;
         }
       }
 
@@ -53,7 +54,7 @@ export function compressImage(file: File): Promise<Blob> {
           }
         },
         'image/jpeg',
-        0.8 // 80% quality
+        IMAGE_COMPRESSION_QUALITY
       );
     };
 

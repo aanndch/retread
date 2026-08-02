@@ -3,7 +3,8 @@ import { db } from '../db';
 import { Button } from '../components/button';
 import { ConfirmModal } from '../components/confirm-modal';
 import { Toast, useToast } from '../components/toast';
-import { ArrowLeft } from '../components/icons';
+import { PageHeader } from '../components/page-header';
+import { HASH_HOME } from '../constants';
 import type { Trip, LocationUnion } from '../types';
 import type { JSX } from 'preact';
 
@@ -243,17 +244,12 @@ export function Backup({ onNavigate }: BackupProps) {
 
   return (
     <div class="backup-container">
-      <header class="backup-header">
-        <Button 
-          variant="icon" 
-          aria-label="Back" 
-          onClick={() => onNavigate('#/')}
-          disabled={working}
-        >
-          <ArrowLeft />
-        </Button>
-        <h3>Backup & Restore</h3>
-      </header>
+      <PageHeader 
+        title="Backup & Restore" 
+        onBack={() => onNavigate(HASH_HOME)} 
+        classType="backup" 
+        disabled={working}
+      />
 
       <main class="backup-card">
         <p class="backup-description">

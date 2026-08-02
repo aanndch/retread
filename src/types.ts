@@ -1,9 +1,12 @@
+export type DistanceMode = 'km' | 'odo';
+export type EditorMode = 'new-trip' | 'edit-trip' | 'new-day' | 'edit';
+
 export interface Trip {
   id?: number;
   title: string;
   createdAt: string; // ISO String
   startLocation?: LocationUnion | null; // Departure pin
-  distanceMode?: 'km' | 'odo'; // Preferred distance logging style
+  distanceMode?: DistanceMode; // Preferred distance logging style
   startOdo?: number | null; // Starting odometer reading (only for odo mode)
 }
 
