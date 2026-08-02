@@ -124,11 +124,6 @@ body {
   box-sizing: border-box;
 }
 
-header {
-  margin-top: 0;
-  margin-bottom: var(--spacing-md);
-}
-
 .logo {
   font-family: var(--font-typewriter);
   font-weight: 700;
@@ -641,16 +636,18 @@ header {
   display: flex;
   flex-direction: column;
   flex: 1; /* Stretch to fill the entire remaining height of the locked viewport */
-  margin-top: var(--spacing-md);
 }
 
-.editor-header {
+.editor-header,
+.backup-header,
+.detail-header {
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-lg);
+  width: 100%;
+  margin-bottom: var(--spacing-md);
   border-bottom: 1px dashed var(--color-paper-dim);
-  padding-bottom: var(--spacing-xs);
+  padding-bottom: var(--spacing-sm);
 }
 
 .editor-form {
@@ -888,16 +885,6 @@ header {
 .backup-container {
   display: flex;
   flex-direction: column;
-  margin-top: var(--spacing-md);
-}
-
-.backup-header {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-xl);
-  border-bottom: 1px dashed var(--color-paper-dim);
-  padding-bottom: var(--spacing-xs);
 }
 
 .backup-header h3 {
@@ -1123,16 +1110,6 @@ input[type=number] {
 .page-detail-container {
   display: flex;
   flex-direction: column;
-}
-
-.detail-header {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-sm);
-  width: 100%;
-  margin-bottom: var(--spacing-md);
-  border-bottom: 1px dashed var(--color-paper-dim);
-  padding-bottom: var(--spacing-sm);
 }
 
 .header-titles {
