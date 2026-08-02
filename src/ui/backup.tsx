@@ -273,7 +273,7 @@ export function Backup({ onNavigate }: BackupProps) {
             <h4>Export Database</h4>
             <p class="action-help">Downloads all rides, daily logs, coordinates, and photo attachments as a single JSON file.</p>
             <Button 
-              variant="primary" 
+              variant="secondary" 
               onClick={handleExport} 
               disabled={working}
             >

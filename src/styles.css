@@ -834,12 +834,14 @@ header {
   background-color: var(--color-paper);
   padding: var(--spacing-lg);
   box-shadow: 4px 4px 0px var(--color-shadow);
+  font-family: var(--font-typewriter);
 }
 
 .backup-description {
-  font-size: 13px;
+  font-family: var(--font-typewriter);
+  font-size: 13.5px;
   color: var(--color-ink-muted);
-  line-height: 1.5;
+  line-height: 1.6;
   margin-bottom: var(--spacing-lg);
 }
 
@@ -882,16 +884,17 @@ header {
 }
 
 .action-help {
-  font-size: 11px;
+  font-family: var(--font-typewriter);
+  font-size: 11.5px;
   color: var(--color-ink-muted);
-  line-height: 1.4;
-  margin-bottom: var(--spacing-sm);
+  line-height: 1.5;
+  margin-bottom: var(--spacing-md);
 }
 
 .divider {
   border: none;
   border-top: 1px dashed var(--color-paper-dim);
-  margin: var(--spacing-sm) 0;
+  margin: var(--spacing-md) 0;
 }
 
 /* Wizard Step Progress Tracker */
