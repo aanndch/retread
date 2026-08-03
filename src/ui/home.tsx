@@ -68,6 +68,7 @@ interface HomeProps {
 export function Home({ onNavigate }: HomeProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [themeMode, setThemeMode] = useState<'system' | Theme>('system');
+  const [showSkeleton, setShowSkeleton] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
 
   // Load saved theme preference on mount
@@ -127,6 +128,13 @@ export function Home({ onNavigate }: HomeProps) {
     
     return list;
   });
+
+  // Only show skeleton after a 200ms delay to avoid flash on fast loads
+  useEffect(() => {
+    if (tripsData !== undefined) return;
+    const timer = setTimeout(() => setShowSkeleton(true), 200);
+    return () => clearTimeout(timer);
+  }, [tripsData]);
 
   const handleThemeChange = (mode: string) => {
     const theme = mode as 'system' | Theme;
@@ -234,18 +242,20 @@ export function Home({ onNavigate }: HomeProps) {
       <main class="trips-section">
 
         {tripsData === undefined ? (
-          <div class="trips-grid">
-            {[1, 2, 3].map(i => (
-              <div key={i} class="skeleton-card">
-                <div class="skeleton-cover" />
-                <div class="skeleton-details">
-                  <div class="skeleton-line w60" />
-                  <div class="skeleton-line w80" />
-                  <div class="skeleton-line w40" />
+          showSkeleton ? (
+            <div class="trips-grid">
+              {[1, 2, 3].map(i => (
+                <div key={i} class="skeleton-card">
+                  <div class="skeleton-cover" />
+                  <div class="skeleton-details">
+                    <div class="skeleton-line w60" />
+                    <div class="skeleton-line w80" />
+                    <div class="skeleton-line w40" />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : null
         ) : tripsData.length === 0 ? (
           <div class="empty-state">
             <p class="empty-state-title">No rides logged yet.</p>
