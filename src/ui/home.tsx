@@ -10,6 +10,57 @@ import { getSavedTheme, saveTheme, Theme } from '../theme';
 import { seedDemoRide } from './seed-demo';
 import type { Trip } from '../types';
 
+export function TypewriterKey({ size = 40 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" style={{ display: 'block', flexShrink: 0 }}>
+      <defs>
+        <radialGradient id="chromeBezel" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+          <stop offset="0%" stop-color="#FFFFFF" />
+          <stop offset="40%" stop-color="#E1E1E1" />
+          <stop offset="70%" stop-color="#9C9C9C" />
+          <stop offset="90%" stop-color="#D6D6D6" />
+          <stop offset="100%" stop-color="#555555" />
+        </radialGradient>
+        <radialGradient id="responsiveDarkFace" cx="50%" cy="50%" r="45%" fx="40%" fy="40%">
+          <stop offset="0%" stop-color="var(--color-ink)" stop-opacity="0.8" />
+          <stop offset="80%" stop-color="var(--color-ink)" stop-opacity="0.95" />
+          <stop offset="100%" stop-color="var(--color-ink)" />
+        </radialGradient>
+        <filter id="subtleWobble" x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="noise" />
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.2" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </defs>
+      {/* Soft shadow */}
+      <rect x="4" y="8" width="92" height="88" rx="16" ry="16" fill="var(--color-shadow)" filter="blur(1.5px)" />
+      {/* Metallic chrome bezel */}
+      <rect x="4" y="4" width="92" height="88" rx="16" ry="16" fill="url(#chromeBezel)" />
+      <rect x="7" y="7" width="86" height="82" rx="13" ry="13" fill="#333333" />
+      <rect x="8" y="8" width="84" height="80" rx="12" ry="12" fill="#D2D2D2" />
+      <rect x="10" y="10" width="80" height="76" rx="10" ry="10" fill="#777777" />
+      {/* Responsive dark keycap face */}
+      <rect x="11" y="11" width="78" height="74" rx="9" ry="9" fill="url(#responsiveDarkFace)" />
+      {/* Inner rim highlight */}
+      <rect x="13" y="13" width="74" height="70" rx="8" ry="8" fill="none" stroke="#FFFFFF" stroke-width="0.7" opacity="0.15" />
+      {/* Letter R - centered vertically and horizontally */}
+      <text 
+        x="50" 
+        y="52" 
+        dominant-baseline="central"
+        font-family="Courier New, Courier, monospace" 
+        font-weight="900" 
+        font-size="44" 
+        fill="var(--color-paper)" 
+        text-anchor="middle" 
+        filter="url(#subtleWobble)"
+        style={{ letterSpacing: '0' }}
+      >
+        R
+      </text>
+    </svg>
+  );
+}
+
 interface HomeProps {
   onNavigate: (route: string) => void;
 }
@@ -98,11 +149,14 @@ export function Home({ onNavigate }: HomeProps) {
     <div class="home-container">
       {/* Top Header Bar */}
       <header class="home-header">
-        <div>
-          <h1 class="logo">retread</h1>
-          {tripsData && tripsData.length === 0 && (
-            <p class="tagline home-tagline">A logbook for well-tread rides.</p>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <TypewriterKey size={42} />
+          <div>
+            <h1 class="logo" style={{ margin: 0, lineHeight: 1 }}>retread</h1>
+            {tripsData && tripsData.length === 0 && (
+              <p class="tagline home-tagline" style={{ margin: 0, marginTop: 'var(--spacing-xs)' }}>A logbook for well-tread rides.</p>
+            )}
+          </div>
         </div>
         <Button 
           variant="icon" 
@@ -178,6 +232,7 @@ export function Home({ onNavigate }: HomeProps) {
       )}
 
       <main class="trips-section">
+
         {tripsData === undefined ? (
           <div class="trips-grid">
             {[1, 2, 3].map(i => (
