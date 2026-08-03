@@ -212,10 +212,14 @@ body {
   border-radius: var(--border-radius);
   border: 1px solid var(--color-ink);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.1s ease, box-shadow 0.1s ease;
   background: transparent;
   color: var(--color-ink);
   text-decoration: none;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .btn-primary {
@@ -284,6 +288,13 @@ body {
   font-size: 24px;
   color: var(--color-ink-muted);
   cursor: pointer;
+}
+
+.btn-icon:active,
+.btn-close:active,
+.btn-clear:active {
+  transform: scale(0.9);
+  opacity: 0.8;
 }
 
 /* Floating Action Button */
@@ -458,7 +469,7 @@ body {
   border-top-left-radius: var(--border-radius);
   border-top-right-radius: var(--border-radius);
   padding: var(--spacing-lg);
-  animation: slide-up 0.25s ease-out;
+  animation: slide-up 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 -8px 24px rgba(0,0,0,0.1);
 }
 
@@ -545,6 +556,11 @@ body {
 .trip-card:hover {
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0px var(--color-shadow);
+}
+
+.trip-card:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px var(--color-shadow);
 }
 
 .trip-cover-container {
@@ -1299,6 +1315,11 @@ input[type=number] {
 .timeline-card-item:hover {
   transform: translate(-1px, -1px);
   box-shadow: 3px 3px 0px var(--color-shadow);
+}
+
+.timeline-card-item:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px var(--color-shadow);
 }
 
 .timeline-card-side {
