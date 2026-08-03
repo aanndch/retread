@@ -1729,9 +1729,7 @@ input[type=number] {
   align-items: center;
   gap: var(--spacing-sm);
   border-bottom: 1px solid var(--color-ink);
-  padding-bottom: var(--spacing-xs);
-  padding-left: 2px;
-  padding-right: 2px;
+  padding: var(--spacing-sm) 2px;
   margin: 0 -2px var(--spacing-sm) -2px;
   position: sticky;
   top: 0;
@@ -1756,7 +1754,7 @@ input[type=number] {
 
 .day-group-weekday {
   font-family: var(--font-typewriter);
-  font-size: 16px;
+  font-size: 19px;
   font-weight: bold;
   color: var(--color-ink);
 }
@@ -1786,15 +1784,6 @@ input[type=number] {
   flex-direction: column;
   gap: var(--spacing-sm);
   position: relative;
-}
-
-.day-group-body::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 6px;
-  border-left: 1px dashed var(--color-paper-dim);
 }
 
 .timeline-card-item {
