@@ -1917,5 +1917,90 @@ input[type=number] {
   z-index: 1010;
 }
 
+/* ─── Info Modal Internals ────────────────────────────────────────────────── */
 
+.info-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.info-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.info-modal-text {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.info-modal-text-sm {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+  margin: var(--spacing-xs) 0 0 0;
+}
+
+.info-modal-steps {
+  background-color: var(--color-paper-dim);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  border-left: 3px solid var(--color-ink-muted);
+}
+
+.info-modal-step-title {
+  font-family: var(--font-typewriter);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0 0 var(--spacing-sm) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-modal-ol,
+.info-modal-ul {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.info-modal-ol li,
+.info-modal-ul li {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+}
+
+.info-modal-ol li strong,
+.info-modal-ul li strong {
+  color: var(--color-ink);
+}
+
+.info-modal-icon-hint {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.info-modal-callout {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: var(--color-paper-dim);
+  border-radius: var(--border-radius);
+  border-left: 3px solid var(--color-error);
+}
+
+.info-modal-callout-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
 

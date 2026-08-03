@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { Setup } from './ui/setup';
+import { PWAInstallPrompt, IOSBackupReminder, useAppPrompts } from './components/app-prompts';
 import { Home } from './ui/home';
 import { TestRunner } from './ui/test-runner';
 import { Editor } from './ui/editor';
@@ -19,6 +20,9 @@ export function App() {
   const [setupComplete, setSetupComplete] = useState(false);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [hasSWUpdate, setHasSWUpdate] = useState(false);
+  const appPrompt = useAppPrompts();
+  const [dismissedPrompt, setDismissedPrompt] = useState(false);
+  const activePrompt = dismissedPrompt ? null : appPrompt;
 
   // Check setup status and monitor hash changes
   useEffect(() => {
@@ -119,6 +123,16 @@ export function App() {
       <main class="viewport">
         {renderRoute()}
       </main>
+
+      {activePrompt === 'pwa-install' && (
+        <PWAInstallPrompt onClose={() => setDismissedPrompt(true)} />
+      )}
+      {activePrompt === 'ios-backup' && (
+        <IOSBackupReminder
+          onClose={() => setDismissedPrompt(true)}
+          onNavigate={navigateTo}
+        />
+      )}
     </div>
   );
 }
