@@ -1621,6 +1621,10 @@ input[type=number] {
   font-weight: bold;
 }
 
+.leg-trail .trail-name {
+  max-width: 150px;
+}
+
 /* Ride map hero */
 .ride-map-hero {
   margin-bottom: var(--spacing-md);
@@ -1954,60 +1958,6 @@ input[type=number] {
   border-color: var(--color-error);
 }
 
-/* Page Detail layout */
-.segment-map-section {
-  margin-bottom: var(--spacing-md);
-}
-
-.segment-map-title {
-  font-family: var(--font-mechanical);
-  font-size: 10px;
-  color: var(--color-ink-muted);
-  text-transform: uppercase;
-  display: block;
-  margin-bottom: var(--spacing-xs);
-}
-
-.page-metrics-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
-}
-
-.metric-badge {
-  border: 1px solid var(--color-ink);
-  border-radius: var(--border-radius);
-  background-color: var(--color-paper-dim);
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 90px;
-  box-shadow: 1px 1px 0px var(--color-shadow);
-}
-
-.location-badge-wide {
-  flex: 2;
-  min-width: 180px;
-}
-
-.badge-label {
-  font-size: 9px;
-  font-family: var(--font-mechanical);
-  color: var(--color-ink-muted);
-  text-transform: uppercase;
-  margin-bottom: 2px;
-}
-
-.badge-value {
-  font-size: 13px;
-  font-family: var(--font-typewriter);
-  font-weight: bold;
-  color: var(--color-ink);
-  word-break: break-all;
-}
-
 /* Gallery Carousel styling */
 .gallery-carousel {
   overflow: hidden;
@@ -2065,6 +2015,16 @@ input[type=number] {
   margin-bottom: var(--spacing-lg);
 }
 
+.note-label {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: var(--spacing-xs);
+}
+
 .typewriter-blockquote {
   font-family: var(--font-typewriter);
   font-size: 14px;
@@ -2094,23 +2054,57 @@ input[type=number] {
   margin-bottom: 0;
 }
 
-.page-nav-group {
+.leg-pager {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+  border-top: 1px dashed var(--color-paper-dim);
+  padding-top: var(--spacing-md);
 }
 
-.page-nav-label {
+.pager-half {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font-family: var(--font-mechanical);
+  padding: 4px 0;
+}
+
+.pager-half-right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.pager-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.pager-date {
   font-family: var(--font-typewriter);
   font-size: 12px;
-  color: var(--color-ink-muted);
+  font-weight: bold;
+  color: var(--color-ink);
   white-space: nowrap;
 }
 
-.page-edit-group {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-lg);
+.pager-center {
+  flex-shrink: 0;
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0 var(--spacing-xs);
 }
 
 .card-day-title {

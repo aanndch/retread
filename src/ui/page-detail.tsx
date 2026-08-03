@@ -10,16 +10,40 @@ import {
   TrashIcon,
 } from "../components/icons";
 import { SquiggleMap } from "./squiggle";
-import { PageHeader } from "../components/page-header";
 import { MapModal } from "../components/map-modal";
 import { PhotoOverlay } from "../components/photo-overlay";
 import { backfillTripRoutes } from "../road";
 import { formatIsoDateToDMY } from "../lib";
-import type { Page } from "../types";
+import type { Page, LocationUnion } from "../types";
 
 interface PageDetailProps {
   pageId: number;
   onNavigate: (route: string) => void;
+}
+
+function locationName(loc?: LocationUnion | null): string {
+  if (!loc) return "";
+  if (loc.name) return loc.name;
+  if (loc.kind === "gps") {
+    return `[${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}]`;
+  }
+  return "Named";
+}
+
+function LegTrail({ start, end }: { start: string; end: string }) {
+  return (
+    <div class="ride-trail leg-trail" role="img" aria-label={`Route: ${start} to ${end}`}>
+      <span class="trail-stop is-start">
+        <span class="trail-dot" aria-hidden="true" />
+        <span class="trail-name">{start}</span>
+      </span>
+      <span class="trail-line" aria-hidden="true" />
+      <span class="trail-stop is-end">
+        <span class="trail-dot" aria-hidden="true" />
+        <span class="trail-name">{end}</span>
+      </span>
+    </div>
+  );
 }
 
 export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
@@ -29,9 +53,15 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [legDistance, setLegDistance] = useState<number | null>(null);
+  const [legNum, setLegNum] = useState(0);
+  const [totalLegs, setTotalLegs] = useState(0);
+  const [trailStart, setTrailStart] = useState("");
+  const [trailEnd, setTrailEnd] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [prevPageId, setPrevPageId] = useState<number | null>(null);
   const [nextPageId, setNextPageId] = useState<number | null>(null);
+  const [prevDate, setPrevDate] = useState("");
+  const [nextDate, setNextDate] = useState("");
   const { toasts, showToast, removeToast } = useToast();
 
   // Fullscreen Photo Modal states & handlers
@@ -67,7 +97,6 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [showPhotoModal, showMapModal]);
-
 
   const photoUrlsRef = useRef<string[]>([]);
   const touchStartX = useRef(0);
@@ -119,14 +148,25 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
           }
         }
 
+        // Trail: start = trip departure (first leg) or previous leg's end point
+        const startLoc =
+          myIdx === 0 ? tripRecord?.startLocation : sorted[myIdx - 1]?.location;
+        const endLoc = pageRecord.location;
+
         if (active) {
           setPage(pageRecord);
           setTripTitle(tripName);
           setPhotoUrls(urls);
           photoUrlsRef.current = urls;
           setLegDistance(computedLeg);
+          setLegNum(myIdx + 1);
+          setTotalLegs(sorted.length);
+          setTrailStart(locationName(startLoc));
+          setTrailEnd(locationName(endLoc));
           setPrevPageId(myIdx > 0 ? sorted[myIdx - 1].id ?? null : null);
           setNextPageId(myIdx < sorted.length - 1 ? sorted[myIdx + 1].id ?? null : null);
+          setPrevDate(myIdx > 0 ? formatIsoDateToDMY(sorted[myIdx - 1].date) : "");
+          setNextDate(myIdx < sorted.length - 1 ? formatIsoDateToDMY(sorted[myIdx + 1].date) : "");
           setLoading(false);
         }
       } catch (err) {
@@ -165,65 +205,95 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
 
   if (!page) return null;
 
-  const displayDate = formatIsoDateToDMY(page.date);
   const shortDate = formatIsoDateToDMY(page.date);
 
   return (
     <div class="page-detail-container">
-      <PageHeader
-        title={page.title || displayDate}
-        onBack={() => onNavigate(`#/trip/${page.tripId}`)}
-        subTitle={
-          <span class="trip-name-sub">
-            {page.title ? `${displayDate} • ${tripTitle}` : tripTitle}
-          </span>
-        }
-        classType="detail"
-      />
+      {/* Top bar: back + edit + delete */}
+      <header class="ride-topbar">
+        <Button
+          variant="icon"
+          aria-label="Back"
+          onClick={() => onNavigate(`#/trip/${page.tripId}`)}
+        >
+          <ArrowLeft />
+        </Button>
+        <div class="ride-topbar-spacer" />
+        <Button
+          variant="icon"
+          aria-label="Edit leg"
+          onClick={() => onNavigate(`#/edit?mode=edit&pageId=${pageId}`)}
+        >
+          <EditIcon size={14} />
+        </Button>
+        <Button
+          variant="icon"
+          class="btn-danger-text btn-icon-text"
+          aria-label="Delete leg"
+          onClick={() => setShowDeleteModal(true)}
+        >
+          <TrashIcon size={14} />
+        </Button>
+      </header>
 
       <main class="page-detail-content">
-        {page.roadPath && page.roadPath.length >= 2 ? (
-          <div class="segment-map-section" onClick={openMapModal}>
-            <span class="segment-map-title">Route Segment Map</span>
-            <div class="map-interactive-trigger">
-              <SquiggleMap path={page.roadPath} />
+        {/* Hero: kicker, title, leg route trail */}
+        <section class="ride-hero">
+          <span class="ride-hero-kicker">
+            {tripTitle} · Leg {legNum} of {totalLegs} · {shortDate}
+          </span>
+          <h1 class="ride-hero-title">{page.title || "Day Log"}</h1>
+          {trailStart && trailEnd && (
+            <LegTrail start={trailStart} end={trailEnd} />
+          )}
+        </section>
+
+        {/* Segment route map */}
+        <section class="ride-map-hero">
+          {page.roadPath && page.roadPath.length >= 2 ? (
+            <div class="map-interactive-trigger" onClick={openMapModal}>
+              <SquiggleMap path={page.roadPath} width={430} height={200} />
             </div>
-          </div>
-        ) : (
-          page.location?.kind === "gps" && (
-            <div class="segment-map-section" onClick={() => openMapModal()}>
-              <span class="segment-map-title">Destination Coordinate</span>
-              <div class="map-interactive-trigger">
+          ) : (
+            page.location?.kind === "gps" && (
+              <div class="map-interactive-trigger" onClick={() => openMapModal()}>
                 <SquiggleMap
                   path={[
                     { lat: page.location.lat, lng: page.location.lng },
                     { lat: page.location.lat, lng: page.location.lng },
                   ]}
+                  width={430}
+                  height={200}
                 />
               </div>
-            </div>
-          )
-        )}
+            )
+          )}
+        </section>
 
-        <section class="page-metrics-strip">
-          {legDistance !== null && (
-            <div class="metric-badge">
-              <span class="badge-label">Leg Distance</span>
-              <span class="badge-value">{legDistance} km</span>
-            </div>
-          )}
-          {page.location && (
-            <div class="metric-badge location-badge-wide">
-              <span class="badge-label">End Point</span>
-              <span class="badge-value">
-                📍{" "}
-                {page.location.name ||
-                  (page.location.kind === "gps"
-                    ? `[${page.location.lat.toFixed(4)}, ${page.location.lng.toFixed(4)}]`
-                    : "None")}
-              </span>
-            </div>
-          )}
+        {/* Leg stats spec plate */}
+        <section class="trip-stats-card">
+          <div class="stat-item">
+            <span class="stat-label">Leg</span>
+            <span class="stat-value">{legNum} / {totalLegs}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Distance</span>
+            <span class="stat-value">
+              {legDistance !== null && legDistance !== undefined
+                ? `${legDistance} km`
+                : "—"}
+            </span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Odo</span>
+            <span class="stat-value">
+              {page.odo !== null && page.odo !== undefined ? page.odo : "—"}
+            </span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Photos</span>
+            <span class="stat-value">{photoUrls.length}</span>
+          </div>
         </section>
 
         {photoUrls.length > 0 && (
@@ -263,51 +333,38 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
 
         {page.note && (
           <section class="story-note-section">
+            <span class="note-label">Rider's Note</span>
             <blockquote class="typewriter-blockquote">{page.note}</blockquote>
           </section>
         )}
 
-        {/* Bottom action row */}
-        <section class="page-action-row">
-          <div class="page-nav-group">
-            {prevPageId !== null && (
-              <Button
-                variant="icon"
-                aria-label="Previous day"
-                onClick={() => onNavigate(`#/page/${prevPageId}`)}
-              >
-                <ArrowLeft size={14} />
-              </Button>
-            )}
-            <span class="page-nav-label">
-              {shortDate}
+        {/* Prev / Next leg pager */}
+        <section class="leg-pager">
+          <Button
+            variant="tertiary"
+            class="pager-half"
+            disabled={prevPageId === null}
+            onClick={() => prevPageId !== null && onNavigate(`#/page/${prevPageId}`)}
+          >
+            <span class="pager-action">
+              <ArrowLeft size={12} />
+              <span>Prev</span>
             </span>
-            {nextPageId !== null && (
-              <Button
-                variant="icon"
-                aria-label="Next day"
-                onClick={() => onNavigate(`#/page/${nextPageId}`)}
-              >
-                <ArrowRight size={14} />
-              </Button>
-            )}
-          </div>
-          <div class="page-edit-group">
-            <Button
-              variant="tertiary"
-              class="btn-icon-text"
-              onClick={() => onNavigate(`#/edit?mode=edit&pageId=${pageId}`)}
-            >
-              <EditIcon size={14} />
-            </Button>
-            <Button
-              variant="tertiary"
-              class="btn-danger-text btn-icon-text"
-              onClick={() => setShowDeleteModal(true)}
-            >
-              <TrashIcon size={14} />
-            </Button>
-          </div>
+            {prevDate && <span class="pager-date">{prevDate}</span>}
+          </Button>
+          <span class="pager-center">{legNum} / {totalLegs}</span>
+          <Button
+            variant="tertiary"
+            class="pager-half pager-half-right"
+            disabled={nextPageId === null}
+            onClick={() => nextPageId !== null && onNavigate(`#/page/${nextPageId}`)}
+          >
+            <span class="pager-action">
+              <span>Next</span>
+              <ArrowRight size={12} />
+            </span>
+            {nextDate && <span class="pager-date">{nextDate}</span>}
+          </Button>
         </section>
       </main>
 
@@ -334,13 +391,13 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
       <MapModal
         isOpen={showMapModal}
         path={
-          page.roadPath && page.roadPath.length >= 2 
-            ? page.roadPath 
-            : page.location?.kind === "gps" 
+          page.roadPath && page.roadPath.length >= 2
+            ? page.roadPath
+            : page.location?.kind === "gps"
               ? [
                   { lat: page.location.lat, lng: page.location.lng },
                   { lat: page.location.lat, lng: page.location.lng }
-                ] 
+                ]
               : []
         }
         onClose={closeMapModal}
