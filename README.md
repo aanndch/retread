@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/readme-hero.jpg" alt="Retread — A motorcycle travel logbook" width="100%" />
+  <img src="public/readme-hero.svg" alt="Retread — A journal for well-tread journeys" width="100%" />
 </p>
 
 <p align="center">
