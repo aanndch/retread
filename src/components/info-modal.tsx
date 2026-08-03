@@ -17,15 +17,17 @@ export function InfoModal({ title, children, actionLabel, onAction, onClose }: I
 
   const handleClose = (action: () => void) => {
     setClosing(true);
-    setTimeout(action, 180);
+    setTimeout(action, 250);
   };
 
   useEffect(() => {
     previousFocus.current = document.activeElement as HTMLElement;
-    requestAnimationFrame(() => {
+    
+    // Defer focus until transition is complete to prevent animation stutter/jank
+    const timer = setTimeout(() => {
       const btn = document.querySelector('.modal-content .btn-primary') as HTMLElement | null;
       btn?.focus();
-    });
+    }, 330);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -50,6 +52,7 @@ export function InfoModal({ title, children, actionLabel, onAction, onClose }: I
 
     document.addEventListener('keydown', handleKeyDown);
     return () => {
+      clearTimeout(timer);
       document.removeEventListener('keydown', handleKeyDown);
       previousFocus.current?.focus();
     };
@@ -64,7 +67,7 @@ export function InfoModal({ title, children, actionLabel, onAction, onClose }: I
             <CloseIcon />
           </Button>
         </div>
-        <div class="settings-body" style={{ padding: 'var(--spacing-md) 0' }}>
+        <div class="modal-body-compact">
           <div class="info-modal-body">
             {children}
           </div>

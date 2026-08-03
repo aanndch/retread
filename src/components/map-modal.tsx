@@ -23,7 +23,7 @@ export function MapModal({ isOpen, path, onClose }: MapModalProps) {
     setTimeout(() => {
       setClosing(false);
       action();
-    }, 180);
+    }, 250);
   };
 
   useEffect(() => {

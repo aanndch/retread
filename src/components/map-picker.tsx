@@ -29,7 +29,7 @@ export function MapPicker({
     setTimeout(() => {
       setClosing(false); // reset state
       action();
-    }, 180);
+    }, 250);
   };
 
   // Load Leaflet resources once modal opens
