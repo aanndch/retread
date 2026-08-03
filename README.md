@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <strong>A private, offline-first motorcycle travel logbook.</strong><br/>
-  <em>Field notes, not dashboards.</em>
+  <strong>A journal for well-tread journeys.</strong><br/>
+  <em>Private. Offline. Yours.</em>
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 
 ## What is Retread?
 
-Retread is a Progressive Web App for logging motorcycle trips. Think of it as a digital travel journal — you log daily entries with notes, photos, odometer readings, and GPS pins, and Retread stitches them into ride timelines with route maps.
+Retread is a Progressive Web App for journaling motorcycle trips. You log daily entries with notes, photos, odometer readings, and GPS pins — Retread stitches them into ride timelines with hand-drawn route maps.
 
 Everything stays on your device. No accounts. No cloud. No tracking. Just your rides, stored in your browser's IndexedDB.
 
