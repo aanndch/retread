@@ -39,7 +39,7 @@ export function App() {
       setTimeout(() => {
         setCurrentHash(window.location.hash);
         setIsTransitioning(false);
-      }, 150);
+      }, 100);
     };
 
     const handleSWUpdate = () => setHasSWUpdate(true);

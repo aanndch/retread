@@ -22,12 +22,6 @@ export function InfoModal({ title, children, actionLabel, onAction, onClose }: I
 
   useEffect(() => {
     previousFocus.current = document.activeElement as HTMLElement;
-    
-    // Defer focus until transition is complete to prevent animation stutter/jank
-    const timer = setTimeout(() => {
-      const btn = document.querySelector('.modal-content .btn-primary') as HTMLElement | null;
-      btn?.focus();
-    }, 330);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -52,7 +46,6 @@ export function InfoModal({ title, children, actionLabel, onAction, onClose }: I
 
     document.addEventListener('keydown', handleKeyDown);
     return () => {
-      clearTimeout(timer);
       document.removeEventListener('keydown', handleKeyDown);
       previousFocus.current?.focus();
     };

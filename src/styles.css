@@ -173,8 +173,8 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
-  transition: opacity 0.15s ease-in, transform 0.15s ease-in;
-  animation: page-slide-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.1s ease-in, transform 0.1s ease-in;
+  animation: page-slide-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 .viewport.page-exit {
@@ -185,7 +185,7 @@ body {
 @keyframes page-slide-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
