@@ -240,7 +240,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
         {/* Hero: kicker, title, leg route trail */}
         <section class="ride-hero">
           <span class="ride-hero-kicker">
-            {tripTitle} · Leg {legNum} of {totalLegs} · {shortDate}
+            {tripTitle} · {shortDate}
           </span>
           <h1 class="ride-hero-title">{page.title || "Day Log"}</h1>
           {trailStart && trailEnd && (
@@ -273,10 +273,6 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
         {/* Leg stats spec plate */}
         <section class="trip-stats-card">
           <div class="stat-item">
-            <span class="stat-label">Leg</span>
-            <span class="stat-value">{legNum} / {totalLegs}</span>
-          </div>
-          <div class="stat-item">
             <span class="stat-label">Distance</span>
             <span class="stat-value">
               {legDistance !== null && legDistance !== undefined
@@ -291,8 +287,8 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
             </span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Photos</span>
-            <span class="stat-value">{photoUrls.length}</span>
+            <span class="stat-label">Time</span>
+            <span class="stat-value">{page.time ? page.time : "—"}</span>
           </div>
         </section>
 

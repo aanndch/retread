@@ -223,7 +223,6 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   const totalDays = new Set(pages.map(p => p.date)).size;
   const totalKm = computeTotalDistance(pages, trip?.startOdo);
   const hasKm = totalKm > 0;
-  const photoCount = pages.reduce((n, p) => n + (p.photos?.length || 0), 0);
 
   // Format date range
   let dateRange = "No days logged yet.";
@@ -320,10 +319,6 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
             <span class="stat-value">
               {hasKm ? formatDistance(totalKm) : "—"}
             </span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Photos</span>
-            <span class="stat-value">{photoCount}</span>
           </div>
         </section>
 
