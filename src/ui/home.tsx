@@ -56,33 +56,6 @@ export function Home({ onNavigate }: HomeProps) {
       const pageWithPhoto = sortedPages.find(p => p.photos && p.photos.length > 0);
       const firstPhotoBlob = pageWithPhoto ? pageWithPhoto.photos[0] : null;
 
-      // Compile start -> end location summary
-      let startLabel = '';
-      if (trip.startLocation) {
-        startLabel = trip.startLocation.name || 
-          (trip.startLocation.kind === 'gps' 
-            ? `[${trip.startLocation.lat.toFixed(4)}, ${trip.startLocation.lng.toFixed(4)}]`
-            : '');
-      }
-
-      let endLabel = '';
-      if (sortedPages.length > 0) {
-        const lastPage = sortedPages[sortedPages.length - 1];
-        if (lastPage.location) {
-          endLabel = lastPage.location.name || 
-            (lastPage.location.kind === 'gps' 
-              ? `[${lastPage.location.lat.toFixed(4)}, ${lastPage.location.lng.toFixed(4)}]`
-              : '');
-        }
-      }
-
-      let routeSummary = '';
-      if (startLabel && endLabel) {
-        routeSummary = `${startLabel} → ${endLabel}`;
-      } else if (startLabel) {
-        routeSummary = startLabel;
-      }
-
       // Compute date range for display
       let dateRange = '';
       if (sortedPages.length > 0) {
@@ -97,7 +70,6 @@ export function Home({ onNavigate }: HomeProps) {
         daysCount: new Set(pages.map(p => p.date)).size,
         totalKm: computeTotalDistance(pages, trip.startOdo),
         firstPhotoBlob,
-        routeSummary,
         dateRange
       });
     }
@@ -217,14 +189,12 @@ export function Home({ onNavigate }: HomeProps) {
           </div>
         ) : (
           <div class="trips-grid">
-            {tripsData.map(({ trip, daysCount, totalKm, firstPhotoBlob, routeSummary, dateRange }) => (
+            {tripsData.map(({ trip, totalKm, firstPhotoBlob, dateRange }) => (
               <TripCard 
                 key={trip.id} 
                 trip={trip} 
-                daysCount={daysCount} 
                 totalKm={totalKm} 
                 firstPhotoBlob={firstPhotoBlob} 
-                routeSummary={routeSummary}
                 dateRange={dateRange}
               />
             ))}
@@ -266,14 +236,12 @@ export function Home({ onNavigate }: HomeProps) {
 
 interface TripCardProps {
   trip: Trip;
-  daysCount: number;
   totalKm: number;
   firstPhotoBlob: Blob | null;
-  routeSummary: string;
   dateRange: string;
 }
 
-function TripCard({ trip, daysCount, totalKm, firstPhotoBlob, routeSummary, dateRange }: TripCardProps) {
+function TripCard({ trip, totalKm, firstPhotoBlob, dateRange }: TripCardProps) {
   const [imgUrl, setImgUrl] = useState('');
 
   // Handle object URL lifecycle to prevent memory leaks
@@ -298,19 +266,12 @@ function TripCard({ trip, daysCount, totalKm, firstPhotoBlob, routeSummary, date
         </div>
         <div class="trip-card-details">
           <h4 class="trip-card-title">{trip.title || 'Untitled Ride'}</h4>
-          {routeSummary && (
-            <div class="trip-card-route" title={routeSummary}>
-              {routeSummary}
-            </div>
-          )}
           {dateRange && (
-            <div class="trip-card-dates">{dateRange}</div>
+            <div class="trip-card-date">{dateRange}</div>
           )}
-          <div class="trip-card-meta">
-            <span>{daysCount} {daysCount === 1 ? 'day' : 'days'}</span>
-            <span class="meta-dot">·</span>
-            <span>{formatDistance(totalKm)}</span>
-          </div>
+          {totalKm > 0 && (
+            <div class="trip-card-km">{formatDistance(totalKm)}</div>
+          )}
         </div>
       </div>
     </a>
