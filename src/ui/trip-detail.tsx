@@ -162,7 +162,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
     if (pages.length === 1) {
       dateRange = formatIsoDateToDMY(pages[0].date);
     } else {
-      dateRange = `${formatIsoDateToDMY(pages[0].date)} – ${formatIsoDateToDMY(pages[pages.length - 1].date)}`;
+      dateRange = `${formatIsoDateToDMY(pages[0].date)} — ${formatIsoDateToDMY(pages[pages.length - 1].date)}`;
     }
   }
 

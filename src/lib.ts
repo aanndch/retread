@@ -77,12 +77,12 @@ export function formatDateRange(firstDate: string, lastDate: string): string {
 
   if (fYear === lYear) {
     if (fMonth === lMonth) {
-      return `${fMonth} ${fDay} - ${lDay}, ${fYear}`;
+      return `${fMonth} ${fDay} — ${lDay}, ${fYear}`;
     }
-    return `${fMonth} ${fDay} - ${lMonth} ${lDay}, ${fYear}`;
+    return `${fMonth} ${fDay} — ${lMonth} ${lDay}, ${fYear}`;
   }
 
-  return `${fMonth} ${fDay}, ${fYear} - ${lMonth} ${lDay}, ${lYear}`;
+  return `${fMonth} ${fDay}, ${fYear} — ${lMonth} ${lDay}, ${lYear}`;
 }
 
 /**
