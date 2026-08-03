@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'preact/hooks';
+import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { Setup } from './ui/setup';
 import { PWAInstallPrompt, IOSBackupReminder, useAppPrompts } from './components/app-prompts';
 import { Home } from './ui/home';
@@ -24,30 +24,85 @@ export function App() {
   const appPrompt = useAppPrompts();
   const [dismissedPrompt, setDismissedPrompt] = useState(false);
   const activePrompt = dismissedPrompt ? null : appPrompt;
+  const prevHashRef = useRef(window.location.hash || HASH_HOME);
+  const scrollCacheRef = useRef(new Map<string, number>());
+  const isPopRef = useRef(false);
 
   // Check setup status and monitor hash changes
   useEffect(() => {
+    // Take over scroll restoration so each route restores its own position
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+
     const isSetup = localStorage.getItem('retread-setup-complete') === 'true';
     setSetupComplete(isSetup);
+
+    const restoreScroll = (savedY: number | undefined) => {
+      if (typeof savedY !== 'number') {
+        window.scrollTo(0, 0);
+        return;
+      }
+      // Poll until the route's async data has loaded enough to reach the saved
+      // position (views like TripDetail render a short loading state first).
+      let tries = 0;
+      const attempt = () => {
+        tries++;
+        const docHeight = Math.max(
+          document.documentElement.scrollHeight,
+          document.body.scrollHeight,
+        );
+        const maxScroll = Math.max(0, docHeight - window.innerHeight);
+        if (maxScroll >= savedY - 1 || tries > 120) {
+          window.scrollTo(0, Math.min(savedY, maxScroll));
+          return;
+        }
+        requestAnimationFrame(attempt);
+      };
+      requestAnimationFrame(attempt);
+    };
 
     const handleHashChange = () => {
       const checkedSetup = localStorage.getItem('retread-setup-complete') === 'true';
       setSetupComplete(checkedSetup);
 
+      const prevHash = prevHashRef.current;
+      const nextHash = window.location.hash || HASH_HOME;
+
+      // Save the outgoing route's scroll position (DOM is still the old route here)
+      scrollCacheRef.current.set(prevHash, window.scrollY);
+      prevHashRef.current = nextHash;
+
+      // Back/forward (popstate) vs fresh navigation — only if the hash actually
+      // changed, so modal popstate handlers don't corrupt the flag.
+      const isPop = isPopRef.current && nextHash !== prevHash;
+      isPopRef.current = false;
+
       // Trigger fade-out transition
       setIsTransitioning(true);
       setTimeout(() => {
-        setCurrentHash(window.location.hash);
+        setCurrentHash(nextHash);
         setIsTransitioning(false);
+        if (isPop) {
+          restoreScroll(scrollCacheRef.current.get(nextHash));
+        } else {
+          window.scrollTo(0, 0);
+        }
       }, 100);
+    };
+
+    const handlePop = () => {
+      isPopRef.current = true;
     };
 
     const handleSWUpdate = () => setHasSWUpdate(true);
 
     window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handlePop);
     window.addEventListener('sw-update', handleSWUpdate);
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handlePop);
       window.removeEventListener('sw-update', handleSWUpdate);
     };
   }, []);
