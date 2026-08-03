@@ -4,12 +4,18 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: process.env.BASE_URL || '/retread/',
+  base: process.env.NODE_ENV === 'production' ? (process.env.BASE_URL || '/retread/') : '/',
+  server: {
+    host: '127.0.0.1',
+  },
   plugins: [
     preact(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      devOptions: {
+        enabled: false,
+      },
       manifest: {
         name: 'Retread',
         short_name: 'Retread',

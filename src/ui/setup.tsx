@@ -15,8 +15,7 @@ export function Setup({ onComplete }: SetupProps) {
     try {
       // Request persistent storage to mitigate browser storage eviction
       if (navigator.storage && navigator.storage.persist) {
-        const isPersisted = await navigator.storage.persist();
-        console.log(`Persistent storage granted: ${isPersisted}`);
+        await navigator.storage.persist();
       }
     } catch (e) {
       console.warn('Storage persistence request failed:', e);

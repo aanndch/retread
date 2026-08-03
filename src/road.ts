@@ -88,8 +88,6 @@ export async function backfillTripRoutes(tripId: number): Promise<void> {
   // Load the trip record to get the departure pin
   const tripRecord = await db.trips.get(tripId);
 
-  let legUpdated = false;
-
   for (let i = 0; i < sortedPages.length; i++) {
     const currentPage = sortedPages[i];
     
@@ -107,10 +105,8 @@ export async function backfillTripRoutes(tripId: number): Promise<void> {
 
         if (needsSnap) {
           try {
-            console.log(`[OSRM] Snapping Day 1 Leg 1: from [${fromGps.lat}, ${fromGps.lng}] to [${toGps.lat}, ${toGps.lng}]`);
             const snappedPath = await snapLeg(fromGps, toGps);
             await db.pages.update(currentPage.id!, { roadPath: snappedPath });
-            legUpdated = true;
           } catch (snapErr) {
             console.warn(`[OSRM] Snap failed for first leg, saving straight line fallback:`, snapErr);
             await db.pages.update(currentPage.id!, { roadPath: [fromGps, toGps] });
@@ -120,7 +116,6 @@ export async function backfillTripRoutes(tripId: number): Promise<void> {
         // No valid startLocation GPS, clear any stale roadPath on first page
         if (currentPage.roadPath !== null && currentPage.roadPath !== undefined) {
           await db.pages.update(currentPage.id!, { roadPath: null });
-          legUpdated = true;
         }
       }
       continue;
@@ -142,10 +137,8 @@ export async function backfillTripRoutes(tripId: number): Promise<void> {
         
       if (needsSnap) {
         try {
-          console.log(`[OSRM] Snapping Day Leg: from [${fromGps.lat}, ${fromGps.lng}] to [${toGps.lat}, ${toGps.lng}]`);
           const snappedPath = await snapLeg(fromGps, toGps);
           await db.pages.update(currentPage.id!, { roadPath: snappedPath });
-          legUpdated = true;
         } catch (snapErr) {
           console.warn(`[OSRM] Snap failed for leg, saving straight line fallback:`, snapErr);
           await db.pages.update(currentPage.id!, { roadPath: [fromGps, toGps] });
@@ -155,12 +148,7 @@ export async function backfillTripRoutes(tripId: number): Promise<void> {
       // If either location is named/none, clear any existing snapped path
       if (currentPage.roadPath !== null && currentPage.roadPath !== undefined) {
         await db.pages.update(currentPage.id!, { roadPath: null });
-        legUpdated = true;
       }
     }
-  }
-
-  if (legUpdated) {
-    console.log(`Finished road snaps backfilling for trip ${tripId}.`);
   }
 }

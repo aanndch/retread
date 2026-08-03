@@ -1,12 +1,28 @@
-import { useState, useRef } from 'preact/hooks';
+import { useState, useRef, useEffect, useCallback } from 'preact/hooks';
 import { db } from '../db';
 import { Button } from '../components/button';
 import { ConfirmModal } from '../components/confirm-modal';
 import { Toast, useToast } from '../components/toast';
 import { PageHeader } from '../components/page-header';
-import { HASH_HOME } from '../constants';
+import { HASH_HOME, GDRIVE_AUTOSYNC_FILENAME } from '../constants';
 import type { Trip, LocationUnion } from '../types';
 import type { JSX } from 'preact';
+import {
+  loadGIScript,
+  requestAccessToken,
+  getAccessToken,
+  disconnect,
+  isConnected,
+  performBackup,
+  performRestore,
+  listBackups,
+  deleteBackup,
+  isAutoSyncEnabled,
+  setAutoSyncEnabled,
+  getLastSyncTime,
+  scheduleAutoSync,
+  type DriveBackupFile,
+} from '../gdrive';
 
 interface BackupProps {
   onNavigate: (route: string) => void;
@@ -23,7 +39,7 @@ interface BackupPayload {
     odo: number | null;
     location: LocationUnion | null;
     roadPath: { lat: number; lng: number }[] | null;
-    photos: string[]; // Base64 Data URLs
+    photos: string[];
   }[];
 }
 
@@ -32,8 +48,38 @@ export function Backup({ onNavigate }: BackupProps) {
   const [statusText, setStatusText] = useState('');
   const [showConfirmRestore, setShowConfirmRestore] = useState(false);
   const [pendingRestoreData, setPendingRestoreData] = useState<BackupPayload | null>(null);
+  const [showConfirmDisconnect, setShowConfirmDisconnect] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toasts, showToast, removeToast } = useToast();
+
+  // GDrive state
+  const [gdriveConnected, setGdriveConnected] = useState(isConnected());
+  const [gdriveConnecting, setGdriveConnecting] = useState(false);
+  const [gdriveFiles, setGdriveFiles] = useState<DriveBackupFile[]>([]);
+  const [gdriveLoadingFiles, setGdriveLoadingFiles] = useState(false);
+  const [autoSync, setAutoSync] = useState(isAutoSyncEnabled());
+  const [lastSync, setLastSync] = useState<string | null>(getLastSyncTime());
+  const [gdriveStatus, setGdriveStatus] = useState('');
+  const [showFiles, setShowFiles] = useState(false);
+
+  // Load GDrive files when connected
+  const refreshGdriveFiles = useCallback(async () => {
+    const token = getAccessToken();
+    if (!token) return;
+    setGdriveLoadingFiles(true);
+    try {
+      const files = await listBackups(token);
+      setGdriveFiles(files);
+    } catch (err) {
+      console.error('Failed to list GDrive backups:', err);
+    } finally {
+      setGdriveLoadingFiles(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (gdriveConnected) refreshGdriveFiles();
+  }, [gdriveConnected, refreshGdriveFiles]);
 
   // Helper: Convert Blob to Base64 Data URL
   const blobToBase64 = (blob: Blob): Promise<string> => {
@@ -51,7 +97,8 @@ export function Backup({ onNavigate }: BackupProps) {
     return await res.blob();
   };
 
-  // 1. Export Backup Routine
+  // ── Local Export ──────────────────────────────────────────────────────────
+
   const handleExport = async () => {
     setWorking(true);
     setStatusText('Preparing export package...');
@@ -66,7 +113,6 @@ export function Backup({ onNavigate }: BackupProps) {
       for (const page of pages) {
         setStatusText(`Encoding photos for page on ${page.date}...`);
         
-        // Convert all photo blobs to base64 strings
         const base64Photos = [];
         if (page.photos) {
           for (const blob of page.photos) {
@@ -93,7 +139,6 @@ export function Backup({ onNavigate }: BackupProps) {
         pages: serializedPages
       };
       
-      // Trigger File Download in browser
       const jsonString = JSON.stringify(payload);
       const jsonBlob = new Blob([jsonString], { type: 'application/json' });
       const downloadUrl = URL.createObjectURL(jsonBlob);
@@ -105,7 +150,6 @@ export function Backup({ onNavigate }: BackupProps) {
       document.body.appendChild(anchor);
       anchor.click();
       
-      // Cleanup
       document.body.removeChild(anchor);
       URL.revokeObjectURL(downloadUrl);
       
@@ -119,14 +163,14 @@ export function Backup({ onNavigate }: BackupProps) {
     }
   };
 
-  // 2. Import Backup Routine
+  // ── Local Import ──────────────────────────────────────────────────────────
+
   const handleImport = async (e: JSX.TargetedEvent<HTMLInputElement>) => {
     const files = (e.target as HTMLInputElement).files;
     if (!files || files.length === 0) return;
     
     const file = files[0];
     
-    // Read and validate the file first, then show confirm modal
     setWorking(true);
     setStatusText('Reading backup package...');
     
@@ -146,12 +190,10 @@ export function Backup({ onNavigate }: BackupProps) {
         reader.readAsText(file);
       });
       
-      // Basic schema validations
       if (parsedData.version !== 1 || !Array.isArray(parsedData.trips) || !Array.isArray(parsedData.pages)) {
         throw new Error('Unsupported or corrupted backup schema.');
       }
       
-      // Store data and show confirm modal
       setPendingRestoreData(parsedData);
       setShowConfirmRestore(true);
       setWorking(false);
@@ -178,13 +220,11 @@ export function Backup({ onNavigate }: BackupProps) {
       setPendingRestoreData(null);
 
       await db.transaction('rw', db.trips, db.pages, async () => {
-        // Clean DB tables
         await db.trips.clear();
         await db.pages.clear();
         
         setStatusText('Restoring trip indexes...');
         
-        // Map old trip IDs to new database auto-incremented IDs
         const tripIdMapping = new Map<number, number>();
         for (const trip of parsedData.trips) {
           const { id: _oldId, ...tripData } = trip;
@@ -203,7 +243,6 @@ export function Backup({ onNavigate }: BackupProps) {
             continue;
           }
           
-          // Decode base64 strings back to binary Blobs
           const photoBlobs = [];
           if (page.photos) {
             for (const base64 of page.photos) {
@@ -228,7 +267,6 @@ export function Backup({ onNavigate }: BackupProps) {
       setStatusText('Restore finished successfully.');
       showToast('Logs database successfully restored!', 'success');
       
-      // Clear input and redirect
       if (fileInputRef.current) fileInputRef.current.value = '';
       onNavigate('#/');
     } catch (err: unknown) {
@@ -242,6 +280,117 @@ export function Backup({ onNavigate }: BackupProps) {
     }
   };
 
+  // ── Google Drive ──────────────────────────────────────────────────────────
+
+  const handleGDriveConnect = async () => {
+    setGdriveConnecting(true);
+    try {
+      await loadGIScript();
+      await requestAccessToken();
+      setGdriveConnected(true);
+      showToast('Connected to Google Drive.', 'success');
+    } catch (err) {
+      console.error('GDrive connect failed:', err);
+      showToast(`Connection failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setGdriveConnecting(false);
+    }
+  };
+
+  const handleGDriveDisconnect = () => {
+    disconnect();
+    setGdriveConnected(false);
+    setGdriveFiles([]);
+    setAutoSyncEnabled(false);
+    setAutoSync(false);
+    setShowConfirmDisconnect(false);
+    showToast('Disconnected from Google Drive.');
+  };
+
+  const handleGDriveBackup = async () => {
+    const token = getAccessToken();
+    if (!token) return;
+
+    setWorking(true);
+    setGdriveStatus('Compressing...');
+
+    try {
+      const dateTag = new Date().toISOString().split('T')[0];
+      const filename = `retread-backup-${dateTag}.json.gz`;
+      await performBackup(token, filename);
+      setGdriveStatus('Done!');
+      setLastSync(new Date().toISOString());
+      localStorage.setItem('retread-gdrive-last-sync', new Date().toISOString());
+      showToast('Backup saved to Google Drive.', 'success');
+      await refreshGdriveFiles();
+    } catch (err) {
+      console.error('GDrive backup failed:', err);
+      showToast(`Backup failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setGdriveStatus('');
+    } finally {
+      setWorking(false);
+      setTimeout(() => setGdriveStatus(''), 3000);
+    }
+  };
+
+  const handleGDriveRestore = async (fileId: string) => {
+    const token = getAccessToken();
+    if (!token) return;
+
+    setWorking(true);
+    setGdriveStatus('Downloading...');
+
+    try {
+      await performRestore(fileId, token);
+      setGdriveStatus('Done!');
+      showToast('Database restored from Google Drive.', 'success');
+      onNavigate('#/');
+    } catch (err) {
+      console.error('GDrive restore failed:', err);
+      showToast(`Restore failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setGdriveStatus('');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const handleGDriveDelete = async (fileId: string) => {
+    const token = getAccessToken();
+    if (!token) return;
+
+    try {
+      await deleteBackup(fileId, token);
+      showToast('Backup deleted.', 'success');
+      await refreshGdriveFiles();
+    } catch (err) {
+      console.error('GDrive delete failed:', err);
+      showToast(`Delete failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleAutoSyncToggle = (e: JSX.TargetedEvent<HTMLInputElement>) => {
+    const checked = (e.target as HTMLInputElement).checked;
+    setAutoSync(checked);
+    setAutoSyncEnabled(checked);
+    if (checked) scheduleAutoSync();
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const formatDate = (iso: string): string => {
+    try {
+      return new Date(iso).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+      });
+    } catch {
+      return iso;
+    }
+  };
+
   return (
     <div class="backup-container">
       <PageHeader 
@@ -251,10 +400,7 @@ export function Backup({ onNavigate }: BackupProps) {
         disabled={working}
       />
 
-      <main class="backup-card">
-        <p class="backup-description">
-          Retread stores all data locally in IndexedDB. Use these tools to back up your logbooks regularly or migrate your data to another device.
-        </p>
+      <main class="backup-body">
 
         {statusText && (
           <div class="backup-status">
@@ -263,45 +409,161 @@ export function Backup({ onNavigate }: BackupProps) {
           </div>
         )}
 
-        <div class="backup-actions">
-          {/* Export Action */}
-          <div class="action-section">
-            <h4>Export Database</h4>
-            <p class="action-help">Downloads all rides, daily logs, coordinates, and photo attachments as a single JSON file.</p>
-            <Button 
-              variant="secondary" 
-              onClick={handleExport} 
-              disabled={working}
-            >
-              {working ? 'Exporting...' : 'Export Backup File'}
-            </Button>
+        {/* ── Local Backup ───────────────────────────────────────────────── */}
+        <section class="backup-card">
+          <div class="card-head">
+            <h4>Local Backup</h4>
           </div>
 
-          <hr class="divider" />
+          <p class="micro-help">Saves a .json file on this device. Use it to move your logs to another device.</p>
 
-          {/* Import Action */}
-          <div class="action-section">
-            <h4>Import Database</h4>
-            <p class="action-help">Restores rides from a previously exported JSON backup. This replaces all logs currently on this device.</p>
-            
-            <input 
-              type="file" 
-              ref={fileInputRef}
-              accept=".json" 
-              onChange={handleImport}
-              id="backup-import" 
-              class="file-hidden-input"
+          <div class="local-actions">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleExport}
               disabled={working}
-            />
-            <Button 
+            >
+              {working ? 'Exporting...' : 'Export'}
+            </Button>
+            <Button
               variant="secondary"
+              size="sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={working}
             >
-              {working ? 'Restoring...' : 'Select Backup File'}
+              {working ? 'Restoring...' : 'Import'}
             </Button>
           </div>
-        </div>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".json,.json.gz"
+            onChange={handleImport}
+            id="backup-import"
+            class="file-hidden-input"
+            disabled={working}
+          />
+        </section>
+
+        {/* ── Google Drive ───────────────────────────────────────────────── */}
+        <section class="backup-card gdrive-card">
+          <div class="card-head">
+            <h4>Google Drive</h4>
+            {gdriveConnected && (
+              <Button
+                variant="tertiary"
+                size="sm"
+                onClick={() => setShowConfirmDisconnect(true)}
+                disabled={working}
+                class="connected-badge-btn"
+              >
+                <span class="connected-badge-dot" />
+                Connected
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </Button>
+            )}
+          </div>
+
+          {!gdriveConnected ? (
+            <>
+              <p class="micro-help">Keep backups safe in the cloud, and restore them on any device.</p>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleGDriveConnect}
+                disabled={gdriveConnecting || working}
+                class="gdrive-hero-btn"
+              >
+                {gdriveConnecting ? 'Connecting...' : 'Connect Google Account'}
+              </Button>
+            </>
+          ) : (
+            <div class="gdrive-connected">
+              <div class="gdrive-autosync-row">
+                <label class="gdrive-autosync-toggle">
+                  <input
+                    type="checkbox"
+                    checked={autoSync}
+                    onChange={handleAutoSyncToggle}
+                    disabled={working}
+                  />
+                  <span>Auto-sync after each save</span>
+                </label>
+              </div>
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleGDriveBackup}
+                disabled={working}
+                class="gdrive-hero-btn"
+              >
+                {working && gdriveStatus ? gdriveStatus : 'Backup Now'}
+              </Button>
+
+              {lastSync && (
+                <p class="gdrive-last-sync">Last backup: {formatDate(lastSync)}</p>
+              )}
+
+              <div class="gdrive-files">
+                <button
+                  type="button"
+                  class="gdrive-files-toggle"
+                  onClick={() => setShowFiles((v) => !v)}
+                  aria-expanded={showFiles}
+                >
+                  {showFiles ? 'Hide' : 'Show'} backups ({gdriveFiles.length})
+                </button>
+
+                {showFiles && (
+                  gdriveLoadingFiles ? (
+                    <p class="gdrive-files-loading">Loading...</p>
+                  ) : gdriveFiles.length === 0 ? (
+                    <p class="gdrive-files-empty">Your first backup hasn't been saved yet.</p>
+                  ) : (
+                    <ul class="gdrive-file-list">
+                      {gdriveFiles.map((file) => (
+                        <li key={file.id} class="gdrive-file-item">
+                          <div class="gdrive-file-info">
+                            <span class="gdrive-file-name">{file.name}</span>
+                            <span class="gdrive-file-meta">
+                              {formatFileSize(file.size)} · {formatDate(file.modifiedTime)}
+                            </span>
+                          </div>
+                          <div class="gdrive-file-actions">
+                            {file.name !== GDRIVE_AUTOSYNC_FILENAME && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleGDriveRestore(file.id)}
+                                disabled={working}
+                              >
+                                Restore
+                              </Button>
+                            )}
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleGDriveDelete(file.id)}
+                              disabled={working}
+                              class="btn-danger"
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                )}
+              </div>
+            </div>
+          )}
+        </section>
       </main>
 
       {showConfirmRestore && (
@@ -314,6 +576,16 @@ export function Backup({ onNavigate }: BackupProps) {
             setShowConfirmRestore(false);
             setPendingRestoreData(null);
           }}
+        />
+      )}
+
+      {showConfirmDisconnect && (
+        <ConfirmModal
+          title="Disconnect Google Drive?"
+          message="You'll be signed out and auto-sync will stop. Your existing backups will remain in Google Drive."
+          confirmLabel="Disconnect"
+          onConfirm={handleGDriveDisconnect}
+          onCancel={() => setShowConfirmDisconnect(false)}
         />
       )}
 

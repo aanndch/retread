@@ -1,5 +1,6 @@
 import { db } from '../../db';
 import { backfillTripRoutes } from '../../road';
+import { scheduleAutoSync } from '../../gdrive';
 import type { LocationUnion, Page } from '../../types';
 
 interface SaveData {
@@ -50,6 +51,7 @@ export async function saveEditorDetails(
       console.warn('Snapping routes failed during trip edit save:', snapErr);
     }
 
+    scheduleAutoSync();
     return `#/trip/${tripId}`;
   }
 
@@ -75,6 +77,7 @@ export async function saveEditorDetails(
       startOdo: data.distanceMode === 'odo' ? (data.startOdo !== null && !isNaN(data.startOdo) ? data.startOdo : 0) : null
     }) as number;
 
+    scheduleAutoSync();
     return `#/trip/${newTripId}`;
   }
 
@@ -110,6 +113,7 @@ export async function saveEditorDetails(
       console.warn('Snapping routes failed during edit save:', snapErr);
       throw new Error(`Snapping failed: ${(snapErr as Error).message || snapErr}. Used straight-line fallback.`);
     }
+    scheduleAutoSync();
     return `#/trip/${existingPage.tripId}`;
   } else {
     await db.pages.add({
@@ -122,6 +126,7 @@ export async function saveEditorDetails(
       console.warn('Snapping routes failed during new save:', snapErr);
       throw new Error(`Snapping failed: ${(snapErr as Error).message || snapErr}. Used straight-line fallback.`);
     }
+    scheduleAutoSync();
     return `#/trip/${activeTripId}`;
   }
 }

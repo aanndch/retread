@@ -21,3 +21,13 @@ export const DIRECT_DIST_LIMIT_KM = 1.0;
 // Image Attachment Compression Defaults
 export const MAX_IMAGE_EDGE = 1600; // Max edge length for compressed images
 export const IMAGE_COMPRESSION_QUALITY = 0.8; // Quality level for compressed JPEGs
+
+// Google Drive Backup Settings
+export const GDRIVE_CLIENT_ID = import.meta.env.VITE_GDRIVE_CLIENT_ID || '';
+export const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
+export const GDRIVE_APP_PROPERTY_KEY = 'isRetreadBackup';
+export const GDRIVE_APP_PROPERTY_VALUE = 'true';
+export const GDRIVE_AUTOSYNC_FILENAME = 'retread-autosync.json.gz';
+export const GDRIVE_AUTOSYNC_DELAY_MS = 5000;
+export const GDRIVE_LOCAL_STORAGE_KEY_LAST_SYNC = 'retread-gdrive-last-sync';
+export const GDRIVE_LOCAL_STORAGE_KEY_AUTOSYNC = 'retread-gdrive-autosync';
