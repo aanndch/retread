@@ -1295,7 +1295,8 @@ input[type=number] {
 /* Stats dashboard */
 .trip-stats-card {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 0;
   border: 1px solid var(--color-ink);
   border-radius: var(--border-radius);
   background-color: var(--color-paper);
@@ -1308,7 +1309,8 @@ input[type=number] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   text-align: center;
 }
 

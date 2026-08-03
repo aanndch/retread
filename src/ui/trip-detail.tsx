@@ -139,23 +139,6 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   const totalKm = computeTotalDistance(pages, trip?.startOdo);
   const hasKm = totalKm > 0;
 
-  // Odo range display
-  let odoString = "";
-  const odos = pages
-    .map((p) => p.odo)
-    .filter((o): o is number => o !== null && o !== undefined);
-  if (odos.length > 0) {
-    const minOdo = trip?.startOdo ?? odos[0];
-    const maxOdo = odos[odos.length - 1];
-    if (minOdo !== maxOdo) {
-      odoString = `${minOdo} → ${maxOdo} km`;
-    } else {
-      odoString = `${minOdo} km`;
-    }
-  } else if (trip?.startOdo != null) {
-    odoString = `${trip.startOdo} km`;
-  }
-
   // Format date range
   let dateRange = "No days logged yet.";
   if (pages.length > 0) {
@@ -236,12 +219,6 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
               {hasKm ? formatDistance(totalKm) : "—"}
             </span>
           </div>
-          {odoString && (
-            <div class="stat-item">
-              <span class="stat-label">Odometer Range</span>
-              <span class="stat-value">{odoString}</span>
-            </div>
-          )}
         </section>
 
         {/* Timeline Page logs */}
