@@ -193,6 +193,17 @@ body {
   }
 }
 
+@keyframes page-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
 /* Lock viewport height and block scrolling only when the editor is open */
 .viewport:has(.editor-container) {
   height: 100vh;
@@ -774,33 +785,11 @@ button:focus,
   display: flex;
   flex-direction: column;
   flex: 1; /* Stretch to fill the entire remaining height of the locked viewport */
-  animation: paper-settle 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: page-slide-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 .editor-container.closing {
-  animation: paper-lift 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-}
-
-@keyframes paper-settle {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes paper-lift {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.97);
-  }
+  animation: page-slide-out 0.12s ease-in forwards !important;
 }
 
 .editor-header,

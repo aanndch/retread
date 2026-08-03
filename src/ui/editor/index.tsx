@@ -485,7 +485,7 @@ export function Editor({ onNavigate }: EditorProps) {
     setIsClosing(true);
     setTimeout(() => {
       onNavigate(path);
-    }, 200);
+    }, 100);
   };
 
   // Compact Save routing delegator
