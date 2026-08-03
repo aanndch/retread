@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'preact/hooks';
+import { useRef, useEffect, useState } from 'preact/hooks';
 import { Button } from './button';
 import { CloseIcon } from './icons';
 import type { ComponentChildren } from 'preact';
@@ -12,7 +12,13 @@ interface InfoModalProps {
 }
 
 export function InfoModal({ title, children, actionLabel, onAction, onClose }: InfoModalProps) {
+  const [closing, setClosing] = useState(false);
   const previousFocus = useRef<HTMLElement | null>(null);
+
+  const handleClose = (action: () => void) => {
+    setClosing(true);
+    setTimeout(action, 180);
+  };
 
   useEffect(() => {
     previousFocus.current = document.activeElement as HTMLElement;
@@ -50,11 +56,11 @@ export function InfoModal({ title, children, actionLabel, onAction, onClose }: I
   }, []);
 
   return (
-    <div class="modal-backdrop" onClick={onClose}>
-      <div class="modal-content" onClick={(e) => e.stopPropagation()}>
+    <div class={`modal-backdrop${closing ? ' closing' : ''}`} onClick={() => handleClose(onClose)}>
+      <div class={`modal-content${closing ? ' closing' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div class="modal-header">
           <h3>{title}</h3>
-          <Button variant="icon" aria-label="Close" onClick={onClose}>
+          <Button variant="icon" aria-label="Close" onClick={() => handleClose(onClose)}>
             <CloseIcon />
           </Button>
         </div>
@@ -64,11 +70,11 @@ export function InfoModal({ title, children, actionLabel, onAction, onClose }: I
           </div>
           <div class="page-action-row page-action-modal">
             {onAction && actionLabel ? (
-              <Button variant="primary" onClick={onAction}>
+              <Button variant="primary" onClick={() => handleClose(onAction)}>
                 {actionLabel}
               </Button>
             ) : (
-              <Button variant="primary" onClick={onClose}>
+              <Button variant="primary" onClick={() => handleClose(onClose)}>
                 Got It
               </Button>
             )}

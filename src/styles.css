@@ -173,6 +173,18 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  animation: page-slide-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes page-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Lock viewport height and block scrolling only when the editor is open */
@@ -445,7 +457,6 @@ body {
   line-height: 1.4;
 }
 
-/* Modals & Overlays */
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -457,6 +468,11 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-end; /* Mobile drawer style */
+  animation: fade-in 0.22s ease-out forwards;
+}
+
+.modal-backdrop.closing {
+  animation: fade-out 0.18s ease-in forwards !important;
 }
 
 .modal-content {
@@ -473,9 +489,28 @@ body {
   box-shadow: 0 -8px 24px rgba(0,0,0,0.1);
 }
 
+.modal-content.closing {
+  animation: slide-down 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
 @keyframes slide-up {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 .modal-header {

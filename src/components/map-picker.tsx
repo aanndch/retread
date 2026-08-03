@@ -21,7 +21,16 @@ export function MapPicker({
   showToast,
 }: MapPickerProps) {
   const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const [closing, setClosing] = useState(false);
   const pickerMapRef = useRef<any>(null);
+
+  const handleClose = (action: () => void) => {
+    setClosing(true);
+    setTimeout(() => {
+      setClosing(false); // reset state
+      action();
+    }, 180);
+  };
 
   // Load Leaflet resources once modal opens
   useEffect(() => {
@@ -106,18 +115,18 @@ export function MapPicker({
       }
 
       onConfirm(center.lat, center.lng);
+      handleClose(onClose);
     } catch (err) {
       console.error('Failed to confirm map picker pin:', err);
       showToast('Error setting coordinates from map.');
-    } finally {
-      onClose();
+      handleClose(onClose);
     }
   };
 
   return (
-    <div class="modal-backdrop" style={{ zIndex: 3000 }} onClick={onClose}>
+    <div class={`modal-backdrop${closing ? ' closing' : ''}`} style={{ zIndex: 3000 }} onClick={() => handleClose(onClose)}>
       <div
-        class="modal-content"
+        class={`modal-content${closing ? ' closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
         style={{ padding: 0, overflow: 'hidden', width: '100%', maxWidth: '480px' }}
       >
@@ -135,7 +144,7 @@ export function MapPicker({
           <button
             type="button"
             class="btn-clear"
-            onClick={onClose}
+            onClick={() => handleClose(onClose)}
             style={{
               fontSize: '20px',
               cursor: 'pointer',
@@ -234,7 +243,7 @@ export function MapPicker({
             marginTop: 0,
           }}
         >
-          <Button variant="secondary" size="sm" onClick={onClose}>
+          <Button variant="secondary" size="sm" onClick={() => handleClose(onClose)}>
             Cancel
           </Button>
           <Button

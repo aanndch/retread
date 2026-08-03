@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'preact/hooks';
+import { useRef, useEffect, useState } from 'preact/hooks';
 import { Button } from './button';
 import { CloseIcon } from './icons';
 
@@ -11,7 +11,13 @@ interface ConfirmModalProps {
 }
 
 export function ConfirmModal({ title, message, confirmLabel = 'Confirm', onConfirm, onCancel }: ConfirmModalProps) {
+  const [closing, setClosing] = useState(false);
   const previousFocus = useRef<HTMLElement | null>(null);
+
+  const handleClose = (action: () => void) => {
+    setClosing(true);
+    setTimeout(action, 180);
+  };
 
   useEffect(() => {
     previousFocus.current = document.activeElement as HTMLElement;
@@ -46,11 +52,11 @@ export function ConfirmModal({ title, message, confirmLabel = 'Confirm', onConfi
   }, []);
 
   return (
-    <div class="modal-backdrop" onClick={onCancel}>
-      <div class="modal-content" onClick={(e) => e.stopPropagation()}>
+    <div class={`modal-backdrop${closing ? ' closing' : ''}`} onClick={() => handleClose(onCancel)}>
+      <div class={`modal-content${closing ? ' closing' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div class="modal-header">
           <h3>{title}</h3>
-          <Button variant="icon" aria-label="Close" onClick={onCancel}>
+          <Button variant="icon" aria-label="Close" onClick={() => handleClose(onCancel)}>
             <CloseIcon />
           </Button>
         </div>
@@ -59,13 +65,13 @@ export function ConfirmModal({ title, message, confirmLabel = 'Confirm', onConfi
             {message}
           </p>
           <div class="page-action-row page-action-modal">
-            <Button variant="secondary" onClick={onCancel}>
+            <Button variant="secondary" onClick={() => handleClose(onCancel)}>
               Cancel
             </Button>
             <button
               type="button"
               class="btn btn-primary btn-danger-text"
-              onClick={onConfirm}
+              onClick={() => handleClose(onConfirm)}
             >
               {confirmLabel}
             </button>

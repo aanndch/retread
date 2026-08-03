@@ -10,12 +10,21 @@ interface MapModalProps {
 export function MapModal({ isOpen, path, onClose }: MapModalProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [closing, setClosing] = useState(false);
   const zoomInnerRef = useRef<HTMLDivElement>(null);
   const scaleRef = useRef(1);
   const offsetRef = useRef({ x: 0, y: 0 });
   const mapTouchStart = useRef({ x: 0, y: 0 });
   const mapLastTouchDistance = useRef<number | null>(null);
   const isDraggingRef = useRef(false);
+
+  const handleClose = (action: () => void) => {
+    setClosing(true);
+    setTimeout(() => {
+      setClosing(false);
+      action();
+    }, 180);
+  };
 
   useEffect(() => {
     const handlePopState = () => onClose();
@@ -124,12 +133,12 @@ export function MapModal({ isOpen, path, onClose }: MapModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div class="modal-backdrop map-overlay-backdrop" onClick={onClose}>
+    <div class={`modal-backdrop map-overlay-backdrop${closing ? ' closing' : ''}`} onClick={() => handleClose(onClose)}>
       <button 
         type="button" 
         class="btn-close-overlay" 
         aria-label="Close map" 
-        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        onClick={(e) => { e.stopPropagation(); handleClose(onClose); }}
       >
         &times;
       </button>
