@@ -1702,6 +1702,10 @@ input[type=number] {
   flex-direction: column;
   gap: var(--spacing-sm);
   pointer-events: none;
+  width: 100%;
+  max-width: 480px;
+  padding: 0 var(--spacing-lg);
+  box-sizing: border-box;
 }
 
 .toast {
@@ -1722,7 +1726,7 @@ input[type=number] {
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 0.2s ease, transform 0.2s ease;
-  max-width: 320px;
+  width: 100%;
 }
 
 .toast-visible {
