@@ -63,9 +63,10 @@ export function TypewriterKey({ size = 40 }: { size?: number }) {
 
 interface HomeProps {
   onNavigate: (route: string) => void;
+  onReady?: () => void;
 }
 
-export function Home({ onNavigate }: HomeProps) {
+export function Home({ onNavigate, onReady }: HomeProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [themeMode, setThemeMode] = useState<'system' | Theme>('system');
   const [showSkeleton, setShowSkeleton] = useState(false);
@@ -138,6 +139,11 @@ export function Home({ onNavigate }: HomeProps) {
     const timer = setTimeout(() => setShowSkeleton(true), 200);
     return () => clearTimeout(timer);
   }, [tripsData]);
+
+  // Signal readiness once trips have resolved so the router can fade the view in
+  useEffect(() => {
+    if (tripsData !== undefined) onReady?.();
+  }, [tripsData, onReady]);
 
   const handleThemeChange = (mode: string) => {
     const theme = mode as 'system' | Theme;
@@ -269,7 +275,6 @@ export function Home({ onNavigate }: HomeProps) {
           ) : null
         ) : tripsData.length === 0 ? (
           <div class="empty-state">
-            <TypewriterKey size={56} />
             <p class="empty-state-title">Your ride book is empty.</p>
             <p class="empty-state-desc">Everything stays on this device. No account needed.</p>
             <div class="empty-actions">

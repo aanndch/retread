@@ -19,6 +19,7 @@ import type { Page, LocationUnion } from "../types";
 interface PageDetailProps {
   pageId: number;
   onNavigate: (route: string) => void;
+  onReady?: () => void;
 }
 
 function locationName(loc?: LocationUnion | null): string {
@@ -46,7 +47,7 @@ function LegTrail({ start, end }: { start: string; end: string }) {
   );
 }
 
-export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
+export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
   const [page, setPage] = useState<Page | null>(null);
   const [tripTitle, setTripTitle] = useState("");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -168,6 +169,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
           setPrevDate(myIdx > 0 ? formatIsoDateToDMY(sorted[myIdx - 1].date) : "");
           setNextDate(myIdx < sorted.length - 1 ? formatIsoDateToDMY(sorted[myIdx + 1].date) : "");
           setLoading(false);
+          onReady?.();
         }
       } catch (err) {
         console.error("Failed to load page log details:", err);

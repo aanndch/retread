@@ -60,6 +60,7 @@ function DayPhotoRail({ pages, onNavigate }: { pages: Page[]; onNavigate: (route
 interface TripDetailProps {
   tripId: number;
   onNavigate: (route: string) => void;
+  onReady?: () => void;
 }
 
 function weekdayFor(date: string): string {
@@ -102,7 +103,7 @@ function RouteTrail({ stops }: { stops: string[] }) {
   );
 }
 
-export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
+export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
@@ -165,6 +166,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
           setTrip(tripRecord);
           setPages(sortedPages);
           setLoading(false);
+          onReady?.();
         }
       } catch (err) {
         console.error("Failed to load ride details:", err);

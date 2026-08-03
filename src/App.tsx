@@ -19,7 +19,7 @@ import { getSWUpdate } from './main';
 export function App() {
   const [setupComplete, setSetupComplete] = useState(false);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showContent, setShowContent] = useState(true);
   const [hasSWUpdate, setHasSWUpdate] = useState(false);
   const appPrompt = useAppPrompts();
   const [dismissedPrompt, setDismissedPrompt] = useState(false);
@@ -27,6 +27,16 @@ export function App() {
   const prevHashRef = useRef(window.location.hash || HASH_HOME);
   const scrollCacheRef = useRef(new Map<string, number>());
   const isPopRef = useRef(false);
+  const revealTimerRef = useRef<number | null>(null);
+
+  // Reveal the new route once its content is ready to render (fade-in gate).
+  const finishTransition = useCallback(() => {
+    if (revealTimerRef.current !== null) {
+      clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+    setShowContent(true);
+  }, []);
 
   // Check setup status and monitor hash changes
   useEffect(() => {
@@ -62,6 +72,14 @@ export function App() {
       requestAnimationFrame(attempt);
     };
 
+    // Routes whose views load data asynchronously and gate their fade-in on
+    // an onReady signal. All other routes (editor, backup, 404) reveal instantly.
+    const isGatedRoute = (hash: string) =>
+      hash === HASH_HOME ||
+      hash === '' ||
+      hash.startsWith(HASH_TRIP_PREFIX) ||
+      hash.startsWith(HASH_PAGE_PREFIX);
+
     const handleHashChange = () => {
       const checkedSetup = localStorage.getItem('retread-setup-complete') === 'true';
       setSetupComplete(checkedSetup);
@@ -78,17 +96,28 @@ export function App() {
       const isPop = isPopRef.current && nextHash !== prevHash;
       isPopRef.current = false;
 
-      // Trigger fade-out transition
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentHash(nextHash);
-        setIsTransitioning(false);
+      // Content-gated transition: swap routes instantly but keep the viewport
+      // invisible until the routed view reports its data is rendered (via
+      // onReady), then fade it in. Non-data views reveal immediately. A safety
+      // timer backstops views that never signal.
+      setShowContent(false);
+      if (isGatedRoute(nextHash)) {
+        if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = window.setTimeout(finishTransition, 600);
+      } else {
+        finishTransition();
+      }
+
+      setCurrentHash(nextHash);
+
+      // Restore or reset scroll position after the new view mounts
+      requestAnimationFrame(() => {
         if (isPop) {
           restoreScroll(scrollCacheRef.current.get(nextHash));
         } else {
           window.scrollTo(0, 0);
         }
-      }, 100);
+      });
     };
 
     const handlePop = () => {
@@ -104,8 +133,9 @@ export function App() {
       window.removeEventListener('hashchange', handleHashChange);
       window.removeEventListener('popstate', handlePop);
       window.removeEventListener('sw-update', handleSWUpdate);
+      if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
     };
-  }, []);
+  }, [finishTransition]);
 
   const navigateTo = useCallback((route: string) => {
     window.location.hash = route;
@@ -127,28 +157,28 @@ export function App() {
     const hash = currentHash || HASH_HOME;
 
     if (hash === HASH_HOME || hash === '') {
-      return <Home onNavigate={navigateTo} />;
+      return <Home onNavigate={navigateTo} onReady={finishTransition} />;
     }
     
     if (hash === '#/test') {
       if (import.meta.env.DEV) {
         return <TestRunner />;
       }
-      return <Home onNavigate={navigateTo} />;
+      return <Home onNavigate={navigateTo} onReady={finishTransition} />;
     }
     
     if (hash.startsWith(HASH_TRIP_PREFIX)) {
       const tripId = hash.split('/').pop();
       const parsedId = tripId ? parseInt(tripId, 10) : NaN;
-      if (isNaN(parsedId)) return <Home onNavigate={navigateTo} />;
-      return <TripDetail tripId={parsedId} onNavigate={navigateTo} />;
+      if (isNaN(parsedId)) return <Home onNavigate={navigateTo} onReady={finishTransition} />;
+      return <TripDetail tripId={parsedId} onNavigate={navigateTo} onReady={finishTransition} />;
     }
 
     if (hash.startsWith(HASH_PAGE_PREFIX)) {
       const pageId = hash.split('/').pop();
       const parsedId = pageId ? parseInt(pageId, 10) : NaN;
-      if (isNaN(parsedId)) return <Home onNavigate={navigateTo} />;
-      return <PageDetail pageId={parsedId} onNavigate={navigateTo} />;
+      if (isNaN(parsedId)) return <Home onNavigate={navigateTo} onReady={finishTransition} />;
+      return <PageDetail pageId={parsedId} onNavigate={navigateTo} onReady={finishTransition} />;
     }
 
     if (hash.startsWith(HASH_EDIT)) {
@@ -182,7 +212,7 @@ export function App() {
           <button class="btn btn-primary btn-sm" onClick={() => getSWUpdate()?.()}>Refresh</button>
         </div>
       )}
-      <main class={`viewport${isTransitioning ? ' page-exit' : ''}`}>
+      <main class={`viewport${showContent ? '' : ' preparing'}`}>
         {renderRoute()}
       </main>
 
