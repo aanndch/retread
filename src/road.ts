@@ -114,7 +114,6 @@ export async function backfillTripRoutes(tripId: number): Promise<void> {
           } catch (snapErr) {
             console.warn(`[OSRM] Snap failed for first leg, saving straight line fallback:`, snapErr);
             await db.pages.update(currentPage.id!, { roadPath: [fromGps, toGps] });
-            throw snapErr;
           }
         }
       } else {
@@ -150,7 +149,6 @@ export async function backfillTripRoutes(tripId: number): Promise<void> {
         } catch (snapErr) {
           console.warn(`[OSRM] Snap failed for leg, saving straight line fallback:`, snapErr);
           await db.pages.update(currentPage.id!, { roadPath: [fromGps, toGps] });
-          throw snapErr;
         }
       }
     } else {

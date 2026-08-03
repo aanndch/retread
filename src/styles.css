@@ -204,8 +204,8 @@ body {
 
 /* Lock viewport height and block scrolling only when the editor is open */
 .viewport:has(.editor-container) {
-  height: 100vh;
-  height: 100dvh;
+  height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   overflow: hidden;
   padding-bottom: var(--spacing-md);
   box-sizing: border-box;
@@ -332,7 +332,7 @@ button:focus,
 /* Floating Action Button */
 .fab-container {
   position: fixed;
-  bottom: var(--spacing-xl);
+  bottom: calc(var(--spacing-xl) + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
@@ -1783,7 +1783,7 @@ input[type=number] {
 /* Toast */
 .toast-container {
   position: fixed;
-  bottom: var(--spacing-xl);
+  bottom: calc(var(--spacing-xl) + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
@@ -1918,8 +1918,8 @@ input[type=number] {
 /* Close overlay button (Typewriter Keycap style) */
 .btn-close-overlay {
   position: fixed;
-  top: var(--spacing-md);
-  right: var(--spacing-md);
+  top: calc(var(--spacing-md) + env(safe-area-inset-top));
+  right: calc(var(--spacing-md) + env(safe-area-inset-right));
   background-color: var(--color-paper);
   color: var(--color-ink);
   border: 1px solid var(--color-ink);
@@ -1998,7 +1998,7 @@ input[type=number] {
 /* Photo overlay dot indicators */
 .photo-overlay-dots {
   position: fixed;
-  bottom: var(--spacing-lg);
+  bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
