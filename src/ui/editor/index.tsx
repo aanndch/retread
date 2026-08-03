@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useRef, useCallback } from 'preact/hooks';
+import { useReducer, useEffect, useRef, useCallback, useState } from 'preact/hooks';
 import { db } from '../../db';
 import { compressImage } from '../../images';
 import { Toast, useToast } from '../../components/toast';
@@ -93,6 +93,7 @@ export function Editor({ onNavigate }: EditorProps) {
   const tripId = tripIdParam ? parseInt(tripIdParam, 10) : null;
   const pageId = pageIdParam ? parseInt(pageIdParam, 10) : null;
 
+  const [isClosing, setIsClosing] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -480,6 +481,13 @@ export function Editor({ onNavigate }: EditorProps) {
     }
   };
 
+  const triggerClose = (path: string) => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onNavigate(path);
+    }, 200);
+  };
+
   // Compact Save routing delegator
   const handleSave = async (e: Event) => {
     e.preventDefault();
@@ -496,7 +504,7 @@ export function Editor({ onNavigate }: EditorProps) {
 
     try {
       const redirectPath = await saveEditorDetails(mode, tripId, pageId, state);
-      onNavigate(redirectPath);
+      triggerClose(redirectPath);
     } catch (err) {
       showToast((err as Error).message);
     }
@@ -504,16 +512,16 @@ export function Editor({ onNavigate }: EditorProps) {
 
   const handleCancel = () => {
     if (mode === 'edit' && pageId !== null) {
-      onNavigate(`#/page/${pageId}`);
+      triggerClose(`#/page/${pageId}`);
     } else if (mode === 'new-day' || mode === 'edit-trip') {
-      onNavigate(`#/trip/${tripId}`);
+      triggerClose(`#/trip/${tripId}`);
     } else {
-      onNavigate('#/');
+      triggerClose('#/');
     }
   };
 
   return (
-    <div class="editor-container">
+    <div class={`editor-container${isClosing ? ' closing' : ''}`}>
       <PageHeader
         title={
           mode === 'new-trip' ? (tripTitle.trim() || 'New Ride') :

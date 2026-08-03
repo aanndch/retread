@@ -173,7 +173,13 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  transition: opacity 0.15s ease-in, transform 0.15s ease-in;
   animation: page-slide-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.viewport.page-exit {
+  opacity: 0 !important;
+  transform: translateY(-4px) !important;
 }
 
 @keyframes page-slide-in {
@@ -228,6 +234,11 @@ body {
   background: transparent;
   color: var(--color-ink);
   text-decoration: none;
+}
+
+button:focus,
+.btn:focus {
+  outline: none;
 }
 
 .btn:active:not(:disabled) {
@@ -763,6 +774,33 @@ body {
   display: flex;
   flex-direction: column;
   flex: 1; /* Stretch to fill the entire remaining height of the locked viewport */
+  animation: paper-settle 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.editor-container.closing {
+  animation: paper-lift 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes paper-settle {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes paper-lift {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
 }
 
 .editor-header,

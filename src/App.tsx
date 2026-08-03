@@ -19,6 +19,7 @@ import { getSWUpdate } from './main';
 export function App() {
   const [setupComplete, setSetupComplete] = useState(false);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [hasSWUpdate, setHasSWUpdate] = useState(false);
   const appPrompt = useAppPrompts();
   const [dismissedPrompt, setDismissedPrompt] = useState(false);
@@ -30,9 +31,15 @@ export function App() {
     setSetupComplete(isSetup);
 
     const handleHashChange = () => {
-      setCurrentHash(window.location.hash);
       const checkedSetup = localStorage.getItem('retread-setup-complete') === 'true';
       setSetupComplete(checkedSetup);
+
+      // Trigger fade-out transition
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentHash(window.location.hash);
+        setIsTransitioning(false);
+      }, 150);
     };
 
     const handleSWUpdate = () => setHasSWUpdate(true);
@@ -120,7 +127,7 @@ export function App() {
           <button class="btn btn-primary btn-sm" onClick={() => getSWUpdate()?.()}>Refresh</button>
         </div>
       )}
-      <main class="viewport">
+      <main class={`viewport${isTransitioning ? ' page-exit' : ''}`}>
         {renderRoute()}
       </main>
 
