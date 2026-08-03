@@ -2008,3 +2008,52 @@ input[type=number] {
   margin-top: 1px;
 }
 
+/* ─── Leaflet Minimal & Typewriter Theme Overrides ────────────────────────── */
+
+
+
+/* 2. Typewriter Zoom Controls Override */
+.leaflet-bar {
+  border: 1px solid var(--color-ink) !important;
+  border-radius: var(--border-radius) !important;
+  box-shadow: 3px 3px 0px var(--color-shadow) !important;
+  overflow: hidden;
+}
+
+.leaflet-bar a {
+  background-color: var(--color-paper) !important;
+  color: var(--color-ink) !important;
+  border-bottom: 1px solid var(--color-paper-dim) !important;
+  font-family: var(--font-mechanical) !important;
+  font-weight: bold !important;
+  transition: background-color 0.2s ease, color 0.2s ease !important;
+}
+
+.leaflet-bar a:hover {
+  background-color: var(--color-paper-dim) !important;
+  color: var(--color-ink) !important;
+}
+
+.leaflet-bar a.leaflet-disabled {
+  background-color: var(--color-paper-dim) !important;
+  opacity: 0.5 !important;
+  color: var(--color-ink-muted) !important;
+}
+
+/* 3. Attribution Bar Override */
+.leaflet-container .leaflet-control-attribution {
+  background: var(--color-paper-dim) !important;
+  color: var(--color-ink-muted) !important;
+  font-family: var(--font-mechanical) !important;
+  font-size: 9px !important;
+  border-top-left-radius: var(--border-radius);
+  border-left: 1px solid var(--color-ink-muted);
+  border-top: 1px solid var(--color-ink-muted);
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: var(--color-ink) !important;
+  text-decoration: underline !important;
+}
+
+

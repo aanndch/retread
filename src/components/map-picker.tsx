@@ -79,8 +79,10 @@ export function MapPicker({
       zoomControl: true,
     }).setView(initialCenter, 13);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 20
     }).addTo(map);
 
     pickerMapRef.current = map;
@@ -196,26 +198,26 @@ export function MapPicker({
                   cx="15"
                   cy="15"
                   r="4"
-                  stroke="var(--color-green)"
+                  stroke="var(--color-ink)"
                   stroke-width="2"
                   fill="var(--color-paper)"
                 />
-                <line x1="15" y1="0" x2="15" y2="10" stroke="var(--color-green)" stroke-width="2" />
+                <line x1="15" y1="0" x2="15" y2="10" stroke="var(--color-ink)" stroke-width="2" />
                 <line
                   x1="15"
                   y1="20"
                   x2="15"
                   y2="30"
-                  stroke="var(--color-green)"
+                  stroke="var(--color-ink)"
                   stroke-width="2"
                 />
-                <line x1="0" y1="15" x2="10" y2="15" stroke="var(--color-green)" stroke-width="2" />
+                <line x1="0" y1="15" x2="10" y2="15" stroke="var(--color-ink)" stroke-width="2" />
                 <line
                   x1="20"
                   y1="15"
                   x2="30"
                   y2="15"
-                  stroke="var(--color-green)"
+                  stroke="var(--color-ink)"
                   stroke-width="2"
                 />
               </svg>
@@ -224,20 +226,20 @@ export function MapPicker({
         </div>
 
         <div
+          class="page-action-row page-action-modal"
           style={{
-            display: 'flex',
-            gap: '12px',
-            padding: '16px',
+            padding: 'var(--spacing-md)',
             background: 'var(--color-paper-dim)',
             borderTop: '1px solid var(--color-ink-muted)',
+            marginTop: 0,
           }}
         >
-          <Button variant="secondary" style={{ flex: 1 }} onClick={onClose}>
+          <Button variant="secondary" size="sm" onClick={onClose}>
             Cancel
           </Button>
           <Button
             variant="primary"
-            style={{ flex: 1 }}
+            size="sm"
             onClick={handleConfirm}
             disabled={!leafletLoaded}
           >
