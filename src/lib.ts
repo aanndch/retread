@@ -41,46 +41,57 @@ export function formatDistance(km: number): string {
 
 /**
  * Formats a date range from first to last ISO date strings.
- * Returns "Jun 10, 2026" for single day, "Jun 10 – 14, 2026" for same month,
- * or "Jun 10 – Jul 2, 2026" for different months.
+ * Returns e.g. "Jun 10, 2026", "Jun 10-15, 2026", "Jun 10 - Jul 2, 2026".
  */
 export function formatDateRange(firstDate: string, lastDate: string): string {
-  const formatDate = (isoStr: string) => {
+  const parseDate = (isoStr: string) => {
     const parts = isoStr.split('-');
     if (parts.length === 3) {
-      const d = new Date(
+      return new Date(
         parseInt(parts[0], 10),
         parseInt(parts[1], 10) - 1,
-        parseInt(parts[2], 10),
+        parseInt(parts[2], 10)
       );
-      return d;
     }
     return null;
   };
 
-  const first = formatDate(firstDate);
-  const last = formatDate(lastDate);
+  const first = parseDate(firstDate);
+  const last = parseDate(lastDate);
 
   if (!first || !last) return firstDate;
 
+  const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  
+  const fMonth = months[first.getMonth()];
+  const fDay = first.getDate();
+  const fYear = first.getFullYear();
+
+  const lMonth = months[last.getMonth()];
+  const lDay = last.getDate();
+  const lYear = last.getFullYear();
+
   if (firstDate === lastDate) {
-    return first.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return `${fMonth} ${fDay}, ${fYear}`;
   }
 
-  const sameYear = first.getFullYear() === last.getFullYear();
-  const sameMonth = sameYear && first.getMonth() === last.getMonth();
-
-  if (sameMonth) {
-    const dayStart = first.toLocaleDateString(undefined, { day: 'numeric' });
-    const monthEnd = last.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-    return `${dayStart} – ${monthEnd}`;
+  if (fYear === lYear) {
+    if (fMonth === lMonth) {
+      return `${fMonth} ${fDay} - ${lDay}, ${fYear}`;
+    }
+    return `${fMonth} ${fDay} - ${lMonth} ${lDay}, ${fYear}`;
   }
 
-  const start = first.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  const end = last.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  return `${start} – ${end}`;
+  return `${fMonth} ${fDay}, ${fYear} - ${lMonth} ${lDay}, ${lYear}`;
+}
+
+/**
+ * Formats a YYYY-MM-DD string to DD-MM-YYYY.
+ */
+export function formatIsoDateToDMY(dateStr: string): string {
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return dateStr;
 }

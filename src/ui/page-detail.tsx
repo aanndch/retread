@@ -14,6 +14,7 @@ import { PageHeader } from "../components/page-header";
 import { MapModal } from "../components/map-modal";
 import { PhotoOverlay } from "../components/photo-overlay";
 import { backfillTripRoutes } from "../road";
+import { formatIsoDateToDMY } from "../lib";
 import type { Page } from "../types";
 
 interface PageDetailProps {
@@ -164,26 +165,8 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
 
   if (!page) return null;
 
-  const dateParts = page.date.split("-");
-  let displayDate = page.date;
-  let shortDate = page.date;
-  if (dateParts.length === 3) {
-    const d = new Date(
-      parseInt(dateParts[0], 10),
-      parseInt(dateParts[1], 10) - 1,
-      parseInt(dateParts[2], 10),
-    );
-    displayDate = d.toLocaleDateString(undefined, {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-    shortDate = d.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
-  }
+  const displayDate = formatIsoDateToDMY(page.date);
+  const shortDate = formatIsoDateToDMY(page.date);
 
   return (
     <div class="page-detail-container">
@@ -331,7 +314,7 @@ export function PageDetail({ pageId, onNavigate }: PageDetailProps) {
       {showDeleteModal && (
         <ConfirmModal
           title="Delete Day Log?"
-          message={`This will permanently delete the log entry for ${page.date}. This action cannot be undone.`}
+          message={`This will permanently delete the log entry for ${formatIsoDateToDMY(page.date)}. This action cannot be undone.`}
           confirmLabel="Confirm Delete"
           onConfirm={handleDelete}
           onCancel={() => setShowDeleteModal(false)}

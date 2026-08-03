@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { Page, Trip } from '../../types';
+import { formatIsoDateToDMY } from '../../lib';
 
 function PhotoThumb({ blob }: { blob: Blob }) {
   const [url, setUrl] = useState("");
@@ -54,7 +55,7 @@ export function LegCard({ page, index, pages, trip, label }: LegCardProps) {
               minWidth: 0,
             }}
           >
-            <span class="card-date-badge">{page.date}</span>
+            <span class="card-date-badge">{formatIsoDateToDMY(page.date)}</span>
             {page.location && (
               <span
                 class="card-location-badge"

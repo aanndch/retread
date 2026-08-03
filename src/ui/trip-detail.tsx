@@ -9,7 +9,7 @@ import { PageHeader } from "../components/page-header";
 import { MapModal } from "../components/map-modal";
 import { LegCard } from "./trip-detail/leg-card";
 import { HASH_HOME } from "../constants";
-import { computeTotalDistance, formatDistance } from "../lib";
+import { computeTotalDistance, formatDistance, formatIsoDateToDMY } from "../lib";
 import type { Trip, Page } from "../types";
 
 interface TripDetailProps {
@@ -159,27 +159,10 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   // Format date range
   let dateRange = "No days logged yet.";
   if (pages.length > 0) {
-    const formatDate = (isoStr: string) => {
-      const parts = isoStr.split("-");
-      if (parts.length === 3) {
-        const d = new Date(
-          parseInt(parts[0], 10),
-          parseInt(parts[1], 10) - 1,
-          parseInt(parts[2], 10),
-        );
-        return d.toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-          year: "2-digit",
-        });
-      }
-      return isoStr;
-    };
-
     if (pages.length === 1) {
-      dateRange = formatDate(pages[0].date);
+      dateRange = formatIsoDateToDMY(pages[0].date);
     } else {
-      dateRange = `${formatDate(pages[0].date)} – ${formatDate(pages[pages.length - 1].date)}`;
+      dateRange = `${formatIsoDateToDMY(pages[0].date)} – ${formatIsoDateToDMY(pages[pages.length - 1].date)}`;
     }
   }
 
