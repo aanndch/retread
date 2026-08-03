@@ -100,8 +100,17 @@ export function Home({ onNavigate }: HomeProps) {
       <header class="home-header">
         <div>
           <h1 class="logo">retread</h1>
-          <p class="tagline home-tagline">A logbook for well-tread rides.</p>
+          {tripsData && tripsData.length === 0 && (
+            <p class="tagline home-tagline">A logbook for well-tread rides.</p>
+          )}
         </div>
+        <Button 
+          variant="icon" 
+          aria-label="Settings" 
+          onClick={() => setShowSettings(true)}
+        >
+          <GearIcon size={20} />
+        </Button>
       </header>
 
       {/* Settings Panel Overlay */}
@@ -184,8 +193,14 @@ export function Home({ onNavigate }: HomeProps) {
           </div>
         ) : tripsData.length === 0 ? (
           <div class="empty-state">
-            <p>No rides logged yet.</p>
-            <span class="empty-hint">Tap the ✦ below to start your first ride.</span>
+            <p class="empty-state-title">No rides logged yet.</p>
+            <p class="empty-state-desc">Your rides, stored locally. No account needed.</p>
+            <Button 
+              variant="primary" 
+              onClick={() => onNavigate('#/edit?mode=new-trip')}
+            >
+              ＋ Start Your First Ride
+            </Button>
           </div>
         ) : (
           <div class="trips-grid">
@@ -200,18 +215,6 @@ export function Home({ onNavigate }: HomeProps) {
             ))}
           </div>
         )}
-
-        {/* Footer Settings Entry */}
-        <div class="home-footer">
-          <Button 
-            variant="tertiary"
-            onClick={() => setShowSettings(true)}
-            class="btn-icon-text home-settings-link"
-          >
-            <GearIcon size={16} />
-            <span>Manage Settings & Backups</span>
-          </Button>
-        </div>
       </main>
 
       {/* Floating Action Button */}

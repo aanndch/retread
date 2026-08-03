@@ -332,7 +332,7 @@ body {
 .home-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-top: 0;
   margin-bottom: var(--spacing-lg);
 }
@@ -340,17 +340,6 @@ body {
 .home-tagline {
   margin: 0;
   margin-top: var(--spacing-xs);
-}
-
-.home-footer {
-  text-align: left;
-  margin-top: var(--spacing-xl);
-  margin-bottom: var(--spacing-md);
-}
-
-.home-settings-link {
-  text-decoration: underline;
-  opacity: 0.7;
 }
 
 /* Setup View */
@@ -674,17 +663,20 @@ body {
   border-radius: var(--border-radius);
   text-align: center;
   margin-top: var(--spacing-xl);
+  gap: var(--spacing-sm);
 }
 
-.empty-state p {
+.empty-state-title {
   font-weight: 700;
   font-size: 15px;
-  margin-bottom: var(--spacing-xs);
+  margin: 0;
 }
 
-.empty-hint {
+.empty-state-desc {
   font-size: 12px;
   color: var(--color-ink-muted);
+  margin: 0;
+  margin-bottom: var(--spacing-sm);
 }
 
 /* Placeholders & Test Views */
