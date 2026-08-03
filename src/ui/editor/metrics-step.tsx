@@ -258,12 +258,16 @@ export function MetricsStep({
                 {fallbackCenter && location?.kind === 'gps' && (
                   <button
                     type="button"
-                    class="btn-link"
-                    style={{ fontSize: '11px', marginTop: '4px', background: 'none', border: 'none', color: 'var(--color-green)', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontFamily: 'var(--font-mechanical)', display: 'block' }}
+                    class="btn-calc-link"
                     onClick={onAutoFillDistance}
                     disabled={gpsLoading}
                   >
-                    {gpsLoading ? 'Calculating...' : '⚡ Auto-fill from route'}
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style={{ display: 'inline-block', marginRight: '4px' }}>
+                      <circle cx="5" cy="19" r="2.5" />
+                      <path d="M7 17c6-8-2-10 11-11" />
+                      <path d="M14 2l8 8M22 2l-8 8" />
+                    </svg>
+                    <span>{gpsLoading ? 'Calculating...' : 'Auto-calculate distance'}</span>
                   </button>
                 )}
               </div>
@@ -282,12 +286,16 @@ export function MetricsStep({
                 {fallbackCenter && location?.kind === 'gps' && (
                   <button
                     type="button"
-                    class="btn-link"
-                    style={{ fontSize: '11px', marginTop: '4px', background: 'none', border: 'none', color: 'var(--color-green)', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontFamily: 'var(--font-mechanical)', display: 'block' }}
+                    class="btn-calc-link"
                     onClick={onAutoFillDistance}
                     disabled={gpsLoading}
                   >
-                    {gpsLoading ? 'Calculating...' : '⚡ Predict odometer from route'}
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style={{ display: 'inline-block', marginRight: '4px' }}>
+                      <circle cx="5" cy="19" r="2.5" />
+                      <path d="M7 17c6-8-2-10 11-11" />
+                      <path d="M14 2l8 8M22 2l-8 8" />
+                    </svg>
+                    <span>{gpsLoading ? 'Calculating...' : 'Predict from route'}</span>
                   </button>
                 )}
               </div>
