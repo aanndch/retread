@@ -22,8 +22,8 @@ interface MetricsStepProps {
   handleClearLocation: () => void;
   dayTitle: string;
   setDayTitle: (t: string) => void;
-  distanceMode: 'km' | 'odo';
-  setDistanceMode: (m: 'km' | 'odo') => void;
+  distanceMode: 'auto' | 'manual' | 'odo';
+  setDistanceMode: (m: 'auto' | 'manual' | 'odo') => void;
   startOdo: number | null;
   setStartOdo: (o: number | null) => void;
   startLocation: LocationUnion | null;
@@ -166,27 +166,41 @@ export function MetricsStep({
       {(mode === 'new-trip' || mode === 'edit-trip') && (
         <div class="form-group animate-fade-in" style={{ marginTop: 'var(--spacing-md)' }}>
           <label class="input-label">Distance Tracking Method</label>
-          <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexDirection: 'column', marginBottom: '8px' }}>
             <Button
               type="button"
-              variant={distanceMode === 'km' ? 'primary' : 'secondary'}
+              variant={distanceMode === 'auto' ? 'primary' : 'secondary'}
               size="sm"
-              style={{ flex: 1 }}
-              onClick={() => setDistanceMode('km')}
+              onClick={() => setDistanceMode('auto')}
             >
-              Daily km Traveled
+              Auto from GPS
+            </Button>
+            <Button
+              type="button"
+              variant={distanceMode === 'manual' ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setDistanceMode('manual')}
+            >
+              Manual (km)
             </Button>
             <Button
               type="button"
               variant={distanceMode === 'odo' ? 'primary' : 'secondary'}
               size="sm"
-              style={{ flex: 1 }}
               onClick={() => setDistanceMode('odo')}
             >
               Odometer Readings
             </Button>
           </div>
-          
+
+          {distanceMode === 'auto' && (
+            <span class="field-tip">Distance is auto-calculated from the road route between your GPS pins each leg.</span>
+          )}
+
+          {distanceMode === 'manual' && (
+            <span class="field-tip">You'll type the distance travelled for each leg.</span>
+          )}
+
           {distanceMode === 'odo' && (
             <div class="form-group animate-fade-in" style={{ marginTop: '8px' }}>
               <label class="input-label" style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--color-ink-muted)' }}>Starting Odometer (km)</label>
@@ -200,7 +214,7 @@ export function MetricsStep({
                   setStartOdo(val ? parseFloat(val) : null);
                 }}
               />
-              <span class="field-tip">Required to calculate Day 1 distance travelled.</span>
+              <span class="field-tip">Record the odometer at each stop. Starting reading anchors Day 1.</span>
             </div>
           )}
         </div>
@@ -211,7 +225,7 @@ export function MetricsStep({
         <>
           {/* Row 1: Leg Route (Whole Row) */}
           <div class="form-group">
-            <label class="input-label">Leg Route / Destination</label>
+            <label class="input-label">Route Name</label>
             <input 
               type="text" 
               class="form-input" 
@@ -221,7 +235,7 @@ export function MetricsStep({
             />
           </div>
 
-          {/* Row 2: Date/Time and KM / Odo Selector */}
+          {/* Row 2: Date/Time and Odometer */}
           <div class="form-row">
             <div class="form-group flex-1">
               <label class="input-label">Date & Time</label>
@@ -245,35 +259,7 @@ export function MetricsStep({
               </div>
             </div>
 
-            {distanceMode !== 'odo' && (
-              <div class="form-group flex-1">
-                <label class="input-label">Distance Travelled (KM)</label>
-                <input 
-                  type="number" 
-                  class="form-input" 
-                  placeholder="e.g. 120"
-                  value={km === null ? '' : km}
-                  onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setKm((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
-                />
-                {fallbackCenter && location?.kind === 'gps' && (
-                  <button
-                    type="button"
-                    class="btn-calc-link"
-                    onClick={onAutoFillDistance}
-                    disabled={gpsLoading}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style={{ display: 'inline-block', marginRight: '4px' }}>
-                      <circle cx="5" cy="19" r="2.5" />
-                      <path d="M7 17c6-8-2-10 11-11" />
-                      <path d="M14 2l8 8M22 2l-8 8" />
-                    </svg>
-                    <span>{gpsLoading ? 'Calculating...' : 'Auto-calculate distance'}</span>
-                  </button>
-                )}
-              </div>
-            )}
-
-            {distanceMode !== 'km' && (
+            {distanceMode === 'odo' && (
               <div class="form-group flex-1">
                 <label class="input-label">Odometer</label>
                 <input 
@@ -283,29 +269,43 @@ export function MetricsStep({
                   value={odo === null ? '' : odo}
                   onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setOdo((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
                 />
-                {fallbackCenter && location?.kind === 'gps' && (
-                  <button
-                    type="button"
-                    class="btn-calc-link"
-                    onClick={onAutoFillDistance}
-                    disabled={gpsLoading}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style={{ display: 'inline-block', marginRight: '4px' }}>
-                      <circle cx="5" cy="19" r="2.5" />
-                      <path d="M7 17c6-8-2-10 11-11" />
-                      <path d="M14 2l8 8M22 2l-8 8" />
-                    </svg>
-                    <span>{gpsLoading ? 'Calculating...' : 'Predict from route'}</span>
-                  </button>
-                )}
               </div>
             )}
           </div>
 
+          {/* Row 3: Distance Travelled (own row) */}
+          {distanceMode !== 'odo' && (
+            <div class="form-group">
+              <label class="input-label">Distance Travelled (KM)</label>
+              <input 
+                type="number" 
+                class="form-input" 
+                placeholder="e.g. 120"
+                value={km === null ? '' : km}
+                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setKm((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
+              />
+              {fallbackCenter && location?.kind === 'gps' && (
+                <button
+                  type="button"
+                  class="btn-calc-link"
+                  onClick={onAutoFillDistance}
+                  disabled={gpsLoading}
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style={{ display: 'inline-block', marginRight: '4px' }}>
+                    <circle cx="5" cy="19" r="2.5" />
+                    <path d="M7 17c6-8-2-10 11-11" />
+                    <path d="M14 2l8 8M22 2l-8 8" />
+                  </svg>
+                  <span>{gpsLoading ? 'Calculating...' : 'Auto-calculate distance'}</span>
+                </button>
+              )}
+            </div>
+          )}
+
 
           {/* Geolocation Section */}
           <div class="form-group form-group-bordered">
-            <label class="input-label">Leg Destination</label>
+            <label class="input-label">End Point</label>
             
             {/* Destination Name Text Input */}
             <div class="form-group" style={{ marginBottom: '8px' }}>

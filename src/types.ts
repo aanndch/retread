@@ -1,4 +1,4 @@
-export type DistanceMode = 'km' | 'odo';
+export type DistanceMode = 'auto' | 'manual' | 'odo';
 export type EditorMode = 'new-trip' | 'edit-trip' | 'new-day' | 'edit';
 
 export interface Trip {

@@ -25,7 +25,7 @@ interface EditorState {
   note: string;
   km: number | null;
   odo: number | null;
-  distanceMode: 'km' | 'odo';
+  distanceMode: 'auto' | 'manual' | 'odo';
   startOdo: number | null;
   location: LocationUnion | null;
   startLocation: LocationUnion | null;
@@ -50,7 +50,7 @@ const initialEditorState: EditorState = {
   note: '',
   km: null,
   odo: null,
-  distanceMode: 'km',
+  distanceMode: 'auto',
   startOdo: null,
   location: null,
   startLocation: null,
@@ -203,7 +203,7 @@ export function Editor({ onNavigate }: EditorProps) {
         const tripRecord = await db.trips.get(resolvedTripId);
         if (active && tripRecord) {
           const update: Partial<EditorState> = {
-            distanceMode: tripRecord.distanceMode || 'km',
+            distanceMode: tripRecord.distanceMode === 'odo' ? 'odo' : tripRecord.distanceMode === 'auto' ? 'auto' : 'manual',
             startOdo: tripRecord.startOdo ?? null,
           };
           if (mode === 'edit-trip') {
@@ -345,40 +345,7 @@ export function Editor({ onNavigate }: EditorProps) {
       
       const roundedKm = Math.round(totalKm * 10) / 10;
       
-      if (distanceMode === 'km') {
-        dispatch({ km: roundedKm });
-      } else if (distanceMode === 'odo') {
-        let prevOdo: number | null = null;
-        const resolvedTripId = tripId;
-        if (resolvedTripId !== null) {
-          const pagesRecord = await db.pages.where('tripId').equals(resolvedTripId).toArray();
-          const sorted = [...pagesRecord].sort((a, b) => {
-            const dComp = a.date.localeCompare(b.date);
-            if (dComp !== 0) return dComp;
-            return (a.time || '00:00').localeCompare(b.time || '00:00') || (a.id || 0) - (b.id || 0);
-          });
-          
-          if (mode === 'edit' && pageId !== null) {
-            const myIdx = sorted.findIndex(p => p.id === pageId);
-            if (myIdx > 0) {
-              prevOdo = sorted[myIdx - 1].odo ?? null;
-            } else if (startOdo !== null) {
-              prevOdo = startOdo;
-            }
-          } else if (mode === 'new-day') {
-            if (sorted.length > 0) {
-              prevOdo = sorted[sorted.length - 1].odo ?? null;
-            } else if (startOdo !== null) {
-              prevOdo = startOdo;
-            }
-          }
-        }
-        
-        if (prevOdo !== null) {
-          const computedOdo = Math.round(prevOdo + roundedKm);
-          dispatch({ odo: computedOdo });
-        }
-      }
+      dispatch({ km: roundedKm });
     } catch (err) {
       console.error('Failed to calculate road distance:', err);
       try {
@@ -387,32 +354,7 @@ export function Editor({ onNavigate }: EditorProps) {
         const { haversineDistance } = await import('../../road');
         const directDist = Math.round(haversineDistance(fromGps, toGps) * 10) / 10;
         
-        if (distanceMode === 'km') {
-          dispatch({ km: directDist });
-        } else if (distanceMode === 'odo') {
-          let prevOdo: number | null = null;
-          const resolvedTripId = tripId;
-          if (resolvedTripId !== null) {
-            const pagesRecord = await db.pages.where('tripId').equals(resolvedTripId).toArray();
-            const sorted = [...pagesRecord].sort((a, b) => {
-              const dComp = a.date.localeCompare(b.date);
-              if (dComp !== 0) return dComp;
-              return (a.time || '00:00').localeCompare(b.time || '00:00') || (a.id || 0) - (b.id || 0);
-            });
-            if (mode === 'edit' && pageId !== null) {
-              const myIdx = sorted.findIndex(p => p.id === pageId);
-              if (myIdx > 0) prevOdo = sorted[myIdx - 1].odo ?? null;
-              else if (startOdo !== null) prevOdo = startOdo;
-            } else if (mode === 'new-day') {
-              if (sorted.length > 0) prevOdo = sorted[sorted.length - 1].odo ?? null;
-              else if (startOdo !== null) prevOdo = startOdo;
-            }
-          }
-          if (prevOdo !== null) {
-            const computedOdo = Math.round(prevOdo + directDist);
-            dispatch({ odo: computedOdo });
-          }
-        }
+        dispatch({ km: directDist });
       } catch (innerErr) {
         showToast('Error calculating route distance.');
       }
@@ -420,6 +362,13 @@ export function Editor({ onNavigate }: EditorProps) {
       dispatch({ gpsLoading: false });
     }
   };
+
+  // Auto-fill distance from route whenever a GPS end pin is set in auto mode
+  useEffect(() => {
+    if (distanceMode === 'auto' && location?.kind === 'gps' && fallbackCenter && km === null && !gpsLoading) {
+      handleAutoFillDistance();
+    }
+  }, [distanceMode, location, fallbackCenter, km, gpsLoading]);
 
   // Photo uploads & compression
   const handlePhotoChange = async (e: Event) => {

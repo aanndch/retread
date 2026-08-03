@@ -11,7 +11,7 @@ interface SaveData {
   note: string;
   km: number | null;
   odo: number | null;
-  distanceMode: 'km' | 'odo';
+  distanceMode: 'auto' | 'manual' | 'odo';
   startOdo: number | null;
   location: LocationUnion | null;
   startLocation: LocationUnion | null;
