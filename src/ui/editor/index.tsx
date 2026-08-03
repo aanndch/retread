@@ -327,6 +327,99 @@ export function Editor({ onNavigate }: EditorProps) {
     );
   };
 
+  const handleAutoFillDistance = async () => {
+    if (!fallbackCenter || location?.kind !== 'gps') return;
+    dispatch({ gpsLoading: true });
+    try {
+      const fromGps = { lat: fallbackCenter[0], lng: fallbackCenter[1] };
+      const toGps = { lat: location.lat, lng: location.lng };
+      
+      const { snapLeg, haversineDistance } = await import('../../road');
+      const snappedPath = await snapLeg(fromGps, toGps);
+      
+      let totalKm = 0;
+      for (let i = 1; i < snappedPath.length; i++) {
+        totalKm += haversineDistance(snappedPath[i - 1], snappedPath[i]);
+      }
+      
+      const roundedKm = Math.round(totalKm * 10) / 10;
+      
+      if (distanceMode === 'km') {
+        dispatch({ km: roundedKm });
+      } else if (distanceMode === 'odo') {
+        let prevOdo: number | null = null;
+        const resolvedTripId = tripId;
+        if (resolvedTripId !== null) {
+          const pagesRecord = await db.pages.where('tripId').equals(resolvedTripId).toArray();
+          const sorted = [...pagesRecord].sort((a, b) => {
+            const dComp = a.date.localeCompare(b.date);
+            if (dComp !== 0) return dComp;
+            return (a.time || '00:00').localeCompare(b.time || '00:00') || (a.id || 0) - (b.id || 0);
+          });
+          
+          if (mode === 'edit' && pageId !== null) {
+            const myIdx = sorted.findIndex(p => p.id === pageId);
+            if (myIdx > 0) {
+              prevOdo = sorted[myIdx - 1].odo ?? null;
+            } else if (startOdo !== null) {
+              prevOdo = startOdo;
+            }
+          } else if (mode === 'new-day') {
+            if (sorted.length > 0) {
+              prevOdo = sorted[sorted.length - 1].odo ?? null;
+            } else if (startOdo !== null) {
+              prevOdo = startOdo;
+            }
+          }
+        }
+        
+        if (prevOdo !== null) {
+          const computedOdo = Math.round(prevOdo + roundedKm);
+          dispatch({ odo: computedOdo });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to calculate road distance:', err);
+      try {
+        const fromGps = { lat: fallbackCenter[0], lng: fallbackCenter[1] };
+        const toGps = { lat: location.lat, lng: location.lng };
+        const { haversineDistance } = await import('../../road');
+        const directDist = Math.round(haversineDistance(fromGps, toGps) * 10) / 10;
+        
+        if (distanceMode === 'km') {
+          dispatch({ km: directDist });
+        } else if (distanceMode === 'odo') {
+          let prevOdo: number | null = null;
+          const resolvedTripId = tripId;
+          if (resolvedTripId !== null) {
+            const pagesRecord = await db.pages.where('tripId').equals(resolvedTripId).toArray();
+            const sorted = [...pagesRecord].sort((a, b) => {
+              const dComp = a.date.localeCompare(b.date);
+              if (dComp !== 0) return dComp;
+              return (a.time || '00:00').localeCompare(b.time || '00:00') || (a.id || 0) - (b.id || 0);
+            });
+            if (mode === 'edit' && pageId !== null) {
+              const myIdx = sorted.findIndex(p => p.id === pageId);
+              if (myIdx > 0) prevOdo = sorted[myIdx - 1].odo ?? null;
+              else if (startOdo !== null) prevOdo = startOdo;
+            } else if (mode === 'new-day') {
+              if (sorted.length > 0) prevOdo = sorted[sorted.length - 1].odo ?? null;
+              else if (startOdo !== null) prevOdo = startOdo;
+            }
+          }
+          if (prevOdo !== null) {
+            const computedOdo = Math.round(prevOdo + directDist);
+            dispatch({ odo: computedOdo });
+          }
+        }
+      } catch (innerErr) {
+        showToast('Error calculating route distance.');
+      }
+    } finally {
+      dispatch({ gpsLoading: false });
+    }
+  };
+
   // Photo uploads & compression
   const handlePhotoChange = async (e: Event) => {
     const files = (e.target as HTMLInputElement).files as FileList;
@@ -491,6 +584,8 @@ export function Editor({ onNavigate }: EditorProps) {
               handleCancel={handleCancel}
               handleStepJump={handleStepJump}
               onOpenMapPicker={handleOpenMapPicker}
+              fallbackCenter={fallbackCenter}
+              onAutoFillDistance={handleAutoFillDistance}
             />
           )}
 

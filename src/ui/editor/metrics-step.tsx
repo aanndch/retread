@@ -36,6 +36,8 @@ interface MetricsStepProps {
   handleCancel: () => void;
   handleStepJump: (s: 1 | 2 | 3) => void;
   onOpenMapPicker: (target: 'start' | 'location') => void;
+  fallbackCenter: [number, number] | null;
+  onAutoFillDistance: () => void;
 }
 
 export function MetricsStep({
@@ -70,7 +72,9 @@ export function MetricsStep({
   setTitleError,
   handleCancel,
   handleStepJump,
-  onOpenMapPicker
+  onOpenMapPicker,
+  fallbackCenter,
+  onAutoFillDistance
 }: MetricsStepProps) {
   return (
     <div class="wizard-step-content">
@@ -251,6 +255,17 @@ export function MetricsStep({
                   value={km === null ? '' : km}
                   onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setKm((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
                 />
+                {fallbackCenter && location?.kind === 'gps' && (
+                  <button
+                    type="button"
+                    class="btn-link"
+                    style={{ fontSize: '11px', marginTop: '4px', background: 'none', border: 'none', color: 'var(--color-green)', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontFamily: 'var(--font-mechanical)', display: 'block' }}
+                    onClick={onAutoFillDistance}
+                    disabled={gpsLoading}
+                  >
+                    {gpsLoading ? 'Calculating...' : '⚡ Auto-fill from route'}
+                  </button>
+                )}
               </div>
             )}
 
@@ -264,6 +279,17 @@ export function MetricsStep({
                   value={odo === null ? '' : odo}
                   onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setOdo((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
                 />
+                {fallbackCenter && location?.kind === 'gps' && (
+                  <button
+                    type="button"
+                    class="btn-link"
+                    style={{ fontSize: '11px', marginTop: '4px', background: 'none', border: 'none', color: 'var(--color-green)', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontFamily: 'var(--font-mechanical)', display: 'block' }}
+                    onClick={onAutoFillDistance}
+                    disabled={gpsLoading}
+                  >
+                    {gpsLoading ? 'Calculating...' : '⚡ Predict odometer from route'}
+                  </button>
+                )}
               </div>
             )}
           </div>
