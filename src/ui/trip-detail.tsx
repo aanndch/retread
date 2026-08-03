@@ -18,7 +18,7 @@ import {
 } from "../lib";
 import type { Trip, Page } from "../types";
 
-function DayFilmstrip({ pages, onNavigate }: { pages: Page[]; onNavigate: (route: string) => void }) {
+function DayPhotoRail({ pages, onNavigate }: { pages: Page[]; onNavigate: (route: string) => void }) {
   const [urls, setUrls] = useState<{ url: string; pageId: number }[]>([]);
 
   useEffect(() => {
@@ -40,11 +40,11 @@ function DayFilmstrip({ pages, onNavigate }: { pages: Page[]; onNavigate: (route
   if (urls.length === 0) return null;
 
   return (
-    <div class="film-strip" role="list" aria-label="Day photos">
+    <div class="photo-rail" role="list" aria-label="Day photos">
       {urls.map(({ url, pageId }, idx) => (
         <button
           key={idx}
-          class="film-frame"
+          class="photo-thumb"
           role="listitem"
           aria-label={`Open photo ${idx + 1}`}
           onClick={() => onNavigate(`#/page/${pageId}`)}
@@ -371,7 +371,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
                           label={dayPages.length > 1 ? `Leg ${dayPages.indexOf(page) + 1}` : ""}
                         />
                       ))}
-                      <DayFilmstrip pages={dayPages} onNavigate={onNavigate} />
+                      <DayPhotoRail pages={dayPages} onNavigate={onNavigate} />
                     </div>
                   </div>
                 );

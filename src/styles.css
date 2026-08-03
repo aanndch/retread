@@ -1852,54 +1852,35 @@ input[type=number] {
   font-family: var(--font-typewriter);
 }
 
-/* Film strip: dark base + rounded sprocket holes + 3:2 portrait frames */
-.film-strip {
-  --film-base: #161616;
-  --film-hole: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='14'%20height='8'%3E%3Cpath%20d='M0%200h14v8H0zM4.5%201.5h5v5h-5z'%20fill='%23161616'%20fill-rule='evenodd'/%3E%3C/svg%3E");
+/* Day photo rail: flat paper thumbnails with hard ink borders */
+.photo-rail {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   margin-top: var(--spacing-sm);
-  padding: 10px 16px;
+  padding: 2px 2px var(--spacing-sm);
   overflow-x: auto;
-  border-radius: var(--border-radius-sm);
   scrollbar-width: none;
-  background-color: transparent;
-  background-image:
-    linear-gradient(var(--film-base), var(--film-base)),
-    var(--film-hole),
-    var(--film-hole);
-  background-size:
-    100% calc(100% - 16px),
-    14px 8px,
-    14px 8px;
-  background-position:
-    center,
-    left top,
-    left bottom;
-  background-repeat:
-    no-repeat,
-    repeat-x,
-    repeat-x;
 }
 
-.film-strip::-webkit-scrollbar {
+.photo-rail::-webkit-scrollbar {
   display: none;
 }
 
-.film-frame {
+.photo-thumb {
   flex: 0 0 auto;
-  width: 50px;
-  height: 75px;
+  width: 56px;
+  height: 56px;
   padding: 0;
-  border: none;
-  background-color: var(--film-base);
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--color-paper);
+  box-shadow: 2px 2px 0px var(--color-shadow);
   cursor: pointer;
   overflow: hidden;
   flex-shrink: 0;
 }
 
-.film-frame img {
+.photo-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1907,7 +1888,7 @@ input[type=number] {
   transition: opacity 0.1s ease-in-out;
 }
 
-.film-frame:hover img {
+.photo-thumb:hover img {
   opacity: 0.85;
 }
 
