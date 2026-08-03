@@ -1,20 +1,105 @@
 import { useState, useEffect, useCallback, useRef } from "preact/hooks";
+import { Fragment } from "preact";
 import { db } from "../db";
 import { Button } from "../components/button";
 import { Toast, useToast } from "../components/toast";
 import { ConfirmModal } from "../components/confirm-modal";
-import { EditIcon, TrashIcon } from "../components/icons";
+import { ArrowLeft, EditIcon, TrashIcon } from "../components/icons";
 import { SquiggleMap } from "./squiggle";
-import { PageHeader } from "../components/page-header";
 import { MapModal } from "../components/map-modal";
 import { LegCard } from "./trip-detail/leg-card";
 import { HASH_HOME } from "../constants";
-import { computeTotalDistance, formatDistance, formatIsoDateToDMY } from "../lib";
+import {
+  computeTotalDistance,
+  formatDistance,
+  formatIsoDateToDMY,
+  buildStops,
+  computeDayDistances,
+} from "../lib";
 import type { Trip, Page } from "../types";
+
+function DayFilmstrip({ pages, onNavigate }: { pages: Page[]; onNavigate: (route: string) => void }) {
+  const [urls, setUrls] = useState<{ url: string; pageId: number }[]>([]);
+
+  useEffect(() => {
+    const collected: { url: string; pageId: number }[] = [];
+    const handles: string[] = [];
+
+    for (const page of pages) {
+      for (const blob of page.photos || []) {
+        const url = URL.createObjectURL(blob);
+        handles.push(url);
+        collected.push({ url, pageId: page.id! });
+      }
+    }
+
+    setUrls(collected);
+    return () => handles.forEach((h) => URL.revokeObjectURL(h));
+  }, [pages]);
+
+  if (urls.length === 0) return null;
+
+  return (
+    <div class="film-strip" role="list" aria-label="Day photos">
+      {urls.map(({ url, pageId }, idx) => (
+        <button
+          key={idx}
+          class="film-frame"
+          role="listitem"
+          aria-label={`Open photo ${idx + 1}`}
+          onClick={() => onNavigate(`#/page/${pageId}`)}
+        >
+          <img src={url} alt={`Day photo ${idx + 1}`} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 
 interface TripDetailProps {
   tripId: number;
   onNavigate: (route: string) => void;
+}
+
+function weekdayFor(date: string): string {
+  const parts = date.split("-");
+  if (parts.length !== 3) return "";
+  const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  return d.toLocaleDateString(undefined, { weekday: "short" });
+}
+
+function RouteTrail({ stops }: { stops: string[] }) {
+  const MAX_SHOWN = 5;
+  const nodes: { name: string; more?: number; last?: boolean }[] = [];
+
+  if (stops.length <= MAX_SHOWN) {
+    nodes.push(...stops.map((name) => ({ name })));
+  } else {
+    nodes.push(...stops.slice(0, 3).map((name) => ({ name })));
+    nodes.push({ name: "", more: stops.length - 4 });
+    nodes.push({ name: stops[stops.length - 1], last: true });
+  }
+
+  return (
+    <div class="ride-trail" role="img" aria-label={`Route: ${stops.join(" to ")}`}>
+      {nodes.map((n, i) => (
+        <Fragment key={i}>
+          {i > 0 && <span class="trail-line" aria-hidden="true" />}
+          <span
+            class={`trail-stop${i === 0 ? " is-start" : ""}${n.last ? " is-end" : ""}`}
+          >
+            <span class="trail-dot" aria-hidden="true" />
+            {n.more ? (
+              <span class="trail-name trail-name-more">+{n.more}</span>
+            ) : (
+              <span class="trail-name">{n.name}</span>
+            )}
+          </span>
+        </Fragment>
+      ))}
+    </div>
+  );
 }
 
 export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
@@ -138,6 +223,7 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
   const totalDays = new Set(pages.map(p => p.date)).size;
   const totalKm = computeTotalDistance(pages, trip?.startOdo);
   const hasKm = totalKm > 0;
+  const photoCount = pages.reduce((n, p) => n + (p.photos?.length || 0), 0);
 
   // Format date range
   let dateRange = "No days logged yet.";
@@ -149,81 +235,100 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
     }
   }
 
-  // Compile start -> end location summary
-  let startLabel = '';
-  if (trip.startLocation) {
-    startLabel = trip.startLocation.name || 
-      (trip.startLocation.kind === 'gps' 
-        ? `[${trip.startLocation.lat.toFixed(4)}, ${trip.startLocation.lng.toFixed(4)}]`
-        : '');
-  }
+  // Compile deduped trail of distinct stops + per-day distances
+  const stops = buildStops(trip.startLocation, pages);
+  const dayDistances = computeDayDistances(pages, trip?.startOdo);
 
-  let endLabel = '';
-  if (pages.length > 0) {
-    const lastPage = pages[pages.length - 1];
-    if (lastPage.location) {
-      endLabel = lastPage.location.name || 
-        (lastPage.location.kind === 'gps' 
-          ? `[${lastPage.location.lat.toFixed(4)}, ${lastPage.location.lng.toFixed(4)}]`
-          : '');
-    }
-  }
-
-  let routeSummary = '';
-  if (startLabel && endLabel) {
-    routeSummary = `${startLabel} → ${endLabel}`;
-  } else if (startLabel) {
-    routeSummary = startLabel;
-  }
+  const uniqueDates = Array.from(new Set(pages.map((p) => p.date))).sort();
 
   return (
     <div class="trip-detail-container">
-      <PageHeader
-        title={trip.title}
-        onBack={() => onNavigate(HASH_HOME)}
-        subTitle={
-          <>
-            {routeSummary && (
-              <div style={{ fontSize: '12px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-mechanical)', marginBottom: '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                {routeSummary}
-              </div>
-            )}
-            <span class="trip-dates-sub">{dateRange}</span>
-          </>
-        }
-        classType="detail"
-      />
+      {/* Top bar: back + actions */}
+      <header class="ride-topbar">
+        <Button
+          variant="icon"
+          aria-label="Back"
+          onClick={() => onNavigate(HASH_HOME)}
+        >
+          <ArrowLeft />
+        </Button>
+        <div class="ride-topbar-spacer" />
+        <Button
+          variant="icon"
+          aria-label="Edit ride"
+          onClick={() => onNavigate(`#/edit?mode=edit-trip&tripId=${tripId}`)}
+        >
+          <EditIcon size={14} />
+        </Button>
+        <Button
+          variant="icon"
+          class="btn-danger-text btn-icon-text"
+          aria-label="Delete ride"
+          onClick={() => setShowDeleteModal(true)}
+        >
+          <TrashIcon size={14} />
+        </Button>
+      </header>
 
       <main class="trip-detail-content">
-        {/* Cumulative Squiggle route map */}
-        {cumulativePath.length >= 2 ? (
-          <div class="map-interactive-trigger" onClick={openMapModal}>
-            <SquiggleMap path={cumulativePath} width={430} height={160} />
-          </div>
-        ) : (
-          <div class="squiggle-map-empty">
-            <span class="empty-icon">🗺</span>
-            <p>Log 2+ days with GPS pins to draw your ride route map.</p>
-          </div>
-        )}
+        {/* Hero: kicker, title, route-line trail */}
+        <section class="ride-hero">
+          <span class="ride-hero-kicker">{dateRange}</span>
+          <h1 class="ride-hero-title">{trip.title || 'Untitled Ride'}</h1>
+          {stops.length > 0 && <RouteTrail stops={stops} />}
+        </section>
 
-        {/* Ride statistics card */}
+        {/* Cumulative Squiggle route map */}
+        <section class="ride-map-hero">
+          {cumulativePath.length >= 2 ? (
+            <div class="map-interactive-trigger" onClick={openMapModal}>
+              <SquiggleMap path={cumulativePath} width={430} height={200} />
+            </div>
+          ) : (
+            <div class="squiggle-map-empty">
+              <svg
+                width="30"
+                height="30"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 17 L7 9 L11 14 L17 5 L21 10" stroke-dasharray="2 3" />
+                <circle cx="3" cy="17" r="1.6" fill="currentColor" />
+                <circle cx="21" cy="10" r="1.6" fill="currentColor" />
+              </svg>
+              <p>Log 2+ days with GPS pins to draw your ride route map.</p>
+            </div>
+          )}
+        </section>
+
+        {/* Ride statistics spec plate */}
         <section class="trip-stats-card">
           <div class="stat-item">
-            <span class="stat-label">Total Days</span>
+            <span class="stat-label">Days</span>
             <span class="stat-value">{totalDays}</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Total Distance</span>
+            <span class="stat-label">Legs</span>
+            <span class="stat-value">{pages.length}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Distance</span>
             <span class="stat-value">
               {hasKm ? formatDistance(totalKm) : "—"}
             </span>
           </div>
+          <div class="stat-item">
+            <span class="stat-label">Photos</span>
+            <span class="stat-value">{photoCount}</span>
+          </div>
         </section>
 
-        {/* Timeline Page logs */}
+        {/* Day-grouped Timeline */}
         <section class="trip-timeline">
-          <h4>Ride Timeline</h4>
           {pages.length === 0 ? (
             <div class="timeline-empty">
               <p>Write your first leg log entry to start your ride book.</p>
@@ -238,53 +343,46 @@ export function TripDetail({ tripId, onNavigate }: TripDetailProps) {
             </div>
           ) : (
             <div class="timeline-list">
-              {(() => {
-                const uniqueDates = Array.from(new Set(pages.map((p) => p.date))).sort();
+              {uniqueDates.map((date) => {
+                const dayPages = pages.filter((p) => p.date === date);
+                const dayNum = uniqueDates.indexOf(date) + 1;
+                const dayKm = dayDistances.get(date) || 0;
 
-                return pages.map((page, index) => {
-                  const dayNum = uniqueDates.indexOf(page.date) + 1;
-                  const pagesOnDate = pages.filter((p) => p.date === page.date);
-                  let label = `Day ${dayNum}`;
-                  if (pagesOnDate.length > 1) {
-                    const legIdx = pagesOnDate.indexOf(page) + 1;
-                    label = `Day ${dayNum} • Leg ${legIdx}`;
-                  }
-
-                  return (
-                    <LegCard
-                      key={page.id}
-                      page={page}
-                      index={index}
-                      pages={pages}
-                      trip={trip}
-                      label={label}
-                    />
-                  );
-                });
-              })()}
+                return (
+                  <div class="day-group" key={date}>
+                    <div class="day-group-header">
+                      <div class="day-group-title">
+                        <span class="day-group-label">Day {dayNum}</span>
+                        <span class="day-group-weekday">{weekdayFor(date)}</span>
+                      </div>
+                      <div class="day-group-meta">
+                        <span class="day-group-date">{formatIsoDateToDMY(date)}</span>
+                        {dayKm > 0 && (
+                          <>
+                            <span class="day-group-sep">·</span>
+                            <span class="day-group-km">{formatDistance(dayKm)}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div class="day-group-body">
+                      {dayPages.map((page) => (
+                        <LegCard
+                          key={page.id}
+                          page={page}
+                          index={pages.indexOf(page)}
+                          pages={pages}
+                          trip={trip}
+                          label={dayPages.length > 1 ? `Leg ${dayPages.indexOf(page) + 1}` : ""}
+                        />
+                      ))}
+                      <DayFilmstrip pages={dayPages} onNavigate={onNavigate} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-        )}
-        </section>
-
-        {/* Bottom action row */}
-        <section class="page-action-row">
-          <div></div>
-          <div class="page-edit-group">
-            <Button
-              variant="tertiary"
-              class="btn-icon-text"
-              onClick={() => onNavigate(`#/edit?mode=edit-trip&tripId=${tripId}`)}
-            >
-              <EditIcon size={14} />
-            </Button>
-            <Button
-              variant="tertiary"
-              class="btn-danger-text btn-icon-text"
-              onClick={() => setShowDeleteModal(true)}
-            >
-              <TrashIcon size={14} />
-            </Button>
-          </div>
+          )}
         </section>
       </main>
 

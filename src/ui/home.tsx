@@ -5,7 +5,7 @@ import { Toast, useToast } from '../components/toast';
 import { CloseIcon, GearIcon } from '../components/icons';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { computeTotalDistance, formatDistance, formatDateRange } from '../lib';
+import { computeTotalDistance, formatDistance, formatDateRange, buildStopTrail } from '../lib';
 import { getSavedTheme, saveTheme, Theme } from '../theme';
 import { seedDemoRide } from './seed-demo';
 import type { Trip } from '../types';
@@ -117,12 +117,15 @@ export function Home({ onNavigate }: HomeProps) {
         );
       }
 
+      // Compile deduped trail of distinct stops
+      const stopTrail = buildStopTrail(trip.startLocation, sortedPages);
+
       list.push({
         trip,
-        daysCount: new Set(pages.map(p => p.date)).size,
         totalKm: computeTotalDistance(pages, trip.startOdo),
         firstPhotoBlob,
-        dateRange
+        dateRange,
+        stopTrail
       });
     }
     
@@ -153,6 +156,10 @@ export function Home({ onNavigate }: HomeProps) {
     }
   };
 
+  // Aggregate stats for the header (only when trips exist)
+  const totalRides = tripsData?.length ?? 0;
+  const totalKm = (tripsData ?? []).reduce((sum, t) => sum + t.totalKm, 0);
+
   return (
     <div class="home-container">
       {/* Top Header Bar */}
@@ -161,9 +168,13 @@ export function Home({ onNavigate }: HomeProps) {
           <TypewriterKey size={42} />
           <div>
             <h1 class="logo" style={{ margin: 0, lineHeight: 1 }}>retread</h1>
-            {tripsData && tripsData.length === 0 && (
+            {tripsData && tripsData.length === 0 ? (
               <p class="tagline home-tagline" style={{ margin: 0, marginTop: 'var(--spacing-xs)' }}>A logbook for well-tread rides.</p>
-            )}
+            ) : tripsData !== undefined ? (
+              <p class="home-stats" style={{ margin: 0, marginTop: 'var(--spacing-xs)' }}>
+                {totalRides} {totalRides === 1 ? 'ride' : 'rides'} · {formatDistance(totalKm)}
+              </p>
+            ) : null}
           </div>
         </div>
         <Button 
@@ -230,7 +241,7 @@ export function Home({ onNavigate }: HomeProps) {
                     size="sm"
                     onClick={handleSeedDemoRide}
                   >
-                    Seed Spiti Valley Demo Ride
+                    Seed Western Ghats Demo Ride
                   </Button>
                 </div>
               </div>
@@ -258,27 +269,40 @@ export function Home({ onNavigate }: HomeProps) {
           ) : null
         ) : tripsData.length === 0 ? (
           <div class="empty-state">
-            <p class="empty-state-title">No rides logged yet.</p>
-            <p class="empty-state-desc">Your rides, stored locally. No account needed.</p>
-            <Button 
-              variant="primary" 
-              onClick={() => onNavigate('#/edit?mode=new-trip')}
-            >
-              ＋ Start Your First Ride
-            </Button>
+            <TypewriterKey size={56} />
+            <p class="empty-state-title">Your ride book is empty.</p>
+            <p class="empty-state-desc">Everything stays on this device. No account needed.</p>
+            <div class="empty-actions">
+              <Button 
+                variant="primary" 
+                onClick={() => onNavigate('#/edit?mode=new-trip')}
+              >
+                ＋ Log Your First Ride
+              </Button>
+              <Button 
+                variant="secondary" 
+                onClick={handleSeedDemoRide}
+              >
+                See a Demo Ride
+              </Button>
+            </div>
           </div>
         ) : (
-          <div class="trips-grid">
-            {tripsData.map(({ trip, totalKm, firstPhotoBlob, dateRange }) => (
-              <TripCard 
-                key={trip.id} 
-                trip={trip} 
-                totalKm={totalKm} 
-                firstPhotoBlob={firstPhotoBlob} 
-                dateRange={dateRange}
-              />
-            ))}
-          </div>
+          <>
+            <p class="ride-book-label">Ride Book</p>
+            <div class="trips-grid">
+              {tripsData.map(({ trip, totalKm, firstPhotoBlob, dateRange, stopTrail }) => (
+                <TripCard 
+                  key={trip.id} 
+                  trip={trip} 
+                  totalKm={totalKm} 
+                  firstPhotoBlob={firstPhotoBlob} 
+                  dateRange={dateRange}
+                  stopTrail={stopTrail}
+                />
+              ))}
+            </div>
+          </>
         )}
       </main>
 
@@ -307,9 +331,10 @@ interface TripCardProps {
   totalKm: number;
   firstPhotoBlob: Blob | null;
   dateRange: string;
+  stopTrail: string;
 }
 
-function TripCard({ trip, totalKm, firstPhotoBlob, dateRange }: TripCardProps) {
+function TripCard({ trip, totalKm, firstPhotoBlob, dateRange, stopTrail }: TripCardProps) {
   const [imgUrl, setImgUrl] = useState('');
 
   // Handle object URL lifecycle to prevent memory leaks
@@ -328,18 +353,33 @@ function TripCard({ trip, totalKm, firstPhotoBlob, dateRange }: TripCardProps) {
             <img src={imgUrl} alt={trip.title} class="trip-cover-img" />
           ) : (
             <div class="trip-cover-placeholder">
-              <span class="placeholder-icon">🛞</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="2" />
+                <line x1="12" y1="3" x2="12" y2="7" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+                <line x1="3" y1="12" x2="7" y2="12" />
+                <line x1="17" y1="12" x2="21" y2="12" />
+              </svg>
             </div>
           )}
         </div>
         <div class="trip-card-details">
           <h4 class="trip-card-title">{trip.title || 'Untitled Ride'}</h4>
-          {dateRange && (
-            <div class="trip-card-date">{dateRange}</div>
+          {stopTrail && (
+            <div class="trip-card-route">{stopTrail}</div>
           )}
-          {totalKm > 0 && (
-            <div class="trip-card-km">{formatDistance(totalKm)}</div>
-          )}
+          <div class="trip-card-meta">
+            {dateRange && (
+              <span class="trip-card-date">{dateRange}</span>
+            )}
+            {totalKm > 0 && (
+              <>
+                <span class="trip-card-sep">·</span>
+                <span class="trip-card-km">{formatDistance(totalKm)}</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </a>

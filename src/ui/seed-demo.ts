@@ -16,83 +16,112 @@ function createMockPhoto(title: string, color: string) {
 
 export async function seedDemoRide(): Promise<number> {
   const newTripId = await db.trips.add({
-    title: "Spiti Valley Loop",
+    title: "Western Ghats Loop",
     createdAt: new Date().toISOString(),
-    startLocation: { kind: 'gps', lat: 31.1048, lng: 77.1734, name: "Shimla" },
+    startLocation: { kind: 'gps', lat: 12.2958, lng: 76.6394, name: "Mysore" },
     distanceMode: 'odo',
-    startOdo: 12480
+    startOdo: 21560
   }) as number;
 
   await db.pages.add({
     tripId: newTripId,
-    date: "2026-06-10",
-    time: "06:30",
-    title: "Shimla to Sarahan (Gateway to Kinnaur)",
-    note: "Left Shimla at dawn. The air is crisp and clean as we climb away from the tourist crowds. Navigating the winding tarmac towards Narkanda, the cedar forests smell amazing. Descended into the Sutlej river valley before climbing up to the quiet temple town of Sarahan. Staying in a small guesthouse facing the snow-capped Shrikhand Mahadev peaks.",
-    km: 160,
-    odo: 12640,
-    location: { kind: 'gps', lat: 31.5173, lng: 77.7958, name: "Sarahan" },
+    date: "2026-07-14",
+    time: "06:10",
+    title: "Mysore to Madikeri (First climb into Coorg)",
+    note: "Rolled out of Mysore before the city woke up. Coffee plantations start right after the last town. The climb into Madikeri is tight and green—hairpins through cardamom shade. Stopped for filter coffee and a view across the Brahmagiri hills. Checked into a homestay surrounded by coffee estates.",
+    km: 118,
+    odo: 21678,
+    location: { kind: 'gps', lat: 12.4244, lng: 75.7382, name: "Madikeri" },
     photos: [
-      createMockPhoto("Day 1: Winding roads", "#4a5d4e"),
-      createMockPhoto("Day 1: Sutlej River Valley", "#5c6d5f")
+      createMockPhoto("Day 1: Coffee estate ride", "#4a5d4e"),
+      createMockPhoto("Day 1: Brahmagiri viewpoint", "#546469")
     ]
   });
 
   await db.pages.add({
     tripId: newTripId,
-    date: "2026-06-11",
-    time: "07:15",
-    title: "Sarahan to Sangla (Into Baspa Valley)",
-    note: "Rode along the sheer cliff faces of the Hindustan-Tibet Highway. The roads are carved directly into rock here—half-tunnels hanging over the raging Sutlej. Turned off at Karcham into the breathtaking Baspa Valley. The river is turquoise. Camped under the apple orchards in Sangla. Felt the altitude creeping in.",
+    date: "2026-07-15",
+    time: "07:45",
+    title: "Madikeri to Kalpetta (Into Wayanad)",
+    note: "Took the little-known route via Virajpet, dropping down into the Wayanad plateau. The descent into Kalpetta is long and technical—road carved into the hillside. Mist rolled through the forest all morning. Crossed into Kerala at the border checkpoint and the tea shops changed from Kannada to Malayalam menus.",
+    km: 122,
+    odo: 21800,
+    location: { kind: 'gps', lat: 11.6107, lng: 76.0821, name: "Kalpetta" },
+    photos: [
+      createMockPhoto("Day 2: Virajpet descent", "#695e54"),
+      createMockPhoto("Day 2: Wayanad plateau mist", "#5c6d5f")
+    ]
+  });
+
+  await db.pages.add({
+    tripId: newTripId,
+    date: "2026-07-16",
+    time: "08:20",
+    title: "Kalpetta to Kozhikode (Thamarassery ghat)",
+    note: "The Thamarassery ghat road has the famous 9 hairpins—each one tighter than the last. Caught up behind a loaded truck and was stuck crawling for the middle section. At the bottom the landscape flattened into coconut palms. Rode into Kozhikode in the late afternoon and ate the town's legendary biryani.",
+    km: 92,
+    odo: 21892,
+    location: { kind: 'gps', lat: 11.2588, lng: 75.7804, name: "Kozhikode" },
+    photos: [
+      createMockPhoto("Day 3: Nine hairpins", "#586954")
+    ]
+  });
+
+  await db.pages.add({
+    tripId: newTripId,
+    date: "2026-07-17",
+    time: "06:50",
+    title: "Kozhikode to Thrissur",
+    note: "Coastal NH66 southbound. Dense traffic out of the city, but it thins out past Ponnani. Paddy fields on both sides. Short coffee stop at a roadside stall serving banana chips with chai.",
     km: 95,
-    odo: 12735,
-    location: { kind: 'gps', lat: 31.4239, lng: 78.2612, name: "Sangla" },
+    odo: 21987,
+    location: { kind: 'gps', lat: 10.5276, lng: 76.2144, name: "Thrissur" },
     photos: [
-      createMockPhoto("Day 2: Kinnaur Cliffs", "#695e54"),
-      createMockPhoto("Day 2: Baspa River Camp", "#546469")
+      createMockPhoto("Day 4a: Coastal NH66", "#6e6255")
     ]
   });
 
   await db.pages.add({
     tripId: newTripId,
-    date: "2026-06-12",
-    time: "08:00",
-    title: "Sangla to Kalpa (Kinnaur Kailash peaks)",
-    note: "A short but demanding climb up to Kalpa. Rode through Chitkul—the last Indian village before the Tibet border. The wind was fierce, cold, and pure. Reached Kalpa by afternoon. The giant Kinnaur Kailash massif dominates the sky. Golden hour hitting the peaks was surreal.",
-    km: 80,
-    odo: 12815,
-    location: { kind: 'gps', lat: 31.5385, lng: 78.2561, name: "Kalpa" },
+    date: "2026-07-17",
+    time: "14:30",
+    title: "Thrissur to Kochi (Backwaters light)",
+    note: "Away from the highway onto the backroad through Angamaly. Long straights past banana plantations. Hit the metro outskirts by evening—ferry across to Fort Kochi was the perfect end to the day.",
+    km: 110,
+    odo: 22097,
+    location: { kind: 'gps', lat: 9.9667, lng: 76.2422, name: "Fort Kochi" },
     photos: [
-      createMockPhoto("Day 3: Border Outpost in Chitkul", "#586954")
+      createMockPhoto("Day 4b: Fort Kochi ferry", "#4b5b5c"),
+      createMockPhoto("Day 4b: Chinese fishing nets", "#6e5d5c")
     ]
   });
 
   await db.pages.add({
     tripId: newTripId,
-    date: "2026-06-13",
-    time: "06:45",
-    title: "Kalpa to Nako (High-Altitude Desert)",
-    note: "Crossed the Khab bridge where Sutlej meets Spiti river. The landscape transitioned from green pine valleys into completely barren, lunar-like brown mountains. Constant wind and gravel patches. Climbed the hairpin loops up to Nako, an ancient village built around a small lake at 3,600m. Visited the 1000-year-old monastery.",
-    km: 125,
-    odo: 12940,
-    location: { kind: 'gps', lat: 31.8797, lng: 78.6276, name: "Nako" },
+    date: "2026-07-18",
+    time: "07:05",
+    title: "Kochi to Alleppey (Lazy canal country)",
+    note: "Short ride south down the peninsular coast. Turned off the highway for the backwater roads—narrow lanes running between canals and paddy. Spent the afternoon on a country boat. Flat light, green water, absolutely no rush.",
+    km: 54,
+    odo: 22151,
+    location: { kind: 'gps', lat: 9.4981, lng: 76.3388, name: "Alleppey" },
     photos: [
-      createMockPhoto("Day 4: Khab Bridge Junction", "#6e6255")
+      createMockPhoto("Day 5: Backwater canal", "#4a5d4e"),
+      createMockPhoto("Day 5: Country boat", "#5c6d5f")
     ]
   });
 
   await db.pages.add({
     tripId: newTripId,
-    date: "2026-06-14",
-    time: "07:30",
-    title: "Nako to Kaza (Heart of Spiti)",
-    note: "Rode through the Spiti Valley river bed. Stopped at Tabo Monastery—often called the Ajanta of the Himalayas. The dirt trails leading into Dhankar Monastery were tricky but the views were worth the near-drop. Arrived in Kaza, the sub-divisional capital. Thin air, fluttering prayer flags, and local butter tea.",
-    km: 115,
-    odo: 13055,
-    location: { kind: 'gps', lat: 32.2227, lng: 78.0709, name: "Kaza" },
+    date: "2026-07-19",
+    time: "05:30",
+    title: "Alleppey to Mysore (Home run)",
+    note: "The long haul home. Out before sunrise, through Kochi before traffic built up, then back over the ghats on the Palakkad gap. The Western Ghats felt different heading east—greener on the Kerala side, drier and brown by the time we crossed back into Karnataka. Rolled into Mysore in the dark, 385 km done.",
+    km: 385,
+    odo: 22536,
+    location: { kind: 'gps', lat: 12.2958, lng: 76.6394, name: "Mysore" },
     photos: [
-      createMockPhoto("Day 5: Entering Kaza Valley", "#4b5b5c"),
-      createMockPhoto("Day 5: Dhankar Monastery Ridge", "#6e5d5c")
+      createMockPhoto("Day 6: Palakkad gap climb", "#6e6255")
     ]
   });
 

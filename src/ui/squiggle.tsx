@@ -120,7 +120,20 @@ export function SquiggleMap({
   if (!path || path.length < 2) {
     return (
       <div class="squiggle-map-empty">
-        <span class="empty-icon">🗺</span>
+        <svg
+          width="30"
+          height="30"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M3 17 L7 9 L11 14 L17 5 L21 10" stroke-dasharray="2 3" />
+          <circle cx="3" cy="17" r="1.6" fill="currentColor" />
+          <circle cx="21" cy="10" r="1.6" fill="currentColor" />
+        </svg>
         <p>No map path available.</p>
       </div>
     );

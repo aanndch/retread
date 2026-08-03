@@ -1,4 +1,4 @@
-import type { Page } from './types';
+import type { Page, LocationUnion } from './types';
 
 /**
  * Computes the cumulative distance for a trip from its pages.
@@ -83,6 +83,73 @@ export function formatDateRange(firstDate: string, lastDate: string): string {
   }
 
   return `${fMonth} ${fDay}, ${fYear} — ${lMonth} ${lDay}, ${lYear}`;
+}
+
+/**
+ * Builds a deduped, chronologically-ordered array of distinct named stops
+ * for a ride, starting from the departure point. Returns e.g.
+ * ["Mysore", "Coorg", "Kochi", "Alleppey"].
+ */
+export function buildStops(startLocation: LocationUnion | null | undefined, sortedPages: Page[]): string[] {
+  const seen = new Set<string>();
+  const places: string[] = [];
+
+  const add = (name: string) => {
+    const key = name.trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    places.push(name.trim());
+  };
+
+  if (startLocation?.name) {
+    add(startLocation.name);
+  }
+
+  for (const page of sortedPages) {
+    if (page.location?.name) {
+      add(page.location.name);
+    }
+  }
+
+  return places;
+}
+
+/**
+ * Builds a deduped, chronologically-ordered trail of distinct named stops
+ * for a ride, starting from the departure point. Returns e.g.
+ * "Mysore → Coorg → Kochi → Alleppey".
+ */
+export function buildStopTrail(startLocation: LocationUnion | null | undefined, sortedPages: Page[]): string {
+  return buildStops(startLocation, sortedPages).join(' → ');
+}
+
+/**
+ * Computes the per-day cumulative distance for a trip from its pages,
+ * using the same km/odo anchoring rules as computeTotalDistance.
+ * Returns a map of date (YYYY-MM-DD) → km.
+ */
+export function computeDayDistances(pages: Page[], startOdo?: number | null): Map<string, number> {
+  const sorted = [...pages].sort((a, b) => a.date.localeCompare(b.date));
+  const byDate = new Map<string, number>();
+  let lastOdo: number | null = startOdo ?? null;
+
+  for (const page of sorted) {
+    let delta = 0;
+    if (page.km != null) {
+      delta = page.km;
+      if (page.odo != null) {
+        lastOdo = page.odo;
+      }
+    } else if (page.odo != null) {
+      if (lastOdo != null && page.odo > lastOdo) {
+        delta = page.odo - lastOdo;
+      }
+      lastOdo = page.odo;
+    }
+    byDate.set(page.date, (byDate.get(page.date) || 0) + delta);
+  }
+
+  return byDate;
 }
 
 /**
