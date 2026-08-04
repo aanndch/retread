@@ -407,14 +407,10 @@ export function Backup({ onNavigate }: BackupProps) {
 
   return (
     <div class="backup-container">
-      <PageHeader 
-        title="Backup & Restore" 
-        onBack={() => onNavigate(HASH_HOME)} 
-        classType="backup" 
-        disabled={working}
-      />
+      <PageHeader onBack={() => onNavigate(HASH_HOME)} disabled={working} />
 
       <main class="backup-body">
+        <h2 class="page-heading">Backup & Restore</h2>
 
         {statusText && (
           <div class="backup-status">

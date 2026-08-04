@@ -487,16 +487,15 @@ export function Editor({ onNavigate }: EditorProps) {
 
   return (
     <div class={`editor-container${isClosing ? ' closing' : ''}`}>
-      <PageHeader
-        title={
-          mode === 'new-ride' ? (rideTitle.trim() || 'New Ride') :
-          mode === 'edit-ride' ? 'Edit Ride Details' :
-          mode === 'new-leg' ? 'Add New Leg' :
-          mode === 'edit' ? 'Edit Leg Details' : ''
-        }
-        onBack={handleCancel}
-        classType="editor"
-      />
+      <PageHeader onBack={handleCancel} />
+
+      {/* Mode title */}
+      <h2 class="page-heading">
+        {mode === 'new-ride' ? 'New Ride' :
+         mode === 'edit-ride' ? 'Edit Ride Details' :
+         mode === 'new-leg' ? 'Add New Leg' :
+         'Edit Leg Details'}
+      </h2>
 
       {/* Progress Tab Indicator */}
       {mode !== 'new-ride' && mode !== 'edit-ride' && (

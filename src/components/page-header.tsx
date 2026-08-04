@@ -1,47 +1,50 @@
 import { Button } from './button';
-import { ArrowLeft } from './icons';
-import type { JSX } from 'preact';
+import { ArrowLeft, EditIcon, TrashIcon } from './icons';
 
 interface PageHeaderProps {
-  title: string | JSX.Element;
   onBack: () => void;
-  subTitle?: string | JSX.Element;
-  classType?: 'detail' | 'editor' | 'backup';
-  actions?: JSX.Element;
+  onEdit?: () => void;
+  onDelete?: () => void;
   disabled?: boolean;
 }
 
 export function PageHeader({
-  title,
   onBack,
-  subTitle,
-  classType = 'detail',
-  actions,
+  onEdit,
+  onDelete,
   disabled = false,
 }: PageHeaderProps) {
-  const headerClass = `${classType}-header`;
   return (
-    <header class={headerClass}>
+    <header class="page-header">
       <Button
         variant="icon"
         aria-label="Back"
         onClick={onBack}
         disabled={disabled}
       >
-        <ArrowLeft />
+        <ArrowLeft size={14} />
       </Button>
-      <div class="header-titles">
-        {typeof title === 'string' ? <h3>{title}</h3> : title}
-        {subTitle && (
-          typeof subTitle === 'string' ? (
-            <span class="ride-dates-sub">{subTitle}</span>
-          ) : subTitle
-        )}
-      </div>
-      {actions && (
-        <div class="header-actions" style={{ marginLeft: 'auto', display: 'flex', gap: 'var(--spacing-xs)' }}>
-          {actions}
-        </div>
+      <div class="page-header-spacer" />
+      {onEdit && (
+        <Button
+          variant="icon"
+          aria-label="Edit"
+          onClick={onEdit}
+          disabled={disabled}
+        >
+          <EditIcon size={14} />
+        </Button>
+      )}
+      {onDelete && (
+        <Button
+          variant="icon"
+          class="btn-danger-text btn-icon-text"
+          aria-label="Delete"
+          onClick={onDelete}
+          disabled={disabled}
+        >
+          <TrashIcon size={14} />
+        </Button>
       )}
     </header>
   );

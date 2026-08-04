@@ -4,12 +4,8 @@ import { db } from "../db";
 import { Button } from "../components/button";
 import { Toast, useToast } from "../components/toast";
 import { ConfirmModal } from "../components/confirm-modal";
-import {
-  ArrowLeft,
-  ArrowRight,
-  EditIcon,
-  TrashIcon,
-} from "../components/icons";
+import { ArrowLeft, ArrowRight } from "../components/icons";
+import { PageHeader } from "../components/page-header";
 import { SquiggleMap, DAY_COLORS } from "./squiggle";
 import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
@@ -249,31 +245,11 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
   return (
     <div class="leg-detail-container">
       {/* Top bar: back + edit + delete */}
-      <header class="ride-topbar">
-        <Button
-          variant="icon"
-          aria-label="Back"
-          onClick={() => onNavigate(`#/ride/${leg.rideId}`)}
-        >
-          <ArrowLeft />
-        </Button>
-        <div class="ride-topbar-spacer" />
-        <Button
-          variant="icon"
-          aria-label="Edit leg"
-          onClick={() => onNavigate(`#/edit?mode=edit&legId=${legId}`)}
-        >
-          <EditIcon size={14} />
-        </Button>
-        <Button
-          variant="icon"
-          class="btn-danger-text btn-icon-text"
-          aria-label="Delete leg"
-          onClick={() => setShowDeleteModal(true)}
-        >
-          <TrashIcon size={14} />
-        </Button>
-      </header>
+      <PageHeader
+        onBack={() => onNavigate(`#/ride/${leg.rideId}`)}
+        onEdit={() => onNavigate(`#/edit?mode=edit&legId=${legId}`)}
+        onDelete={() => setShowDeleteModal(true)}
+      />
 
       <main class="leg-detail-content">
         {/* Hero: kicker, title, leg route trail */}

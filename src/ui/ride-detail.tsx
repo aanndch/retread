@@ -5,7 +5,7 @@ import { db } from "../db";
 import { Button } from "../components/button";
 import { Toast, useToast } from "../components/toast";
 import { ConfirmModal } from "../components/confirm-modal";
-import { ArrowLeft, EditIcon, TrashIcon } from "../components/icons";
+import { PageHeader } from "../components/page-header";
 import { SquiggleMap, DAY_COLORS } from "./squiggle";
 import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
@@ -285,32 +285,12 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
 
   return (
     <div class="ride-detail-container">
-      {/* Top bar: back + actions */}
-      <header class="ride-topbar">
-        <Button
-          variant="icon"
-          aria-label="Back"
-          onClick={() => onNavigate(HASH_HOME)}
-        >
-          <ArrowLeft />
-        </Button>
-        <div class="ride-topbar-spacer" />
-        <Button
-          variant="icon"
-          aria-label="Edit ride"
-          onClick={() => onNavigate(`#/edit?mode=edit-ride&rideId=${rideId}`)}
-        >
-          <EditIcon size={14} />
-        </Button>
-        <Button
-          variant="icon"
-          class="btn-danger-text btn-icon-text"
-          aria-label="Delete ride"
-          onClick={() => setShowDeleteModal(true)}
-        >
-          <TrashIcon size={14} />
-        </Button>
-      </header>
+      {/* Top bar: back + edit + delete */}
+      <PageHeader
+        onBack={() => onNavigate(HASH_HOME)}
+        onEdit={() => onNavigate(`#/edit?mode=edit-ride&rideId=${rideId}`)}
+        onDelete={() => setShowDeleteModal(true)}
+      />
 
       <main class="ride-detail-content">
         {/* Hero: kicker, title, route-line trail */}
