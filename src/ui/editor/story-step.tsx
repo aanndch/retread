@@ -27,12 +27,12 @@ export function StoryStep({
   return (
     <div class="wizard-step-content">
       <div class="form-group">
-        <label class="input-label">Ride Note</label>
+        <label class="input-label">Leg Note</label>
         <textarea 
           ref={textareaRef}
           class="form-textarea" 
           rows={5}
-          placeholder="Write a whisper about this ride... (roads, weather, vibes)"
+          placeholder="Write a whisper about this leg... (roads, weather, vibes)"
           value={note}
           onInput={(e: JSX.TargetedEvent<HTMLTextAreaElement>) => setNote((e.target as HTMLTextAreaElement).value)}
           autoFocus

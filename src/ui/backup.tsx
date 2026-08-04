@@ -107,11 +107,11 @@ export function Backup({ onNavigate }: BackupProps) {
       const trips = await db.trips.toArray();
       const pages = await db.pages.toArray();
       
-      setStatusText(`Serializing database logs (${trips.length} trips, ${pages.length} days)...`);
+      setStatusText(`Serializing database logs (${trips.length} rides, ${pages.length} legs)...`);
       
       const serializedPages = [];
       for (const page of pages) {
-        setStatusText(`Encoding photos for page on ${page.date}...`);
+        setStatusText(`Encoding photos for leg on ${page.date}...`);
         
         const base64Photos = [];
         if (page.photos) {
@@ -234,7 +234,7 @@ export function Backup({ onNavigate }: BackupProps) {
           }
         }
         
-        setStatusText('Decoding and restoring day logs (this may take a few moments)...');
+        setStatusText('Decoding and restoring ride data (this may take a few moments)...');
         
         for (const page of parsedData.pages) {
           const mappedTripId = tripIdMapping.get(page.tripId);

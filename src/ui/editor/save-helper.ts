@@ -5,7 +5,7 @@ import type { LocationUnion, Page } from '../../types';
 
 interface SaveData {
   tripTitle: string;
-  dayTitle: string;
+  legTitle: string;
   date: string;
   time: string;
   note: string;
@@ -19,7 +19,7 @@ interface SaveData {
 }
 
 export async function saveEditorDetails(
-  mode: 'new-trip' | 'edit-trip' | 'new-day' | 'edit' | null,
+  mode: 'new-trip' | 'edit-trip' | 'new-leg' | 'edit' | null,
   tripId: number | null,
   pageId: number | null,
   data: SaveData
@@ -81,7 +81,7 @@ export async function saveEditorDetails(
     return `#/trip/${newTripId}`;
   }
 
-  // Saving daily legs (mode === 'new-day' or mode === 'edit')
+  // Saving leg entries (mode === 'new-leg' or mode === 'edit')
   const activeTripId = tripId;
   if (activeTripId === null && mode !== 'edit') {
     throw new Error('Trip ID context is missing.');
@@ -99,7 +99,7 @@ export async function saveEditorDetails(
     km: data.km !== null && !isNaN(data.km) ? data.km : null,
     odo: data.odo !== null && !isNaN(data.odo) ? data.odo : null,
     location: locationPayload,
-    title: data.dayTitle.trim()
+    title: data.legTitle.trim()
   };
 
   if (mode === 'edit' && pageId !== null) {

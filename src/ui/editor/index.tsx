@@ -19,7 +19,7 @@ interface EditorState {
   step: 1 | 2 | 3;
   titleError: string;
   tripTitle: string;
-  dayTitle: string;
+  legTitle: string;
   date: string;
   time: string;
   note: string;
@@ -44,7 +44,7 @@ const initialEditorState: EditorState = {
   step: 1,
   titleError: '',
   tripTitle: '',
-  dayTitle: '',
+  legTitle: '',
   date: new Date().toISOString().split('T')[0],
   time: '',
   note: '',
@@ -84,9 +84,11 @@ export function Editor({ onNavigate }: EditorProps) {
   const hashParts = window.location.hash.split('?');
   const params = new URLSearchParams(hashParts[1] || '');
   const rawMode = params.get('mode');
-  const validModes = ['new-trip', 'edit-trip', 'new-day', 'edit'] as const;
+  const validModes = ['new-trip', 'edit-trip', 'new-leg', 'edit'] as const;
   type EditorMode = typeof validModes[number];
-  const mode: EditorMode | null = validModes.includes(rawMode as EditorMode) ? (rawMode as EditorMode) : null;
+  // Accept legacy 'new-day' URLs by mapping them to the renamed 'new-leg' mode
+  const normalizedMode = rawMode === 'new-day' ? 'new-leg' : rawMode;
+  const mode: EditorMode | null = validModes.includes(normalizedMode as EditorMode) ? (normalizedMode as EditorMode) : null;
   
   const tripIdParam = params.get('tripId');
   const pageIdParam = params.get('pageId');
@@ -107,7 +109,7 @@ export function Editor({ onNavigate }: EditorProps) {
     step,
     titleError,
     tripTitle,
-    dayTitle,
+    legTitle,
     date,
     time,
     note,
@@ -170,7 +172,7 @@ export function Editor({ onNavigate }: EditorProps) {
             km: page.km ?? null,
             odo: page.odo ?? null,
             location: page.location ?? null,
-            dayTitle: page.title || '',
+            legTitle: page.title || '',
             photos: page.photos || [],
             photoPreviews: urls,
             loading: false
@@ -182,7 +184,7 @@ export function Editor({ onNavigate }: EditorProps) {
         console.error('Failed to load page for edit:', err);
         dispatch({ loading: false });
       });
-    } else if (mode === 'new-day') {
+    } else if (mode === 'new-leg') {
       dispatch({ time: new Date().toTimeString().slice(0, 5) });
     }
   }, [mode, pageId]);
@@ -245,7 +247,7 @@ export function Editor({ onNavigate }: EditorProps) {
         });
 
         let foundCenter: [number, number] | null = null;
-        if (mode === 'new-day') {
+        if (mode === 'new-leg') {
           if (sorted.length > 0) {
             const lastPage = sorted[sorted.length - 1];
             if (lastPage.location?.kind === 'gps') foundCenter = [lastPage.location.lat, lastPage.location.lng];
@@ -462,7 +464,7 @@ export function Editor({ onNavigate }: EditorProps) {
   const handleCancel = () => {
     if (mode === 'edit' && pageId !== null) {
       triggerClose(`#/page/${pageId}`);
-    } else if (mode === 'new-day' || mode === 'edit-trip') {
+    } else if (mode === 'new-leg' || mode === 'edit-trip') {
       triggerClose(`#/trip/${tripId}`);
     } else {
       triggerClose('#/');
@@ -475,7 +477,7 @@ export function Editor({ onNavigate }: EditorProps) {
         title={
           mode === 'new-trip' ? (tripTitle.trim() || 'New Ride') :
           mode === 'edit-trip' ? 'Edit Ride Details' :
-          mode === 'new-day' ? 'Add New Leg' :
+          mode === 'new-leg' ? 'Add New Leg' :
           mode === 'edit' ? 'Edit Leg Details' : ''
         }
         onBack={handleCancel}
@@ -529,8 +531,8 @@ export function Editor({ onNavigate }: EditorProps) {
               gpsLoading={gpsLoading}
               handleDropPin={handleDropPin}
               handleClearLocation={handleClearLocation}
-              dayTitle={dayTitle}
-              setDayTitle={(val) => dispatch({ dayTitle: val })}
+              legTitle={legTitle}
+              setLegTitle={(val) => dispatch({ legTitle: val })}
               startLocation={startLocation}
               setStartLocation={(val) => dispatch({ startLocation: val })}
               startGpsLoading={startGpsLoading}

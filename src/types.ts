@@ -1,5 +1,5 @@
 export type DistanceMode = 'auto' | 'manual' | 'odo';
-export type EditorMode = 'new-trip' | 'edit-trip' | 'new-day' | 'edit';
+export type EditorMode = 'new-trip' | 'edit-trip' | 'new-leg' | 'edit';
 
 export interface Trip {
   id?: number;

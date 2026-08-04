@@ -4,7 +4,7 @@ import { Button } from '../../components/button';
 import { PinIcon } from '../../components/icons';
 
 interface MetricsStepProps {
-  mode: 'new-trip' | 'edit-trip' | 'new-day' | 'edit';
+  mode: 'new-trip' | 'edit-trip' | 'new-leg' | 'edit';
   tripTitle: string;
   setTripTitle: (t: string) => void;
   date: string;
@@ -20,8 +20,8 @@ interface MetricsStepProps {
   gpsLoading: boolean;
   handleDropPin: () => void;
   handleClearLocation: () => void;
-  dayTitle: string;
-  setDayTitle: (t: string) => void;
+  legTitle: string;
+  setLegTitle: (t: string) => void;
   distanceMode: 'auto' | 'manual' | 'odo';
   setDistanceMode: (m: 'auto' | 'manual' | 'odo') => void;
   startOdo: number | null;
@@ -57,8 +57,8 @@ export function MetricsStep({
   gpsLoading,
   handleDropPin,
   handleClearLocation,
-  dayTitle,
-  setDayTitle,
+  legTitle,
+  setLegTitle,
   distanceMode,
   setDistanceMode,
   startOdo,
@@ -221,17 +221,17 @@ export function MetricsStep({
       )}
 
       {/* Leg page metrics (Only for Leg creation or Leg edit modes) */}
-      {(mode === 'new-day' || mode === 'edit') && (
+      {(mode === 'new-leg' || mode === 'edit') && (
         <>
           {/* Row 1: Leg Route (Whole Row) */}
           <div class="form-group">
-            <label class="input-label">Route Name</label>
+            <label class="input-label">Leg Title</label>
             <input 
               type="text" 
               class="form-input" 
               placeholder="e.g. Manali to Jispa" 
-              value={dayTitle} 
-              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setDayTitle((e.target as HTMLInputElement).value)}
+              value={legTitle} 
+              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setLegTitle((e.target as HTMLInputElement).value)}
             />
           </div>
 

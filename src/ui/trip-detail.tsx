@@ -328,11 +328,11 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
         <section class="trip-timeline">
           {pages.length === 0 ? (
             <div class="timeline-empty">
-              <p>Write your first leg log entry to start your ride book.</p>
+              <p>Log your first leg to start your ride book.</p>
               <Button
                 variant="primary"
                 onClick={() =>
-                  onNavigate(`#/edit?mode=new-day&tripId=${tripId}`)
+                  onNavigate(`#/edit?mode=new-leg&tripId=${tripId}`)
                 }
               >
                 ＋ Log First Leg
@@ -383,13 +383,13 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
         </section>
       </main>
 
-      {/* Floating Action Button to add new day log */}
+      {/* Floating Action Button to add new leg */}
       {pages.length > 0 && (
         <div class="fab-container">
           <Button
             variant="fab"
             aria-label="Add Leg"
-            onClick={() => onNavigate(`#/edit?mode=new-day&tripId=${tripId}`)}
+            onClick={() => onNavigate(`#/edit?mode=new-leg&tripId=${tripId}`)}
           >
             ＋
           </Button>
@@ -402,7 +402,7 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
       {showDeleteModal && (
         <ConfirmModal
           title="Delete Ride Logbook?"
-          message={`This will permanently delete ${trip.title} and all of its daily pages. This action cannot be undone.`}
+          message={`This will permanently delete ${trip.title} and all of its legs. This action cannot be undone.`}
           confirmLabel="Confirm Delete"
           onConfirm={handleDeleteTrip}
           onCancel={() => setShowDeleteModal(false)}

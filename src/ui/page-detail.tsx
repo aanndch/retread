@@ -172,7 +172,7 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
           onReady?.();
         }
       } catch (err) {
-        console.error("Failed to load page log details:", err);
+        console.error("Failed to load leg details:", err);
         if (active) {
           setLoading(false);
           onNavigate("#/");
@@ -196,13 +196,13 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
       await backfillTripRoutes(tripId);
       onNavigate(`#/trip/${tripId}`);
     } catch (err) {
-      console.error("Failed to delete day log:", err);
-      showToast("Failed to delete day.");
+      console.error("Failed to delete leg:", err);
+      showToast("Failed to delete leg.");
     }
   };
 
   if (loading) {
-    return <p class="loading-text">Loading log details...</p>;
+    return <p class="loading-text">Loading leg details...</p>;
   }
 
   if (!page) return null;
@@ -244,7 +244,7 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
           <span class="ride-hero-kicker">
             {tripTitle} · {shortDate}
           </span>
-          <h1 class="ride-hero-title">{page.title || "Day Log"}</h1>
+          <h1 class="ride-hero-title">{page.title || "Untitled Leg"}</h1>
           {trailStart && trailEnd && (
             <LegTrail start={trailStart} end={trailEnd} />
           )}
@@ -368,8 +368,8 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
 
       {showDeleteModal && (
         <ConfirmModal
-          title="Delete Day Log?"
-          message={`This will permanently delete the log entry for ${formatIsoDateToDMY(page.date)}. This action cannot be undone.`}
+          title="Delete Leg?"
+          message={`This will permanently delete the leg logged on ${formatIsoDateToDMY(page.date)}. This action cannot be undone.`}
           confirmLabel="Confirm Delete"
           onConfirm={handleDelete}
           onCancel={() => setShowDeleteModal(false)}
