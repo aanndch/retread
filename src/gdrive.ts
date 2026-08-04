@@ -118,20 +118,24 @@ export function requestAccessToken(): Promise<string> {
   });
 }
 
-// Called from main.tsx before the app renders. Detects an OAuth return in the
-// URL fragment, verifies the CSRF state, stores the token, cleans the fragment
-// off the URL, and lands on the backup page. Returns true when it consumed an
-// OAuth redirect.
+// Called from main.tsx before the app renders (and on every hashchange, since a
+// return from Google can land on an already-open SW-controlled page as a
+// same-document fragment change). Detects an OAuth return in the URL fragment,
+// verifies the CSRF state, stores the token, cleans the fragment off the URL,
+// and lands on the backup page. Returns true when it consumed an OAuth
+// redirect.
 export function handleOAuthRedirect(): boolean {
   const hash = window.location.hash;
-  const isReturn = hash.startsWith('#access_token=') || hash.startsWith('#error=');
-  if (!isReturn) return false;
+  if (!hash || hash.length < 2) return false;
 
   const params = new URLSearchParams(hash.slice(1));
+  const error = params.get('error');
+  const token = params.get('access_token');
+  if (!error && !token) return false;
+
   const expectedState = sessionStorage.getItem(OAUTH_STATE_KEY);
   sessionStorage.removeItem(OAUTH_STATE_KEY);
 
-  const error = params.get('error');
   const state = params.get('state');
 
   if (error) {
@@ -139,13 +143,11 @@ export function handleOAuthRedirect(): boolean {
   } else if (!expectedState || state !== expectedState) {
     setOAuthResult(false, 'Authorization expired — try connecting again.');
   } else {
-    const token = params.get('access_token');
-    if (token) {
-      cachedToken = token;
-      setOAuthResult(true);
-    } else {
-      setOAuthResult(false, 'No access token received.');
-    }
+    cachedToken = token;
+    setOAuthResult(true);
+    // The Backup view may already be mounted (same-document return), so notify
+    // it directly in addition to the sessionStorage marker consumed on mount.
+    window.dispatchEvent(new Event('retread-gdrive-connected'));
   }
 
   history.replaceState(null, '', `${window.location.pathname}${window.location.search}${HASH_BACKUP}`);

@@ -9,9 +9,11 @@ import { handleOAuthRedirect } from './gdrive'
 // Initialize color theme before rendering to avoid layout flashes
 initTheme()
 
-// Consume a Google Drive OAuth return (the token lands in the URL fragment)
-// BEFORE the app mounts, so the hash router never sees the fragment.
+// Consume a Google Drive OAuth return. The token arrives in the URL fragment,
+// which lands as a full page load on a fresh navigation or as a hashchange on
+// an already-open SW-controlled page — cover both before the router can read it.
 handleOAuthRedirect()
+window.addEventListener('hashchange', handleOAuthRedirect)
 
 // Register the PWA service worker — deferred until idle to avoid interrupting in-flight requests
 let swUpdate: (() => Promise<void>) | null = null;

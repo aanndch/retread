@@ -84,17 +84,22 @@ export function Backup({ onNavigate }: BackupProps) {
     if (gdriveConnected) refreshGdriveFiles();
   }, [gdriveConnected, refreshGdriveFiles]);
 
-  // Surface the outcome of a full-page OAuth redirect (connect navigates away
-  // and reloads the page; the result is stashed in sessionStorage for us here).
+  // Surface the outcome of a Google Drive OAuth redirect. On a full page load
+  // the result is stashed in sessionStorage (consumeOAuthResult); on a
+  // same-document return the Backup view is already mounted, so it listens for
+  // the event gdrive.ts dispatches instead.
   useEffect(() => {
-    const result = consumeOAuthResult();
-    if (!result) return;
-    if (result.ok) {
+    const onConnected = () => {
       setGdriveConnected(true);
       showToast('Connected to Google Drive.', 'success');
-    } else {
-      showToast(`Connection failed: ${result.error}`);
+    };
+    const result = consumeOAuthResult();
+    if (result) {
+      if (result.ok) onConnected();
+      else showToast(`Connection failed: ${result.error}`);
     }
+    window.addEventListener('retread-gdrive-connected', onConnected);
+    return () => window.removeEventListener('retread-gdrive-connected', onConnected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
