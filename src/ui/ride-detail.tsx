@@ -9,6 +9,7 @@ import { PageHeader } from "../components/page-header";
 import { SquiggleMap, DAY_COLORS } from "./squiggle";
 import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
+import { PhotoOverlay } from "../components/photo-overlay";
 import { LegCard } from "./ride-detail/leg-card";
 import { HASH_HOME } from "../constants";
 import {
@@ -20,36 +21,25 @@ import {
 } from "../lib";
 import type { Ride, Leg } from "../types";
 
-function DayPhotoRail({ legs, onNavigate }: { legs: Leg[]; onNavigate: (route: string) => void }) {
-  const [urls, setUrls] = useState<{ url: string; legId: number }[]>([]);
+function DayPhotoRail({ photos, dayLegs, onOpenPhoto }: {
+  photos: { url: string; leg: Leg; photoIndex: number }[];
+  dayLegs: Leg[];
+  onOpenPhoto: (globalIdx: number) => void;
+}) {
+  const dayLegIds = new Set(dayLegs.map((l) => l.id));
+  const dayPhotos = photos.filter((p) => dayLegIds.has(p.leg.id));
 
-  useEffect(() => {
-    const collected: { url: string; legId: number }[] = [];
-    const handles: string[] = [];
-
-    for (const leg of legs) {
-      for (const blob of leg.photos || []) {
-        const url = URL.createObjectURL(blob);
-        handles.push(url);
-        collected.push({ url, legId: leg.id! });
-      }
-    }
-
-    setUrls(collected);
-    return () => handles.forEach((h) => URL.revokeObjectURL(h));
-  }, [legs]);
-
-  if (urls.length === 0) return null;
+  if (dayPhotos.length === 0) return null;
 
   return (
     <div class="photo-rail" role="list" aria-label="Day photos">
-      {urls.map(({ url, legId }, idx) => (
+      {dayPhotos.map(({ url }, idx) => (
         <button
           key={idx}
           class="photo-thumb"
           role="listitem"
           aria-label={`Open photo ${idx + 1}`}
-          onClick={() => onNavigate(`#/leg/${legId}`)}
+          onClick={() => onOpenPhoto(photos.indexOf(dayPhotos[idx]))}
         >
           <img src={url} alt={`Day photo ${idx + 1}`} />
         </button>
@@ -110,6 +100,38 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
 
+  // Fullscreen Photo Overlay state and handlers
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [photoActiveIdx, setPhotoActiveIdx] = useState(0);
+
+  const openPhotoModal = (globalIdx: number) => {
+    setPhotoActiveIdx(globalIdx);
+    setShowPhotoModal(true);
+    history.pushState({ modalOpen: "photo" }, "");
+  };
+
+  const closePhotoModal = () => {
+    // Popping the modal's own pushState entry keeps the browser history free of
+    // phantom entries; otherwise the next in-app back would silently consume it
+    // and look like a dead press.
+    if (history.state && history.state.modalOpen) {
+      history.back();
+      return;
+    }
+    setShowPhotoModal(false);
+  };
+
+  // Snapshot the current photo as the ride's home cover (immediate persist).
+  const handleSetCover = async (idx: number) => {
+    const entry = photoList[idx];
+    if (!entry) return;
+    const { leg, photoIndex } = entry;
+    const thumb = (leg.photoThumbs && leg.photoThumbs[photoIndex]) || (leg.photos && leg.photos[photoIndex]);
+    if (!thumb) return;
+    await db.rides.update(rideId, { coverBlob: thumb });
+    showToast("Set as ride cover.");
+  };
+
   // Fullscreen Map Modal state and handlers
   const [showMapModal, setShowMapModal] = useState(false);
 
@@ -132,12 +154,13 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
   // Close modals on browser back button
   useEffect(() => {
     const handlePopState = () => {
+      if (showPhotoModal) setShowPhotoModal(false);
       if (showMapModal) setShowMapModal(false);
       if (showDeleteModal) setShowDeleteModal(false);
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [showMapModal, showDeleteModal]);
+  }, [showPhotoModal, showMapModal, showDeleteModal]);
 
   const onNavigateRef = useRef(onNavigate);
   onNavigateRef.current = onNavigate;
@@ -170,6 +193,24 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
   const ride: Ride | null = liveData?.ride ?? null;
   const legs: Leg[] = liveData?.legs ?? [];
   const loading = liveData === undefined;
+
+  // Flattened list of every photo across the ride (day → leg → photo) shared
+  // by the day photo rails and the fullscreen overlay, so clicking any
+  // thumbnail opens that exact photo in the ride-wide viewer.
+  const [photoList, setPhotoList] = useState<{ url: string; leg: Leg; photoIndex: number }[]>([]);
+  useEffect(() => {
+    const collected: { url: string; leg: Leg; photoIndex: number }[] = [];
+    const handles: string[] = [];
+    for (const leg of legs) {
+      for (let i = 0; i < (leg.photos || []).length; i++) {
+        const url = URL.createObjectURL(leg.photos![i]);
+        handles.push(url);
+        collected.push({ url, leg, photoIndex: i });
+      }
+    }
+    setPhotoList(collected);
+    return () => handles.forEach((h) => URL.revokeObjectURL(h));
+  }, [legs]);
 
   // Fade the page in once the ride data has actually rendered.
   useEffect(() => {
@@ -424,7 +465,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
                           label={dayLegs.length > 1 ? `Leg ${dayLegs.indexOf(leg) + 1}` : ""}
                         />
                       ))}
-                      <DayPhotoRail legs={dayLegs} onNavigate={onNavigate} />
+                      <DayPhotoRail photos={photoList} dayLegs={dayLegs} onOpenPhoto={openPhotoModal} />
                     </div>
                   </div>
                 );
@@ -469,6 +510,16 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
         compass
         caption={mapCaption}
         onClose={closeMapModal}
+      />
+
+      {/* Fullscreen Photo Zoom Overlay (ride-wide) */}
+      <PhotoOverlay
+        isOpen={showPhotoModal}
+        photoUrls={photoList.map((p) => p.url)}
+        activeIdx={photoActiveIdx}
+        setActiveIdx={setPhotoActiveIdx}
+        onClose={closePhotoModal}
+        onSetCover={handleSetCover}
       />
 
       <div class="toast-container">
