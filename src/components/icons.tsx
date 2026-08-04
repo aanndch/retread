@@ -63,6 +63,27 @@ export function PinIcon({ size = 12, class: className = '' }: IconProps) {
   );
 }
 
+export function MapIcon({ size = 14, class: className = '' }: IconProps) {
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      stroke-width="2.5" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+      class={className}
+      aria-hidden="true"
+    >
+      <path d="M1 6v16l7-3 8 3 7-3V3l-7 3-8-3-7 3z"></path>
+      <line x1="8" y1="3" x2="8" y2="19"></line>
+      <line x1="16" y1="6" x2="16" y2="22"></line>
+    </svg>
+  );
+}
+
 export function GearIcon({ size = 20, class: className = '' }: IconProps) {
   return (
     <svg 

@@ -247,6 +247,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   padding: 10px 16px;
   font-family: var(--font-typewriter);
   font-size: 13px;
@@ -302,6 +303,7 @@ button:focus,
 .btn-sm {
   padding: 6px 12px;
   font-size: 11px;
+  gap: 6px;
 }
 
 .btn:disabled {

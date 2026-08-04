@@ -1,7 +1,7 @@
 import type { LocationUnion } from '../../types';
 import type { JSX } from 'preact';
 import { Button } from '../../components/button';
-import { PinIcon } from '../../components/icons';
+import { PinIcon, MapIcon } from '../../components/icons';
 
 interface MetricsStepProps {
   mode: 'new-ride' | 'edit-ride' | 'new-leg' | 'edit';
@@ -155,7 +155,7 @@ export function MetricsStep({
                 style={{ flex: 1 }}
                 onClick={() => onOpenMapPicker('start')}
               >
-                🗺 Pick on Map
+                <MapIcon size={14} /> Pick on Map
               </Button>
             </div>
           )}
@@ -335,7 +335,7 @@ export function MetricsStep({
                   style={{ flex: 1 }}
                   onClick={() => onOpenMapPicker('location')}
                 >
-                  🗺 Pick on Map
+                  <MapIcon size={14} /> Pick on Map
                 </Button>
               </div>
             )}
