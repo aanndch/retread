@@ -8,7 +8,7 @@ import { db } from '../db';
 import { computeTotalDistance, formatDistance, formatDateRange, buildStopTrail } from '../lib';
 import { getSavedTheme, saveTheme, Theme } from '../theme';
 import { seedDemoRide } from './seed-demo';
-import type { Trip } from '../types';
+import type { Ride } from '../types';
 
 export function TypewriterKey({ size = 40 }: { size?: number }) {
   return (
@@ -82,48 +82,48 @@ export function Home({ onNavigate, onReady }: HomeProps) {
     }
   }, []);
 
-  // Live query for trips + their first page's first photo for the cover
-  const tripsData = useLiveQuery(async () => {
-    const allTrips = await db.trips.orderBy('createdAt').reverse().toArray();
-    const allPages = await db.pages.toArray();
-    const pagesByTrip = new Map<number, typeof allPages>();
-    for (const page of allPages) {
-      const list = pagesByTrip.get(page.tripId) || [];
-      list.push(page);
-      pagesByTrip.set(page.tripId, list);
+  // Live query for rides + their first leg's first photo for the cover
+  const ridesData = useLiveQuery(async () => {
+    const allRides = await db.rides.orderBy('createdAt').reverse().toArray();
+    const allLegs = await db.legs.toArray();
+    const legsByRide = new Map<number, typeof allLegs>();
+    for (const leg of allLegs) {
+      const list = legsByRide.get(leg.rideId) || [];
+      list.push(leg);
+      legsByRide.set(leg.rideId, list);
     }
     
     const list = [];
     
-    for (const trip of allTrips) {
-      const pages = pagesByTrip.get(trip.id!) || [];
+    for (const ride of allRides) {
+      const legs = legsByRide.get(ride.id!) || [];
       
-      // Find the first page chronologically that has at least one photo
-      const sortedPages = [...pages].sort((a, b) => {
+      // Find the first leg chronologically that has at least one photo
+      const sortedLegs = [...legs].sort((a, b) => {
         const dComp = a.date.localeCompare(b.date);
         if (dComp !== 0) return dComp;
         const tA = a.time || '00:00';
         const tB = b.time || '00:00';
         return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
       });
-      const pageWithPhoto = sortedPages.find(p => p.photos && p.photos.length > 0);
-      const firstPhotoBlob = pageWithPhoto ? pageWithPhoto.photos[0] : null;
+      const legWithPhoto = sortedLegs.find(l => l.photos && l.photos.length > 0);
+      const firstPhotoBlob = legWithPhoto ? legWithPhoto.photos[0] : null;
 
       // Compute date range for display
       let dateRange = '';
-      if (sortedPages.length > 0) {
+      if (sortedLegs.length > 0) {
         dateRange = formatDateRange(
-          sortedPages[0].date,
-          sortedPages[sortedPages.length - 1].date
+          sortedLegs[0].date,
+          sortedLegs[sortedLegs.length - 1].date
         );
       }
 
       // Compile deduped trail of distinct stops
-      const stopTrail = buildStopTrail(trip.startLocation, sortedPages);
+      const stopTrail = buildStopTrail(ride.startLocation, sortedLegs);
 
       list.push({
-        trip,
-        totalKm: computeTotalDistance(pages, trip.startOdo),
+        ride,
+        totalKm: computeTotalDistance(legs, ride.startOdo),
         firstPhotoBlob,
         dateRange,
         stopTrail
@@ -135,15 +135,15 @@ export function Home({ onNavigate, onReady }: HomeProps) {
 
   // Only show skeleton after a 200ms delay to avoid flash on fast loads
   useEffect(() => {
-    if (tripsData !== undefined) return;
+    if (ridesData !== undefined) return;
     const timer = setTimeout(() => setShowSkeleton(true), 200);
     return () => clearTimeout(timer);
-  }, [tripsData]);
+  }, [ridesData]);
 
-  // Signal readiness once trips have resolved so the router can fade the view in
+  // Signal readiness once rides have resolved so the router can fade the view in
   useEffect(() => {
-    if (tripsData !== undefined) onReady?.();
-  }, [tripsData, onReady]);
+    if (ridesData !== undefined) onReady?.();
+  }, [ridesData, onReady]);
 
   const handleThemeChange = (mode: string) => {
     const theme = mode as 'system' | Theme;
@@ -153,18 +153,18 @@ export function Home({ onNavigate, onReady }: HomeProps) {
 
   const handleSeedDemoRide = async () => {
     try {
-      const newTripId = await seedDemoRide();
+      const newRideId = await seedDemoRide();
       setShowSettings(false);
-      onNavigate(`#/trip/${newTripId}`);
+      onNavigate(`#/ride/${newRideId}`);
     } catch (err) {
       console.error("Failed to seed demo data:", err);
       showToast("Error seeding demo data.");
     }
   };
 
-  // Aggregate stats for the header (only when trips exist)
-  const totalRides = tripsData?.length ?? 0;
-  const totalKm = (tripsData ?? []).reduce((sum, t) => sum + t.totalKm, 0);
+  // Aggregate stats for the header (only when rides exist)
+  const totalRides = ridesData?.length ?? 0;
+  const totalKm = (ridesData ?? []).reduce((sum, t) => sum + t.totalKm, 0);
 
   return (
     <div class="home-container">
@@ -174,9 +174,9 @@ export function Home({ onNavigate, onReady }: HomeProps) {
           <TypewriterKey size={42} />
           <div>
             <h1 class="logo" style={{ margin: 0, lineHeight: 1 }}>retread</h1>
-            {tripsData && tripsData.length === 0 ? (
+            {ridesData && ridesData.length === 0 ? (
               <p class="tagline home-tagline" style={{ margin: 0, marginTop: 'var(--spacing-xs)' }}>A logbook for well-tread rides.</p>
-            ) : tripsData !== undefined ? (
+            ) : ridesData !== undefined ? (
               <p class="home-stats" style={{ margin: 0, marginTop: 'var(--spacing-xs)' }}>
                 {totalRides} {totalRides === 1 ? 'ride' : 'rides'} · {formatDistance(totalKm)}
               </p>
@@ -256,11 +256,11 @@ export function Home({ onNavigate, onReady }: HomeProps) {
         </div>
       )}
 
-      <main class="trips-section">
+      <main class="rides-section">
 
-        {tripsData === undefined ? (
+        {ridesData === undefined ? (
           showSkeleton ? (
-            <div class="trips-grid">
+            <div class="rides-grid">
               {[1, 2, 3].map(i => (
                 <div key={i} class="skeleton-card">
                   <div class="skeleton-cover" />
@@ -273,14 +273,14 @@ export function Home({ onNavigate, onReady }: HomeProps) {
               ))}
             </div>
           ) : null
-        ) : tripsData.length === 0 ? (
+        ) : ridesData.length === 0 ? (
           <div class="empty-state">
             <p class="empty-state-title">Your ride book is empty.</p>
             <p class="empty-state-desc">Everything stays on this device. No account needed.</p>
             <div class="empty-actions">
               <Button 
                 variant="primary" 
-                onClick={() => onNavigate('#/edit?mode=new-trip')}
+                onClick={() => onNavigate('#/edit?mode=new-ride')}
               >
                 ＋ Log Your First Ride
               </Button>
@@ -295,11 +295,11 @@ export function Home({ onNavigate, onReady }: HomeProps) {
         ) : (
           <>
             <p class="ride-book-label">Ride Book</p>
-            <div class="trips-grid">
-              {tripsData.map(({ trip, totalKm, firstPhotoBlob, dateRange, stopTrail }) => (
-                <TripCard 
-                  key={trip.id} 
-                  trip={trip} 
+            <div class="rides-grid">
+              {ridesData.map(({ ride, totalKm, firstPhotoBlob, dateRange, stopTrail }) => (
+                <RideCard 
+                  key={ride.id} 
+                  ride={ride} 
                   totalKm={totalKm} 
                   firstPhotoBlob={firstPhotoBlob} 
                   dateRange={dateRange}
@@ -316,7 +316,7 @@ export function Home({ onNavigate, onReady }: HomeProps) {
         <Button 
           variant="fab" 
           aria-label="New Ride" 
-          onClick={() => onNavigate('#/edit?mode=new-trip')}
+          onClick={() => onNavigate('#/edit?mode=new-ride')}
         >
           ＋
         </Button>
@@ -331,15 +331,15 @@ export function Home({ onNavigate, onReady }: HomeProps) {
   );
 }
 
-interface TripCardProps {
-  trip: Trip;
+interface RideCardProps {
+  ride: Ride;
   totalKm: number;
   firstPhotoBlob: Blob | null;
   dateRange: string;
   stopTrail: string;
 }
 
-function TripCard({ trip, totalKm, firstPhotoBlob, dateRange, stopTrail }: TripCardProps) {
+function RideCard({ ride, totalKm, firstPhotoBlob, dateRange, stopTrail }: RideCardProps) {
   const [imgUrl, setImgUrl] = useState('');
 
   // Handle object URL lifecycle to prevent memory leaks
@@ -351,13 +351,13 @@ function TripCard({ trip, totalKm, firstPhotoBlob, dateRange, stopTrail }: TripC
   }, [firstPhotoBlob]);
 
   return (
-    <a href={`#/trip/${trip.id}`} class="trip-card-link">
-      <div class="trip-card">
-        <div class="trip-cover-container">
+    <a href={`#/ride/${ride.id}`} class="ride-card-link">
+      <div class="ride-card">
+        <div class="ride-cover-container">
           {imgUrl ? (
-            <img src={imgUrl} alt={trip.title} class="trip-cover-img" />
+            <img src={imgUrl} alt={ride.title} class="ride-cover-img" />
           ) : (
-            <div class="trip-cover-placeholder">
+            <div class="ride-cover-placeholder">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="9" />
                 <circle cx="12" cy="12" r="2" />
@@ -369,19 +369,19 @@ function TripCard({ trip, totalKm, firstPhotoBlob, dateRange, stopTrail }: TripC
             </div>
           )}
         </div>
-        <div class="trip-card-details">
-          <h4 class="trip-card-title">{trip.title || 'Untitled Ride'}</h4>
+        <div class="ride-card-details">
+          <h4 class="ride-card-title">{ride.title || 'Untitled Ride'}</h4>
           {stopTrail && (
-            <div class="trip-card-route">{stopTrail}</div>
+            <div class="ride-card-route">{stopTrail}</div>
           )}
-          <div class="trip-card-meta">
+          <div class="ride-card-meta">
             {dateRange && (
-              <span class="trip-card-date">{dateRange}</span>
+              <span class="ride-card-date">{dateRange}</span>
             )}
             {totalKm > 0 && (
               <>
-                <span class="trip-card-sep">·</span>
-                <span class="trip-card-km">{formatDistance(totalKm)}</span>
+                <span class="ride-card-sep">·</span>
+                <span class="ride-card-km">{formatDistance(totalKm)}</span>
               </>
             )}
           </div>

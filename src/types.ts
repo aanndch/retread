@@ -1,7 +1,7 @@
 export type DistanceMode = 'auto' | 'manual' | 'odo';
-export type EditorMode = 'new-trip' | 'edit-trip' | 'new-leg' | 'edit';
+export type EditorMode = 'new-ride' | 'edit-ride' | 'new-leg' | 'edit';
 
-export interface Trip {
+export interface Ride {
   id?: number;
   title: string;
   createdAt: string; // ISO String
@@ -14,9 +14,9 @@ export type LocationUnion =
   | { kind: 'gps'; lat: number; lng: number; name?: string }
   | { kind: 'named'; name: string };
 
-export interface Page {
+export interface Leg {
   id?: number;
-  tripId: number;
+  rideId: number;
   date: string;               // YYYY-MM-DD
   time?: string;              // HH:MM (24-hour)
   note: string;               // Freeform textarea content

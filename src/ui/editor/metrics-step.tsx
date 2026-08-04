@@ -4,9 +4,9 @@ import { Button } from '../../components/button';
 import { PinIcon } from '../../components/icons';
 
 interface MetricsStepProps {
-  mode: 'new-trip' | 'edit-trip' | 'new-leg' | 'edit';
-  tripTitle: string;
-  setTripTitle: (t: string) => void;
+  mode: 'new-ride' | 'edit-ride' | 'new-leg' | 'edit';
+  rideTitle: string;
+  setRideTitle: (t: string) => void;
   date: string;
   setDate: (d: string) => void;
   time: string;
@@ -42,8 +42,8 @@ interface MetricsStepProps {
 
 export function MetricsStep({
   mode,
-  tripTitle,
-  setTripTitle,
+  rideTitle,
+  setRideTitle,
   date,
   setDate,
   time,
@@ -78,17 +78,17 @@ export function MetricsStep({
 }: MetricsStepProps) {
   return (
     <div class="wizard-step-content">
-      {/* Trip Title (New Trip Only) */}
-      {(mode === 'new-trip' || mode === 'edit-trip') && (
+      {/* Ride Title (New Ride Only) */}
+      {(mode === 'new-ride' || mode === 'edit-ride') && (
         <div class="form-group">
           <label class="input-label">Ride Title</label>
           <input 
             type="text" 
             class={`form-input ${titleError ? 'input-error' : ''}`}
             placeholder="e.g. Spiti Valley Odyssey" 
-            value={tripTitle}
+            value={rideTitle}
             onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
-              setTripTitle((e.target as HTMLInputElement).value);
+              setRideTitle((e.target as HTMLInputElement).value);
               if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
             }}
           />
@@ -96,8 +96,8 @@ export function MetricsStep({
         </div>
       )}
 
-      {/* Starting From - Departure Pin (New Trip / Edit Trip) */}
-      {(mode === 'new-trip' || mode === 'edit-trip') && (
+      {/* Starting From - Departure Pin (New Ride / Edit Ride) */}
+      {(mode === 'new-ride' || mode === 'edit-ride') && (
         <div class="form-group">
           <label class="input-label">Starting From</label>
           
@@ -162,8 +162,8 @@ export function MetricsStep({
         </div>
       )}
 
-      {/* Distance Tracking Preference (New Trip / Edit Trip) */}
-      {(mode === 'new-trip' || mode === 'edit-trip') && (
+      {/* Distance Tracking Preference (New Ride / Edit Ride) */}
+      {(mode === 'new-ride' || mode === 'edit-ride') && (
         <div class="form-group animate-fade-in" style={{ marginTop: 'var(--spacing-md)' }}>
           <label class="input-label">Distance Tracking Method</label>
           <div style={{ display: 'flex', gap: '8px', flexDirection: 'column', marginBottom: '8px' }}>
@@ -220,7 +220,7 @@ export function MetricsStep({
         </div>
       )}
 
-      {/* Leg page metrics (Only for Leg creation or Leg edit modes) */}
+      {/* Leg metrics (Only for Leg creation or Leg edit modes) */}
       {(mode === 'new-leg' || mode === 'edit') && (
         <>
           {/* Row 1: Leg Route (Whole Row) */}
@@ -374,9 +374,9 @@ export function MetricsStep({
         <Button variant="secondary" onClick={handleCancel}>
           Cancel
         </Button>
-        {mode === 'new-trip' || mode === 'edit-trip' ? (
+        {mode === 'new-ride' || mode === 'edit-ride' ? (
           <Button type="submit" variant="primary">
-            {mode === 'new-trip' ? 'Create Ride' : 'Save Changes'}
+            {mode === 'new-ride' ? 'Create Ride' : 'Save Changes'}
           </Button>
         ) : (
           <Button variant="primary" onClick={() => handleStepJump(2)}>

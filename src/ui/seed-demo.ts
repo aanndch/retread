@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { backfillTripRoutes } from '../road';
+import { backfillRideRoutes } from '../road';
 
 function createMockPhoto(title: string, color: string) {
   const escapedTitle = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -15,7 +15,7 @@ function createMockPhoto(title: string, color: string) {
 }
 
 export async function seedDemoRide(): Promise<number> {
-  const newTripId = await db.trips.add({
+  const newRideId = await db.rides.add({
     title: "Western Ghats Loop",
     createdAt: new Date().toISOString(),
     startLocation: { kind: 'gps', lat: 12.2958, lng: 76.6394, name: "Mysore" },
@@ -23,8 +23,8 @@ export async function seedDemoRide(): Promise<number> {
     startOdo: 21560
   }) as number;
 
-  await db.pages.add({
-    tripId: newTripId,
+  await db.legs.add({
+    rideId: newRideId,
     date: "2026-07-14",
     time: "06:10",
     title: "Mysore to Madikeri (First climb into Coorg)",
@@ -38,8 +38,8 @@ export async function seedDemoRide(): Promise<number> {
     ]
   });
 
-  await db.pages.add({
-    tripId: newTripId,
+  await db.legs.add({
+    rideId: newRideId,
     date: "2026-07-15",
     time: "07:45",
     title: "Madikeri to Kalpetta (Into Wayanad)",
@@ -53,8 +53,8 @@ export async function seedDemoRide(): Promise<number> {
     ]
   });
 
-  await db.pages.add({
-    tripId: newTripId,
+  await db.legs.add({
+    rideId: newRideId,
     date: "2026-07-16",
     time: "08:20",
     title: "Kalpetta to Kozhikode (Thamarassery ghat)",
@@ -67,8 +67,8 @@ export async function seedDemoRide(): Promise<number> {
     ]
   });
 
-  await db.pages.add({
-    tripId: newTripId,
+  await db.legs.add({
+    rideId: newRideId,
     date: "2026-07-17",
     time: "06:50",
     title: "Kozhikode to Thrissur",
@@ -81,8 +81,8 @@ export async function seedDemoRide(): Promise<number> {
     ]
   });
 
-  await db.pages.add({
-    tripId: newTripId,
+  await db.legs.add({
+    rideId: newRideId,
     date: "2026-07-17",
     time: "14:30",
     title: "Thrissur to Kochi (Backwaters light)",
@@ -96,8 +96,8 @@ export async function seedDemoRide(): Promise<number> {
     ]
   });
 
-  await db.pages.add({
-    tripId: newTripId,
+  await db.legs.add({
+    rideId: newRideId,
     date: "2026-07-18",
     time: "07:05",
     title: "Kochi to Alleppey (Lazy canal country)",
@@ -111,8 +111,8 @@ export async function seedDemoRide(): Promise<number> {
     ]
   });
 
-  await db.pages.add({
-    tripId: newTripId,
+  await db.legs.add({
+    rideId: newRideId,
     date: "2026-07-19",
     time: "05:30",
     title: "Alleppey to Mysore (Home run)",
@@ -125,7 +125,7 @@ export async function seedDemoRide(): Promise<number> {
     ]
   });
 
-  await backfillTripRoutes(newTripId);
+  await backfillRideRoutes(newRideId);
 
-  return newTripId;
+  return newRideId;
 }

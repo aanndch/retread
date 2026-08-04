@@ -12,12 +12,12 @@ import {
 import { SquiggleMap } from "./squiggle";
 import { MapModal } from "../components/map-modal";
 import { PhotoOverlay } from "../components/photo-overlay";
-import { backfillTripRoutes } from "../road";
+import { backfillRideRoutes } from "../road";
 import { formatIsoDateToDMY } from "../lib";
-import type { Page, LocationUnion } from "../types";
+import type { Leg, LocationUnion } from "../types";
 
-interface PageDetailProps {
-  pageId: number;
+interface LegDetailProps {
+  legId: number;
   onNavigate: (route: string) => void;
   onReady?: () => void;
 }
@@ -47,9 +47,9 @@ function LegTrail({ start, end }: { start: string; end: string }) {
   );
 }
 
-export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
-  const [page, setPage] = useState<Page | null>(null);
-  const [tripTitle, setTripTitle] = useState("");
+export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
+  const [leg, setLeg] = useState<Leg | null>(null);
+  const [rideTitle, setRideTitle] = useState("");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -59,8 +59,8 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
   const [trailStart, setTrailStart] = useState("");
   const [trailEnd, setTrailEnd] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [prevPageId, setPrevPageId] = useState<number | null>(null);
-  const [nextPageId, setNextPageId] = useState<number | null>(null);
+  const [prevLegId, setPrevLegId] = useState<number | null>(null);
+  const [nextLegId, setNextLegId] = useState<number | null>(null);
   const [prevDate, setPrevDate] = useState("");
   const [nextDate, setNextDate] = useState("");
   const { toasts, showToast, removeToast } = useToast();
@@ -107,56 +107,56 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
 
     async function loadData() {
       try {
-        const pageRecord = await db.pages.get(pageId);
-        if (!pageRecord) {
+        const legRecord = await db.legs.get(legId);
+        if (!legRecord) {
           if (active) onNavigate("#/");
           return;
         }
 
-        const tripRecord = await db.trips.get(pageRecord.tripId);
-        const tripName = tripRecord ? tripRecord.title : "Ride Logbook";
+        const rideRecord = await db.rides.get(legRecord.rideId);
+        const rideName = rideRecord ? rideRecord.title : "Ride Logbook";
 
-        const urls = (pageRecord.photos || []).map((blob) =>
+        const urls = (legRecord.photos || []).map((blob) =>
           URL.createObjectURL(blob),
         );
 
-        const allPages = await db.pages
-          .where("tripId")
-          .equals(pageRecord.tripId)
+        const allLegs = await db.legs
+          .where("rideId")
+          .equals(legRecord.rideId)
           .toArray();
-        const sorted = [...allPages].sort((a, b) => {
+        const sorted = [...allLegs].sort((a, b) => {
           const dComp = a.date.localeCompare(b.date);
           if (dComp !== 0) return dComp;
           const tA = a.time || '00:00';
           const tB = b.time || '00:00';
           return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
         });
-        const myIdx = sorted.findIndex((p) => p.id === pageRecord.id);
+        const myIdx = sorted.findIndex((l) => l.id === legRecord.id);
 
         let computedLeg: number | null = null;
-        if (pageRecord.km !== null && pageRecord.km !== undefined) {
-          computedLeg = pageRecord.km;
-        } else if (pageRecord.odo !== null && pageRecord.odo !== undefined) {
+        if (legRecord.km !== null && legRecord.km !== undefined) {
+          computedLeg = legRecord.km;
+        } else if (legRecord.odo !== null && legRecord.odo !== undefined) {
           if (myIdx > 0) {
-            const prevPage = sorted[myIdx - 1];
-            if (prevPage.odo !== null && prevPage.odo !== undefined) {
-              computedLeg = pageRecord.odo - prevPage.odo;
+            const prevLeg = sorted[myIdx - 1];
+            if (prevLeg.odo !== null && prevLeg.odo !== undefined) {
+              computedLeg = legRecord.odo - prevLeg.odo;
               if (computedLeg < 0) computedLeg = null;
             }
-          } else if (tripRecord?.startOdo !== null && tripRecord?.startOdo !== undefined) {
-            computedLeg = pageRecord.odo - tripRecord.startOdo;
+          } else if (rideRecord?.startOdo !== null && rideRecord?.startOdo !== undefined) {
+            computedLeg = legRecord.odo - rideRecord.startOdo;
             if (computedLeg < 0) computedLeg = null;
           }
         }
 
-        // Trail: start = trip departure (first leg) or previous leg's end point
+        // Trail: start = ride departure (first leg) or previous leg's end point
         const startLoc =
-          myIdx === 0 ? tripRecord?.startLocation : sorted[myIdx - 1]?.location;
-        const endLoc = pageRecord.location;
+          myIdx === 0 ? rideRecord?.startLocation : sorted[myIdx - 1]?.location;
+        const endLoc = legRecord.location;
 
         if (active) {
-          setPage(pageRecord);
-          setTripTitle(tripName);
+          setLeg(legRecord);
+          setRideTitle(rideName);
           setPhotoUrls(urls);
           photoUrlsRef.current = urls;
           setLegDistance(computedLeg);
@@ -164,8 +164,8 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
           setTotalLegs(sorted.length);
           setTrailStart(locationName(startLoc));
           setTrailEnd(locationName(endLoc));
-          setPrevPageId(myIdx > 0 ? sorted[myIdx - 1].id ?? null : null);
-          setNextPageId(myIdx < sorted.length - 1 ? sorted[myIdx + 1].id ?? null : null);
+          setPrevLegId(myIdx > 0 ? sorted[myIdx - 1].id ?? null : null);
+          setNextLegId(myIdx < sorted.length - 1 ? sorted[myIdx + 1].id ?? null : null);
           setPrevDate(myIdx > 0 ? formatIsoDateToDMY(sorted[myIdx - 1].date) : "");
           setNextDate(myIdx < sorted.length - 1 ? formatIsoDateToDMY(sorted[myIdx + 1].date) : "");
           setLoading(false);
@@ -185,16 +185,16 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
       active = false;
       photoUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [pageId, onNavigate]);
+  }, [legId, onNavigate]);
 
   const handleDelete = async () => {
-    if (!page) return;
+    if (!leg) return;
 
     try {
-      const tripId = page.tripId;
-      await db.pages.delete(pageId);
-      await backfillTripRoutes(tripId);
-      onNavigate(`#/trip/${tripId}`);
+      const rideId = leg.rideId;
+      await db.legs.delete(legId);
+      await backfillRideRoutes(rideId);
+      onNavigate(`#/ride/${rideId}`);
     } catch (err) {
       console.error("Failed to delete leg:", err);
       showToast("Failed to delete leg.");
@@ -205,18 +205,18 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
     return <p class="loading-text">Loading leg details...</p>;
   }
 
-  if (!page) return null;
+  if (!leg) return null;
 
-  const shortDate = formatIsoDateToDMY(page.date);
+  const shortDate = formatIsoDateToDMY(leg.date);
 
   return (
-    <div class="page-detail-container">
+    <div class="leg-detail-container">
       {/* Top bar: back + edit + delete */}
       <header class="ride-topbar">
         <Button
           variant="icon"
           aria-label="Back"
-          onClick={() => onNavigate(`#/trip/${page.tripId}`)}
+          onClick={() => onNavigate(`#/ride/${leg.rideId}`)}
         >
           <ArrowLeft />
         </Button>
@@ -224,7 +224,7 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
         <Button
           variant="icon"
           aria-label="Edit leg"
-          onClick={() => onNavigate(`#/edit?mode=edit&pageId=${pageId}`)}
+          onClick={() => onNavigate(`#/edit?mode=edit&legId=${legId}`)}
         >
           <EditIcon size={14} />
         </Button>
@@ -238,13 +238,13 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
         </Button>
       </header>
 
-      <main class="page-detail-content">
+      <main class="leg-detail-content">
         {/* Hero: kicker, title, leg route trail */}
         <section class="ride-hero">
           <span class="ride-hero-kicker">
-            {tripTitle} · {shortDate}
+            {rideTitle} · {shortDate}
           </span>
-          <h1 class="ride-hero-title">{page.title || "Untitled Leg"}</h1>
+          <h1 class="ride-hero-title">{leg.title || "Untitled Leg"}</h1>
           {trailStart && trailEnd && (
             <LegTrail start={trailStart} end={trailEnd} />
           )}
@@ -252,17 +252,17 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
 
         {/* Segment route map */}
         <section class="ride-map-hero">
-          {page.roadPath && page.roadPath.length >= 2 ? (
+          {leg.roadPath && leg.roadPath.length >= 2 ? (
             <div class="map-interactive-trigger" onClick={openMapModal}>
-              <SquiggleMap path={page.roadPath} width={430} height={200} />
+              <SquiggleMap path={leg.roadPath} width={430} height={200} />
             </div>
           ) : (
-            page.location?.kind === "gps" && (
+            leg.location?.kind === "gps" && (
               <div class="map-interactive-trigger" onClick={() => openMapModal()}>
                 <SquiggleMap
                   path={[
-                    { lat: page.location.lat, lng: page.location.lng },
-                    { lat: page.location.lat, lng: page.location.lng },
+                    { lat: leg.location.lat, lng: leg.location.lng },
+                    { lat: leg.location.lat, lng: leg.location.lng },
                   ]}
                   width={430}
                   height={200}
@@ -273,7 +273,7 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
         </section>
 
         {/* Leg stats spec plate */}
-        <section class="trip-stats-card">
+        <section class="ride-stats-card">
           <div class="stat-item">
             <span class="stat-label">Distance</span>
             <span class="stat-value">
@@ -285,12 +285,12 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
           <div class="stat-item">
             <span class="stat-label">Odo</span>
             <span class="stat-value">
-              {page.odo !== null && page.odo !== undefined ? page.odo : "—"}
+              {leg.odo !== null && leg.odo !== undefined ? leg.odo : "—"}
             </span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Time</span>
-            <span class="stat-value">{page.time ? page.time : "—"}</span>
+            <span class="stat-value">{leg.time ? leg.time : "—"}</span>
           </div>
         </section>
 
@@ -329,10 +329,10 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
           </section>
         )}
 
-        {page.note && (
+        {leg.note && (
           <section class="story-note-section">
             <span class="note-label">Rider's Note</span>
-            <blockquote class="typewriter-blockquote">{page.note}</blockquote>
+            <blockquote class="typewriter-blockquote">{leg.note}</blockquote>
           </section>
         )}
 
@@ -341,8 +341,8 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
           <Button
             variant="tertiary"
             class="pager-half"
-            disabled={prevPageId === null}
-            onClick={() => prevPageId !== null && onNavigate(`#/page/${prevPageId}`)}
+            disabled={prevLegId === null}
+            onClick={() => prevLegId !== null && onNavigate(`#/leg/${prevLegId}`)}
           >
             <span class="pager-action">
               <ArrowLeft size={12} />
@@ -354,8 +354,8 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
           <Button
             variant="tertiary"
             class="pager-half pager-half-right"
-            disabled={nextPageId === null}
-            onClick={() => nextPageId !== null && onNavigate(`#/page/${nextPageId}`)}
+            disabled={nextLegId === null}
+            onClick={() => nextLegId !== null && onNavigate(`#/leg/${nextLegId}`)}
           >
             <span class="pager-action">
               <span>Next</span>
@@ -369,7 +369,7 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
       {showDeleteModal && (
         <ConfirmModal
           title="Delete Leg?"
-          message={`This will permanently delete the leg logged on ${formatIsoDateToDMY(page.date)}. This action cannot be undone.`}
+          message={`This will permanently delete the leg logged on ${formatIsoDateToDMY(leg.date)}. This action cannot be undone.`}
           confirmLabel="Confirm Delete"
           onConfirm={handleDelete}
           onCancel={() => setShowDeleteModal(false)}
@@ -389,12 +389,12 @@ export function PageDetail({ pageId, onNavigate, onReady }: PageDetailProps) {
       <MapModal
         isOpen={showMapModal}
         path={
-          page.roadPath && page.roadPath.length >= 2
-            ? page.roadPath
-            : page.location?.kind === "gps"
+          leg.roadPath && leg.roadPath.length >= 2
+            ? leg.roadPath
+            : leg.location?.kind === "gps"
               ? [
-                  { lat: page.location.lat, lng: page.location.lng },
-                  { lat: page.location.lat, lng: page.location.lng }
+                  { lat: leg.location.lat, lng: leg.location.lng },
+                  { lat: leg.location.lat, lng: leg.location.lng }
                 ]
               : []
         }

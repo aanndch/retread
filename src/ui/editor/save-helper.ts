@@ -1,10 +1,10 @@
 import { db } from '../../db';
-import { backfillTripRoutes } from '../../road';
+import { backfillRideRoutes } from '../../road';
 import { scheduleAutoSync } from '../../gdrive';
-import type { LocationUnion, Page } from '../../types';
+import type { LocationUnion, Leg } from '../../types';
 
 interface SaveData {
-  tripTitle: string;
+  rideTitle: string;
   legTitle: string;
   date: string;
   time: string;
@@ -19,16 +19,16 @@ interface SaveData {
 }
 
 export async function saveEditorDetails(
-  mode: 'new-trip' | 'edit-trip' | 'new-leg' | 'edit' | null,
-  tripId: number | null,
-  pageId: number | null,
+  mode: 'new-ride' | 'edit-ride' | 'new-leg' | 'edit' | null,
+  rideId: number | null,
+  legId: number | null,
   data: SaveData
 ): Promise<string> {
-  if (mode === 'edit-trip') {
-    if (!data.tripTitle.trim()) {
+  if (mode === 'edit-ride') {
+    if (!data.rideTitle.trim()) {
       throw new Error('Ride Title is required.');
     }
-    const finalTitle = data.tripTitle.trim();
+    const finalTitle = data.rideTitle.trim();
     let startLocPayload: LocationUnion | null = null;
     if (data.startLocation) {
       if (data.startLocation.kind === 'named' && !data.startLocation.name.trim()) {
@@ -38,7 +38,7 @@ export async function saveEditorDetails(
       }
     }
 
-    await db.trips.update(tripId!, {
+    await db.rides.update(rideId!, {
       title: finalTitle,
       startLocation: startLocPayload,
       distanceMode: data.distanceMode,
@@ -46,20 +46,20 @@ export async function saveEditorDetails(
     });
 
     try {
-      await backfillTripRoutes(tripId!);
+      await backfillRideRoutes(rideId!);
     } catch (snapErr) {
-      console.warn('Snapping routes failed during trip edit save:', snapErr);
+      console.warn('Snapping routes failed during ride edit save:', snapErr);
     }
 
     scheduleAutoSync();
-    return `#/trip/${tripId}`;
+    return `#/ride/${rideId}`;
   }
 
-  if (mode === 'new-trip') {
-    if (!data.tripTitle.trim()) {
+  if (mode === 'new-ride') {
+    if (!data.rideTitle.trim()) {
       throw new Error('Ride Title is required to start a new ride.');
     }
-    const finalTitle = data.tripTitle.trim();
+    const finalTitle = data.rideTitle.trim();
     let startLocPayload: LocationUnion | null = null;
     if (data.startLocation) {
       if (data.startLocation.kind === 'named' && !data.startLocation.name.trim()) {
@@ -69,7 +69,7 @@ export async function saveEditorDetails(
       }
     }
 
-    const newTripId = await db.trips.add({
+    const newRideId = await db.rides.add({
       title: finalTitle,
       createdAt: new Date().toISOString(),
       startLocation: startLocPayload,
@@ -78,20 +78,20 @@ export async function saveEditorDetails(
     }) as number;
 
     scheduleAutoSync();
-    return `#/trip/${newTripId}`;
+    return `#/ride/${newRideId}`;
   }
 
   // Saving leg entries (mode === 'new-leg' or mode === 'edit')
-  const activeTripId = tripId;
-  if (activeTripId === null && mode !== 'edit') {
-    throw new Error('Trip ID context is missing.');
+  const activeRideId = rideId;
+  if (activeRideId === null && mode !== 'edit') {
+    throw new Error('Ride ID context is missing.');
   }
 
   const locationPayload = (data.location && (data.location.kind === 'named' ? data.location.name.trim() !== '' : true))
     ? data.location
     : null;
 
-  const pageData: Partial<Page> = {
+  const legData: Partial<Leg> = {
     date: data.date,
     time: data.time,
     note: data.note.trim(),
@@ -102,31 +102,31 @@ export async function saveEditorDetails(
     title: data.legTitle.trim()
   };
 
-  if (mode === 'edit' && pageId !== null) {
-    const existingPage = await db.pages.get(pageId);
-    if (!existingPage) throw new Error('Page to update was not found.');
+  if (mode === 'edit' && legId !== null) {
+    const existingLeg = await db.legs.get(legId);
+    if (!existingLeg) throw new Error('Leg to update was not found.');
     
-    await db.pages.update(pageId, pageData);
+    await db.legs.update(legId, legData);
     try {
-      await backfillTripRoutes(existingPage.tripId);
+      await backfillRideRoutes(existingLeg.rideId);
     } catch (snapErr) {
       console.warn('Snapping routes failed during edit save:', snapErr);
       throw new Error(`Snapping failed: ${(snapErr as Error).message || snapErr}. Used straight-line fallback.`);
     }
     scheduleAutoSync();
-    return `#/trip/${existingPage.tripId}`;
+    return `#/ride/${existingLeg.rideId}`;
   } else {
-    await db.pages.add({
-      tripId: activeTripId!,
-      ...pageData
-    } as Page);
+    await db.legs.add({
+      rideId: activeRideId!,
+      ...legData
+    } as Leg);
     try {
-      await backfillTripRoutes(activeTripId!);
+      await backfillRideRoutes(activeRideId!);
     } catch (snapErr) {
       console.warn('Snapping routes failed during new save:', snapErr);
       throw new Error(`Snapping failed: ${(snapErr as Error).message || snapErr}. Used straight-line fallback.`);
     }
     scheduleAutoSync();
-    return `#/trip/${activeTripId}`;
+    return `#/ride/${activeRideId}`;
   }
 }

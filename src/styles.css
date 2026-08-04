@@ -587,24 +587,24 @@ button:focus,
   margin-top: var(--spacing-xs);
 }
 
-/* Trips List & Cards */
-.trips-section {
+/* Rides List & Cards */
+.rides-section {
   flex-grow: 1;
 }
 
-.trips-grid {
+.rides-grid {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
 }
 
-.trip-card-link {
+.ride-card-link {
   text-decoration: none;
   color: inherit;
   cursor: pointer;
 }
 
-.trip-card {
+.ride-card {
   display: flex;
   border: 1px solid var(--color-ink);
   border-radius: var(--border-radius);
@@ -615,17 +615,17 @@ button:focus,
   box-shadow: 2px 2px 0px var(--color-shadow);
 }
 
-.trip-card:hover {
+.ride-card:hover {
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0px var(--color-shadow);
 }
 
-.trip-card:active {
+.ride-card:active {
   transform: translate(1px, 1px);
   box-shadow: 1px 1px 0px var(--color-shadow);
 }
 
-.trip-cover-container {
+.ride-cover-container {
   width: 90px;
   aspect-ratio: 1 / 1;
   flex-shrink: 0;
@@ -637,13 +637,13 @@ button:focus,
   overflow: hidden;
 }
 
-.trip-cover-img {
+.ride-cover-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.trip-cover-placeholder {
+.ride-cover-placeholder {
   color: var(--color-ink-muted);
   opacity: 0.45;
   display: flex;
@@ -651,7 +651,7 @@ button:focus,
   justify-content: center;
 }
 
-.trip-card-details {
+.ride-card-details {
   padding: var(--spacing-sm) var(--spacing-md);
   display: flex;
   flex-direction: column;
@@ -659,7 +659,7 @@ button:focus,
   min-width: 0;
 }
 
-.trip-card-title {
+.ride-card-title {
   font-family: var(--font-typewriter);
   font-size: 18px;
   font-weight: 700;
@@ -670,7 +670,7 @@ button:focus,
   text-overflow: ellipsis;
 }
 
-.trip-card-route {
+.ride-card-route {
   font-size: 13px;
   color: var(--color-ink-muted);
   font-family: var(--font-mechanical);
@@ -680,7 +680,7 @@ button:focus,
   text-overflow: ellipsis;
 }
 
-.trip-card-meta {
+.ride-card-meta {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -689,7 +689,7 @@ button:focus,
   overflow: hidden;
 }
 
-.trip-card-date {
+.ride-card-date {
   font-size: 10px;
   color: var(--color-ink-muted);
   font-family: var(--font-mechanical);
@@ -698,14 +698,14 @@ button:focus,
   text-overflow: ellipsis;
 }
 
-.trip-card-sep {
+.ride-card-sep {
   font-size: 10px;
   color: var(--color-ink-muted);
   font-family: var(--font-mechanical);
   flex-shrink: 0;
 }
 
-.trip-card-km {
+.ride-card-km {
   font-size: 12px;
   color: var(--color-ink);
   font-family: var(--font-mechanical);
@@ -1482,11 +1482,11 @@ input[type=number] {
 }
 
 /* ==========================================================================
-   RIDE DETAIL & DAY DETAIL VIEWS
+   RIDE DETAIL & LEG DETAIL VIEWS
    ========================================================================== */
 
-.trip-detail-container,
-.page-detail-container {
+.ride-detail-container,
+.leg-detail-container {
   display: flex;
   flex-direction: column;
 }
@@ -1511,8 +1511,8 @@ input[type=number] {
   line-height: 1.3;
 }
 
-.trip-dates-sub,
-.trip-name-sub {
+.ride-dates-sub,
+.ride-name-sub {
   font-size: 11px;
   color: var(--color-ink-muted);
   font-family: var(--font-mechanical);
@@ -1655,7 +1655,7 @@ input[type=number] {
 }
 
 /* Stats dashboard */
-.trip-stats-card {
+.ride-stats-card {
   display: flex;
   justify-content: center;
   gap: 0;
@@ -1696,7 +1696,7 @@ input[type=number] {
 }
 
 /* Timeline logs */
-.trip-timeline {
+.ride-timeline {
   display: flex;
   flex-direction: column;
   margin-top: var(--spacing-sm);

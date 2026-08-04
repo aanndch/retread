@@ -5,14 +5,14 @@ import { Home } from './ui/home';
 import { TestRunner } from './ui/test-runner';
 import { Editor } from './ui/editor';
 import { Backup } from './ui/backup';
-import { TripDetail } from './ui/trip-detail';
-import { PageDetail } from './ui/page-detail';
+import { RideDetail } from './ui/ride-detail';
+import { LegDetail } from './ui/leg-detail';
 import {
   HASH_HOME,
   HASH_BACKUP,
   HASH_EDIT,
-  HASH_TRIP_PREFIX,
-  HASH_PAGE_PREFIX,
+  HASH_RIDE_PREFIX,
+  HASH_LEG_PREFIX,
 } from './constants';
 import { getSWUpdate } from './main';
 
@@ -77,8 +77,8 @@ export function App() {
     const isGatedRoute = (hash: string) =>
       hash === HASH_HOME ||
       hash === '' ||
-      hash.startsWith(HASH_TRIP_PREFIX) ||
-      hash.startsWith(HASH_PAGE_PREFIX);
+      hash.startsWith(HASH_RIDE_PREFIX) ||
+      hash.startsWith(HASH_LEG_PREFIX);
 
     const handleHashChange = () => {
       const checkedSetup = localStorage.getItem('retread-setup-complete') === 'true';
@@ -167,18 +167,18 @@ export function App() {
       return <Home onNavigate={navigateTo} onReady={finishTransition} />;
     }
     
-    if (hash.startsWith(HASH_TRIP_PREFIX)) {
-      const tripId = hash.split('/').pop();
-      const parsedId = tripId ? parseInt(tripId, 10) : NaN;
+    if (hash.startsWith(HASH_RIDE_PREFIX)) {
+      const rideId = hash.split('/').pop();
+      const parsedId = rideId ? parseInt(rideId, 10) : NaN;
       if (isNaN(parsedId)) return <Home onNavigate={navigateTo} onReady={finishTransition} />;
-      return <TripDetail tripId={parsedId} onNavigate={navigateTo} onReady={finishTransition} />;
+      return <RideDetail rideId={parsedId} onNavigate={navigateTo} onReady={finishTransition} />;
     }
 
-    if (hash.startsWith(HASH_PAGE_PREFIX)) {
-      const pageId = hash.split('/').pop();
-      const parsedId = pageId ? parseInt(pageId, 10) : NaN;
+    if (hash.startsWith(HASH_LEG_PREFIX)) {
+      const legId = hash.split('/').pop();
+      const parsedId = legId ? parseInt(legId, 10) : NaN;
       if (isNaN(parsedId)) return <Home onNavigate={navigateTo} onReady={finishTransition} />;
-      return <PageDetail pageId={parsedId} onNavigate={navigateTo} onReady={finishTransition} />;
+      return <LegDetail legId={parsedId} onNavigate={navigateTo} onReady={finishTransition} />;
     }
 
     if (hash.startsWith(HASH_EDIT)) {

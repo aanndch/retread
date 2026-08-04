@@ -1,15 +1,21 @@
 import Dexie, { type Table } from 'dexie';
-import type { Trip, Page } from './types';
+import type { Ride, Leg } from './types';
 
 export class RetreadDatabase extends Dexie {
-  trips!: Table<Trip>;
-  pages!: Table<Page>;
+  rides!: Table<Ride>;
+  legs!: Table<Leg>;
 
   constructor() {
     super('RetreadDatabase');
     this.version(1).stores({
       trips: '++id, createdAt',
-      pages: '++id, tripId, date' // Indexes for fast lookups
+      pages: '++id, tripId, date'
+    });
+    this.version(2).stores({
+      trips: null,
+      pages: null,
+      rides: '++id, createdAt',
+      legs: '++id, rideId, date' // Indexes for fast lookups
     });
   }
 }

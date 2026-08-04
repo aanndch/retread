@@ -21,9 +21,9 @@ Most trip loggers want you to create an account, store your data on their server
 
 ## Features
 
-**Trip logging** — Create rides with daily "page" entries. Each page has a date, freeform notes, photos, distance or odometer readings, and a location (GPS pin or place name).
+**Ride logging** — Create rides with daily "leg" entries. Each leg has a date, freeform notes, photos, distance or odometer readings, and a location (GPS pin or place name).
 
-**Route maps** — GPS waypoints get snapped to actual roads using [OSRM](http://project-osrm.org/) and drawn as SVG paths with a hand-drawn, pen-on-paper look (using SVG turbulence displacement filters). Routes are simplified with Douglas-Peucker before rendering. The snapped path is stored in the database, so OSRM is only called once per leg — viewing the same trip again reads from IndexedDB.
+**Route maps** — GPS waypoints get snapped to actual roads using [OSRM](http://project-osrm.org/) and drawn as SVG paths with a hand-drawn, pen-on-paper look (using SVG turbulence displacement filters). Routes are simplified with Douglas-Peucker before rendering. The snapped path is stored in the database, so OSRM is only called once per leg — viewing the same ride again reads from IndexedDB.
 
 **Photos** — Attach multiple photos per day. They're compressed client-side on a canvas (1600px max edge, 80% JPEG) before being stored as blobs in IndexedDB.
 
@@ -31,7 +31,7 @@ Most trip loggers want you to create an account, store your data on their server
 
 **7 themes** — Daylight, Nightfall, Sepia, Midnight, Slate, Monotone, Cyberpunk. Each one swaps CSS custom properties and updates the browser's `theme-color` meta tag so the address bar matches.
 
-**Backup & restore** — Export everything (trips, pages, GPS paths, photos as Base64) into a single `.json` file. Import it on another device to restore. iOS users get a periodic reminder because Safari can silently evict IndexedDB data.
+**Backup & restore** — Export everything (rides, legs, GPS paths, photos as Base64) into a single `.json` file. Import it on another device to restore. iOS users get a periodic reminder because Safari can silently evict IndexedDB data.
 
 **Installable** — Works as a home screen app with offline caching. Service worker uses CacheFirst for fonts and map tiles, NetworkFirst for OSRM routing.
 
@@ -51,7 +51,7 @@ Most trip loggers want you to create an account, store your data on their server
 
 **Custom tile renderer** — The map viewer fetches OSM PNG tiles by converting lat/lng to tile coordinates, renders them in a grid, and draws SVG route overlays on top. This avoids the biggest dependency most map apps carry, while still supporting touch gestures and interactive location picking.
 
-**Route backfilling** — When you save a new leg, `backfillTripRoutes` recalculates all routes for the trip by walking through pages chronologically. It checks whether each page's `roadPath` already matches the current endpoints (within 50m) and only calls OSRM for legs that actually changed. So you can add legs out of order and the route still connects correctly.
+**Route backfilling** — When you save a new leg, `backfillRideRoutes` recalculates all routes for the ride by walking through legs chronologically. It checks whether each leg's `roadPath` already matches the current endpoints (within 50m) and only calls OSRM for legs that actually changed. So you can add legs out of order and the route still connects correctly.
 
 **SVG squiggle rendering** — Route paths are drawn as cubic Bézier curves, then run through an `feTurbulence` + `feDisplacementMap` SVG filter chain to look hand-drawn. The path is simplified with Douglas-Peucker to stay under ~200 points for smooth rendering.
 
@@ -79,7 +79,7 @@ src/
 ├── App.tsx                  # Router and app shell
 ├── main.tsx                 # Entry point, service worker registration
 ├── db.ts                    # Dexie database schema
-├── types.ts                 # Trip, Page, Location types
+├── types.ts                 # Ride, Leg, Location types
 ├── road.ts                  # OSRM route snapping and backfilling
 ├── theme.ts                 # Theme engine (7 themes + system detection)
 ├── lib.ts                   # Distance math, date formatting
@@ -87,13 +87,13 @@ src/
 ├── styles.css               # All styles and theme tokens
 │
 ├── ui/
-│   ├── home.tsx             # Trip grid with settings panel
+│   ├── home.tsx             # Ride grid with settings panel
 │   ├── setup.tsx            # First-run onboarding
-│   ├── trip-detail.tsx      # Trip timeline and route map
-│   ├── page-detail.tsx      # Daily log view (photos, map, notes)
+│   ├── ride-detail.tsx      # Ride timeline and route map
+│   ├── leg-detail.tsx       # Daily log view (photos, map, notes)
 │   ├── backup.tsx           # Export/import
 │   ├── squiggle.tsx         # SVG route renderer
-│   └── editor/              # Multi-step trip/leg editor
+│   └── editor/              # Multi-step ride/leg editor
 │
 └── components/
     ├── info-modal.tsx        # Informational modal

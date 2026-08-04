@@ -18,7 +18,7 @@ import type { LocationUnion } from '../../types';
 interface EditorState {
   step: 1 | 2 | 3;
   titleError: string;
-  tripTitle: string;
+  rideTitle: string;
   legTitle: string;
   date: string;
   time: string;
@@ -43,7 +43,7 @@ interface EditorState {
 const initialEditorState: EditorState = {
   step: 1,
   titleError: '',
-  tripTitle: '',
+  rideTitle: '',
   legTitle: '',
   date: new Date().toISOString().split('T')[0],
   time: '',
@@ -84,16 +84,14 @@ export function Editor({ onNavigate }: EditorProps) {
   const hashParts = window.location.hash.split('?');
   const params = new URLSearchParams(hashParts[1] || '');
   const rawMode = params.get('mode');
-  const validModes = ['new-trip', 'edit-trip', 'new-leg', 'edit'] as const;
+  const validModes = ['new-ride', 'edit-ride', 'new-leg', 'edit'] as const;
   type EditorMode = typeof validModes[number];
-  // Accept legacy 'new-day' URLs by mapping them to the renamed 'new-leg' mode
-  const normalizedMode = rawMode === 'new-day' ? 'new-leg' : rawMode;
-  const mode: EditorMode | null = validModes.includes(normalizedMode as EditorMode) ? (normalizedMode as EditorMode) : null;
+  const mode: EditorMode | null = validModes.includes(rawMode as EditorMode) ? (rawMode as EditorMode) : null;
   
-  const tripIdParam = params.get('tripId');
-  const pageIdParam = params.get('pageId');
-  const tripId = tripIdParam ? parseInt(tripIdParam, 10) : null;
-  const pageId = pageIdParam ? parseInt(pageIdParam, 10) : null;
+  const rideIdParam = params.get('rideId');
+  const legIdParam = params.get('legId');
+  const rideId = rideIdParam ? parseInt(rideIdParam, 10) : null;
+  const legId = legIdParam ? parseInt(legIdParam, 10) : null;
 
   const [isClosing, setIsClosing] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
@@ -102,13 +100,13 @@ export function Editor({ onNavigate }: EditorProps) {
   // Initialize unified merging state tree
   const [state, dispatch] = useReducer(formReducer, {
     ...initialEditorState,
-    loading: mode === 'edit' || mode === 'edit-trip'
+    loading: mode === 'edit' || mode === 'edit-ride'
   });
 
   const {
     step,
     titleError,
-    tripTitle,
+    rideTitle,
     legTitle,
     date,
     time,
@@ -135,9 +133,9 @@ export function Editor({ onNavigate }: EditorProps) {
   const photoPreviewsRef = useRef<string[]>([]);
   photoPreviewsRef.current = photoPreviews;
 
-  // Auto-capture departure GPS on mount for new trips
+  // Auto-capture departure GPS on mount for new rides
   useEffect(() => {
-    if (mode === 'new-trip' && navigator.geolocation) {
+    if (mode === 'new-ride' && navigator.geolocation) {
       let active = true;
       dispatch({ startGpsLoading: true });
       navigator.geolocation.getCurrentPosition(
@@ -159,21 +157,21 @@ export function Editor({ onNavigate }: EditorProps) {
     }
   }, [mode]);
 
-  // Load existing page data if editing an entry
+  // Load existing leg data when editing a leg
   useEffect(() => {
-    if (mode === 'edit' && pageId !== null) {
-      db.pages.get(pageId).then((page) => {
-        if (page) {
-          const urls = (page.photos || []).map(blob => URL.createObjectURL(blob));
+    if (mode === 'edit' && legId !== null) {
+      db.legs.get(legId).then((leg) => {
+        if (leg) {
+          const urls = (leg.photos || []).map(blob => URL.createObjectURL(blob));
           dispatch({
-            date: page.date,
-            time: page.time || '12:00',
-            note: page.note,
-            km: page.km ?? null,
-            odo: page.odo ?? null,
-            location: page.location ?? null,
-            legTitle: page.title || '',
-            photos: page.photos || [],
+            date: leg.date,
+            time: leg.time || '12:00',
+            note: leg.note,
+            km: leg.km ?? null,
+            odo: leg.odo ?? null,
+            location: leg.location ?? null,
+            legTitle: leg.title || '',
+            photos: leg.photos || [],
             photoPreviews: urls,
             loading: false
           });
@@ -181,66 +179,66 @@ export function Editor({ onNavigate }: EditorProps) {
           dispatch({ loading: false });
         }
       }).catch(err => {
-        console.error('Failed to load page for edit:', err);
+        console.error('Failed to load leg for edit:', err);
         dispatch({ loading: false });
       });
     } else if (mode === 'new-leg') {
       dispatch({ time: new Date().toTimeString().slice(0, 5) });
     }
-  }, [mode, pageId]);
+  }, [mode, legId]);
 
-  // Load distance configuration and starting odometer directly from the Trip record
+  // Load distance configuration and starting odometer directly from the Ride record
   useEffect(() => {
     let active = true;
 
-    async function loadTripConfig() {
-      let resolvedTripId = tripId;
-      if (resolvedTripId === null && pageId !== null) {
-        const pageRecord = await db.pages.get(pageId);
-        if (pageRecord) resolvedTripId = pageRecord.tripId;
+    async function loadRideConfig() {
+      let resolvedRideId = rideId;
+      if (resolvedRideId === null && legId !== null) {
+        const legRecord = await db.legs.get(legId);
+        if (legRecord) resolvedRideId = legRecord.rideId;
       }
-      if (resolvedTripId === null) return;
+      if (resolvedRideId === null) return;
 
       try {
-        const tripRecord = await db.trips.get(resolvedTripId);
-        if (active && tripRecord) {
+        const rideRecord = await db.rides.get(resolvedRideId);
+        if (active && rideRecord) {
           const update: Partial<EditorState> = {
-            distanceMode: tripRecord.distanceMode === 'odo' ? 'odo' : tripRecord.distanceMode === 'auto' ? 'auto' : 'manual',
-            startOdo: tripRecord.startOdo ?? null,
+            distanceMode: rideRecord.distanceMode === 'odo' ? 'odo' : rideRecord.distanceMode === 'auto' ? 'auto' : 'manual',
+            startOdo: rideRecord.startOdo ?? null,
           };
-          if (mode === 'edit-trip') {
-            update.tripTitle = tripRecord.title;
-            update.startLocation = tripRecord.startLocation ?? null;
+          if (mode === 'edit-ride') {
+            update.rideTitle = rideRecord.title;
+            update.startLocation = rideRecord.startLocation ?? null;
             update.loading = false;
           }
           dispatch(update);
         }
       } catch (err) {
-        console.warn('Failed to load trip distance mode config:', err);
-        if (active && mode === 'edit-trip') dispatch({ loading: false });
+        console.warn('Failed to load ride distance mode config:', err);
+        if (active && mode === 'edit-ride') dispatch({ loading: false });
       }
     }
 
-    loadTripConfig();
+    loadRideConfig();
     return () => { active = false; };
-  }, [tripId, pageId]);
+  }, [rideId, legId]);
 
   // Pre-load fallback center from previous leg or start location
   useEffect(() => {
     let active = true;
 
     async function loadFallbackCenter() {
-      let resolvedTripId = tripId;
-      if (resolvedTripId === null && pageId !== null) {
-        const pageRecord = await db.pages.get(pageId);
-        if (pageRecord) resolvedTripId = pageRecord.tripId;
+      let resolvedRideId = rideId;
+      if (resolvedRideId === null && legId !== null) {
+        const legRecord = await db.legs.get(legId);
+        if (legRecord) resolvedRideId = legRecord.rideId;
       }
-      if (resolvedTripId === null) return;
+      if (resolvedRideId === null) return;
 
       try {
-        const tripRecord = await db.trips.get(resolvedTripId);
-        const pages = await db.pages.where('tripId').equals(resolvedTripId).toArray();
-        const sorted = [...pages].sort((a, b) => {
+        const rideRecord = await db.rides.get(resolvedRideId);
+        const legs = await db.legs.where('rideId').equals(resolvedRideId).toArray();
+        const sorted = [...legs].sort((a, b) => {
           const dComp = a.date.localeCompare(b.date);
           if (dComp !== 0) return dComp;
           return (a.time || '00:00').localeCompare(b.time || '00:00') || (a.id || 0) - (b.id || 0);
@@ -249,20 +247,20 @@ export function Editor({ onNavigate }: EditorProps) {
         let foundCenter: [number, number] | null = null;
         if (mode === 'new-leg') {
           if (sorted.length > 0) {
-            const lastPage = sorted[sorted.length - 1];
-            if (lastPage.location?.kind === 'gps') foundCenter = [lastPage.location.lat, lastPage.location.lng];
+            const lastLeg = sorted[sorted.length - 1];
+            if (lastLeg.location?.kind === 'gps') foundCenter = [lastLeg.location.lat, lastLeg.location.lng];
           }
-          if (!foundCenter && tripRecord?.startLocation?.kind === 'gps') {
-            foundCenter = [tripRecord.startLocation.lat, tripRecord.startLocation.lng];
+          if (!foundCenter && rideRecord?.startLocation?.kind === 'gps') {
+            foundCenter = [rideRecord.startLocation.lat, rideRecord.startLocation.lng];
           }
-        } else if (mode === 'edit' && pageId !== null) {
-          const myIdx = sorted.findIndex(p => p.id === pageId);
+        } else if (mode === 'edit' && legId !== null) {
+          const myIdx = sorted.findIndex(l => l.id === legId);
           if (myIdx > 0) {
-            const prevPage = sorted[myIdx - 1];
-            if (prevPage.location?.kind === 'gps') foundCenter = [prevPage.location.lat, prevPage.location.lng];
+            const prevLeg = sorted[myIdx - 1];
+            if (prevLeg.location?.kind === 'gps') foundCenter = [prevLeg.location.lat, prevLeg.location.lng];
           }
-          if (!foundCenter && tripRecord?.startLocation?.kind === 'gps') {
-            foundCenter = [tripRecord.startLocation.lat, tripRecord.startLocation.lng];
+          if (!foundCenter && rideRecord?.startLocation?.kind === 'gps') {
+            foundCenter = [rideRecord.startLocation.lat, rideRecord.startLocation.lng];
           }
         }
 
@@ -274,7 +272,7 @@ export function Editor({ onNavigate }: EditorProps) {
 
     loadFallbackCenter();
     return () => { active = false; };
-  }, [tripId, pageId, mode]);
+  }, [rideId, legId, mode]);
 
   // Clean up Object URLs on unmount to avoid memory leaks
   useEffect(() => {
@@ -409,7 +407,7 @@ export function Editor({ onNavigate }: EditorProps) {
   };
 
   const handleStepJump = (targetStep: 1 | 2 | 3) => {
-    if (mode === 'new-trip' && !tripTitle.trim() && targetStep > 1) {
+    if (mode === 'new-ride' && !rideTitle.trim() && targetStep > 1) {
       dispatch({ titleError: 'Ride Title is required to start a new ride.' });
       return;
     }
@@ -443,9 +441,9 @@ export function Editor({ onNavigate }: EditorProps) {
   const handleSave = async (e: Event) => {
     e.preventDefault();
 
-    if (mode === 'new-trip' || mode === 'edit-trip') {
-      if (!tripTitle.trim()) {
-        dispatch({ titleError: mode === 'edit-trip' ? 'Ride Title is required.' : 'Ride Title is required to start a new ride.' });
+    if (mode === 'new-ride' || mode === 'edit-ride') {
+      if (!rideTitle.trim()) {
+        dispatch({ titleError: mode === 'edit-ride' ? 'Ride Title is required.' : 'Ride Title is required to start a new ride.' });
         return;
       }
     } else if (step < 3) {
@@ -454,7 +452,7 @@ export function Editor({ onNavigate }: EditorProps) {
     }
 
     try {
-      const redirectPath = await saveEditorDetails(mode, tripId, pageId, state);
+      const redirectPath = await saveEditorDetails(mode, rideId, legId, state);
       triggerClose(redirectPath);
     } catch (err) {
       showToast((err as Error).message);
@@ -462,10 +460,10 @@ export function Editor({ onNavigate }: EditorProps) {
   };
 
   const handleCancel = () => {
-    if (mode === 'edit' && pageId !== null) {
-      triggerClose(`#/page/${pageId}`);
-    } else if (mode === 'new-leg' || mode === 'edit-trip') {
-      triggerClose(`#/trip/${tripId}`);
+    if (mode === 'edit' && legId !== null) {
+      triggerClose(`#/leg/${legId}`);
+    } else if (mode === 'new-leg' || mode === 'edit-ride') {
+      triggerClose(`#/ride/${rideId}`);
     } else {
       triggerClose('#/');
     }
@@ -475,8 +473,8 @@ export function Editor({ onNavigate }: EditorProps) {
     <div class={`editor-container${isClosing ? ' closing' : ''}`}>
       <PageHeader
         title={
-          mode === 'new-trip' ? (tripTitle.trim() || 'New Ride') :
-          mode === 'edit-trip' ? 'Edit Ride Details' :
+          mode === 'new-ride' ? (rideTitle.trim() || 'New Ride') :
+          mode === 'edit-ride' ? 'Edit Ride Details' :
           mode === 'new-leg' ? 'Add New Leg' :
           mode === 'edit' ? 'Edit Leg Details' : ''
         }
@@ -485,7 +483,7 @@ export function Editor({ onNavigate }: EditorProps) {
       />
 
       {/* Progress Tab Indicator */}
-      {mode !== 'new-trip' && mode !== 'edit-trip' && (
+      {mode !== 'new-ride' && mode !== 'edit-ride' && (
         <div class="wizard-progress">
           <span class={`progress-step ${step === 1 ? 'active' : ''}`} onClick={() => handleStepJump(1)}>1. METRICS</span>
           <span class="progress-divider">→</span>
@@ -503,7 +501,7 @@ export function Editor({ onNavigate }: EditorProps) {
           <div class="form-actions">
             <Button variant="secondary" onClick={handleCancel} disabled>Cancel</Button>
             <Button variant="primary" disabled>
-              {mode === 'edit-trip' ? 'Save Changes' : 'Next →'}
+              {mode === 'edit-ride' ? 'Save Changes' : 'Next →'}
             </Button>
           </div>
         </div>
@@ -512,8 +510,8 @@ export function Editor({ onNavigate }: EditorProps) {
           {step === 1 && (
             <MetricsStep
               mode={mode}
-              tripTitle={tripTitle}
-              setTripTitle={(val) => dispatch({ tripTitle: val })}
+              rideTitle={rideTitle}
+              setRideTitle={(val) => dispatch({ rideTitle: val })}
               date={date}
               setDate={(val) => dispatch({ date: val })}
               time={time}

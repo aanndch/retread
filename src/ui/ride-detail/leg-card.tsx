@@ -1,16 +1,16 @@
-import type { Page, Trip } from '../../types';
+import type { Leg, Ride } from '../../types';
 
 interface LegCardProps {
-  page: Page;
+  leg: Leg;
   index: number;
-  pages: Page[];
-  trip: Trip | null;
+  legs: Leg[];
+  ride: Ride | null;
   label: string;
 }
 
-export function LegCard({ page, index, pages, trip, label }: LegCardProps) {
+export function LegCard({ leg, index, legs, ride, label }: LegCardProps) {
   return (
-    <a href={`#/page/${page.id}`} class="timeline-card-item">
+    <a href={`#/leg/${leg.id}`} class="timeline-card-item">
       <div class="timeline-card-body">
         <div class="card-title-row">
           <div
@@ -24,7 +24,7 @@ export function LegCard({ page, index, pages, trip, label }: LegCardProps) {
             {label && (
               <span class="card-date-badge">{label}</span>
             )}
-            {page.location && (
+            {leg.location && (
               <span
                 class="card-location-badge"
                 style={{
@@ -34,9 +34,9 @@ export function LegCard({ page, index, pages, trip, label }: LegCardProps) {
                 }}
               >
                 📍{" "}
-                {page.location.name ||
-                  (page.location.kind === "gps"
-                    ? `[${page.location.lat.toFixed(4)}, ${page.location.lng.toFixed(4)}]`
+                {leg.location.name ||
+                  (leg.location.kind === "gps"
+                    ? `[${leg.location.lat.toFixed(4)}, ${leg.location.lng.toFixed(4)}]`
                     : "Named")}
               </span>
             )}
@@ -49,20 +49,20 @@ export function LegCard({ page, index, pages, trip, label }: LegCardProps) {
             }}
           >
             {(() => {
-              if (page.km !== null && page.km !== undefined) {
+              if (leg.km !== null && leg.km !== undefined) {
                 return (
-                  <span class="card-stat">{page.km} km</span>
+                  <span class="card-stat">{leg.km} km</span>
                 );
               }
-              if (page.odo !== null && page.odo !== undefined) {
+              if (leg.odo !== null && leg.odo !== undefined) {
                 let prevOdo: number | null = null;
                 if (index > 0) {
-                  prevOdo = pages[index - 1].odo ?? null;
-                } else if (trip?.startOdo !== null && trip?.startOdo !== undefined) {
-                  prevOdo = trip.startOdo;
+                  prevOdo = legs[index - 1].odo ?? null;
+                } else if (ride?.startOdo !== null && ride?.startOdo !== undefined) {
+                  prevOdo = ride.startOdo;
                 }
                 if (prevOdo !== null) {
-                  const delta = page.odo - prevOdo;
+                  const delta = leg.odo - prevOdo;
                   if (delta >= 0) {
                     return (
                       <span class="card-stat">{delta} km</span>
@@ -75,15 +75,15 @@ export function LegCard({ page, index, pages, trip, label }: LegCardProps) {
           </div>
         </div>
 
-        {page.title ? (
-          <h5 class="card-day-title">{page.title}</h5>
+        {leg.title ? (
+          <h5 class="card-day-title">{leg.title}</h5>
         ) : null}
 
-        {page.note && (
+        {leg.note && (
           <p class="card-note-excerpt">
-            {page.note.length > 95
-              ? `${page.note.slice(0, 95)}...`
-              : page.note}
+            {leg.note.length > 95
+              ? `${leg.note.slice(0, 95)}...`
+              : leg.note}
           </p>
         )}
       </div>

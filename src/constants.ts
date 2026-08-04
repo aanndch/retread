@@ -6,8 +6,8 @@
 export const HASH_HOME = '#/';
 export const HASH_BACKUP = '#/backup';
 export const HASH_EDIT = '#/edit';
-export const HASH_TRIP_PREFIX = '#/trip/';
-export const HASH_PAGE_PREFIX = '#/page/';
+export const HASH_RIDE_PREFIX = '#/ride/';
+export const HASH_LEG_PREFIX = '#/leg/';
 
 // OSRM Map Snapping API Settings
 export const OSRM_DRIVING_BASE_URL = 'https://router.project-osrm.org/route/v1/driving/';

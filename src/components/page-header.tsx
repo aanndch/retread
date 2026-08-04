@@ -34,7 +34,7 @@ export function PageHeader({
         {typeof title === 'string' ? <h3>{title}</h3> : title}
         {subTitle && (
           typeof subTitle === 'string' ? (
-            <span class="trip-dates-sub">{subTitle}</span>
+            <span class="ride-dates-sub">{subTitle}</span>
           ) : subTitle
         )}
       </div>

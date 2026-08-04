@@ -73,11 +73,11 @@ export async function snapLeg(
   }
 }
 
-// Retroactive Snapper: Backfills missing road paths for all pages of a trip
-export async function backfillTripRoutes(tripId: number): Promise<void> {
-  // Query all pages for the trip sorted chronologically
-  const pages = await db.pages.where('tripId').equals(tripId).toArray();
-  const sortedPages = [...pages].sort((a, b) => {
+// Retroactive Snapper: Backfills missing road paths for all legs of a ride
+export async function backfillRideRoutes(rideId: number): Promise<void> {
+  // Query all legs for the ride sorted chronologically
+  const legs = await db.legs.where('rideId').equals(rideId).toArray();
+  const sortedLegs = [...legs].sort((a, b) => {
     const dComp = a.date.localeCompare(b.date);
     if (dComp !== 0) return dComp;
     const tA = a.time || '00:00';
@@ -85,69 +85,69 @@ export async function backfillTripRoutes(tripId: number): Promise<void> {
     return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
   });
 
-  // Load the trip record to get the departure pin
-  const tripRecord = await db.trips.get(tripId);
+  // Load the ride record to get the departure pin
+  const rideRecord = await db.rides.get(rideId);
 
-  for (let i = 0; i < sortedPages.length; i++) {
-    const currentPage = sortedPages[i];
+  for (let i = 0; i < sortedLegs.length; i++) {
+    const currentLeg = sortedLegs[i];
     
-    // First page: use Trip.startLocation as the departure point
+    // First leg: use Ride.startLocation as the departure point
     if (i === 0) {
-      if (tripRecord?.startLocation?.kind === 'gps' && currentPage.location?.kind === 'gps') {
-        const fromGps = { lat: tripRecord.startLocation.lat, lng: tripRecord.startLocation.lng };
-        const toGps = { lat: currentPage.location.lat, lng: currentPage.location.lng };
+      if (rideRecord?.startLocation?.kind === 'gps' && currentLeg.location?.kind === 'gps') {
+        const fromGps = { lat: rideRecord.startLocation.lat, lng: rideRecord.startLocation.lng };
+        const toGps = { lat: currentLeg.location.lat, lng: currentLeg.location.lng };
 
         const needsSnap =
-          !currentPage.roadPath ||
-          currentPage.roadPath.length <= 2 ||
-          haversineDistance(currentPage.roadPath[0], fromGps) > 0.05 ||
-          haversineDistance(currentPage.roadPath[currentPage.roadPath.length - 1], toGps) > 0.05;
+          !currentLeg.roadPath ||
+          currentLeg.roadPath.length <= 2 ||
+          haversineDistance(currentLeg.roadPath[0], fromGps) > 0.05 ||
+          haversineDistance(currentLeg.roadPath[currentLeg.roadPath.length - 1], toGps) > 0.05;
 
         if (needsSnap) {
           try {
             const snappedPath = await snapLeg(fromGps, toGps);
-            await db.pages.update(currentPage.id!, { roadPath: snappedPath });
+            await db.legs.update(currentLeg.id!, { roadPath: snappedPath });
           } catch (snapErr) {
             console.warn(`[OSRM] Snap failed for first leg, saving straight line fallback:`, snapErr);
-            await db.pages.update(currentPage.id!, { roadPath: [fromGps, toGps] });
+            await db.legs.update(currentLeg.id!, { roadPath: [fromGps, toGps] });
           }
         }
       } else {
-        // No valid startLocation GPS, clear any stale roadPath on first page
-        if (currentPage.roadPath !== null && currentPage.roadPath !== undefined) {
-          await db.pages.update(currentPage.id!, { roadPath: null });
+        // No valid startLocation GPS, clear any stale roadPath on first leg
+        if (currentLeg.roadPath !== null && currentLeg.roadPath !== undefined) {
+          await db.legs.update(currentLeg.id!, { roadPath: null });
         }
       }
       continue;
     }
 
-    const prevPage = sortedPages[i - 1];
+    const prevLeg = sortedLegs[i - 1];
     
-    // Check if both pages have valid GPS points
-    if (prevPage.location?.kind === 'gps' && currentPage.location?.kind === 'gps') {
-      const fromGps = { lat: prevPage.location.lat, lng: prevPage.location.lng };
-      const toGps = { lat: currentPage.location.lat, lng: currentPage.location.lng };
+    // Check if both legs have valid GPS points
+    if (prevLeg.location?.kind === 'gps' && currentLeg.location?.kind === 'gps') {
+      const fromGps = { lat: prevLeg.location.lat, lng: prevLeg.location.lng };
+      const toGps = { lat: currentLeg.location.lat, lng: currentLeg.location.lng };
       
       // Check if we need to snap (either roadPath is missing, or endpoints changed)
       const needsSnap =
-        !currentPage.roadPath ||
-        currentPage.roadPath.length <= 2 ||
-        haversineDistance(currentPage.roadPath[0], fromGps) > 0.05 ||
-        haversineDistance(currentPage.roadPath[currentPage.roadPath.length - 1], toGps) > 0.05;
+        !currentLeg.roadPath ||
+        currentLeg.roadPath.length <= 2 ||
+        haversineDistance(currentLeg.roadPath[0], fromGps) > 0.05 ||
+        haversineDistance(currentLeg.roadPath[currentLeg.roadPath.length - 1], toGps) > 0.05;
         
       if (needsSnap) {
         try {
           const snappedPath = await snapLeg(fromGps, toGps);
-          await db.pages.update(currentPage.id!, { roadPath: snappedPath });
+          await db.legs.update(currentLeg.id!, { roadPath: snappedPath });
         } catch (snapErr) {
           console.warn(`[OSRM] Snap failed for leg, saving straight line fallback:`, snapErr);
-          await db.pages.update(currentPage.id!, { roadPath: [fromGps, toGps] });
+          await db.legs.update(currentLeg.id!, { roadPath: [fromGps, toGps] });
         }
       }
     } else {
       // If either location is named/none, clear any existing snapped path
-      if (currentPage.roadPath !== null && currentPage.roadPath !== undefined) {
-        await db.pages.update(currentPage.id!, { roadPath: null });
+      if (currentLeg.roadPath !== null && currentLeg.roadPath !== undefined) {
+        await db.legs.update(currentLeg.id!, { roadPath: null });
       }
     }
   }

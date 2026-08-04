@@ -10,17 +10,17 @@ import {
 } from './constants';
 import { gzipString, gunzipBlob, isGzipped } from './backup-compress';
 import { db } from './db';
-import type { Trip, LocationUnion } from './types';
+import type { Ride, LocationUnion } from './types';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 interface BackupPayload {
-  version: 1;
-  trips: Trip[];
-  pages: {
-    tripId: number;
+  version: 2;
+  rides: Ride[];
+  legs: {
+    rideId: number;
     date: string;
     note: string;
     km: number | null;
@@ -132,30 +132,30 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 export async function buildBackupPayload(): Promise<BackupPayload> {
-  const trips = await db.trips.toArray();
-  const pages = await db.pages.toArray();
+  const rides = await db.rides.toArray();
+  const legs = await db.legs.toArray();
 
-  const serializedPages = [];
-  for (const page of pages) {
+  const serializedLegs = [];
+  for (const leg of legs) {
     const base64Photos: string[] = [];
-    if (page.photos) {
-      for (const blob of page.photos) {
+    if (leg.photos) {
+      for (const blob of leg.photos) {
         base64Photos.push(await blobToBase64(blob));
       }
     }
-    serializedPages.push({
-      tripId: page.tripId,
-      date: page.date,
-      note: page.note,
-      km: page.km ?? null,
-      odo: page.odo ?? null,
-      location: page.location ?? null,
-      roadPath: page.roadPath ?? null,
+    serializedLegs.push({
+      rideId: leg.rideId,
+      date: leg.date,
+      note: leg.note,
+      km: leg.km ?? null,
+      odo: leg.odo ?? null,
+      location: leg.location ?? null,
+      roadPath: leg.roadPath ?? null,
       photos: base64Photos,
     });
   }
 
-  return { version: 1, trips, pages: serializedPages };
+  return { version: 2, rides, legs: serializedLegs };
 }
 
 // ---------------------------------------------------------------------------
@@ -278,7 +278,7 @@ export async function performRestore(
   const jsonStr = await (gzipped ? gunzipBlob(blob) : blob.text());
   const payload: BackupPayload = JSON.parse(jsonStr);
 
-  if (payload.version !== 1 || !Array.isArray(payload.trips) || !Array.isArray(payload.pages)) {
+  if (payload.version !== 2 || !Array.isArray(payload.rides) || !Array.isArray(payload.legs)) {
     throw new Error('Unsupported or corrupted backup schema.');
   }
 
@@ -287,37 +287,37 @@ export async function performRestore(
     return await res.blob();
   };
 
-  await db.transaction('rw', db.trips, db.pages, async () => {
-    await db.trips.clear();
-    await db.pages.clear();
+  await db.transaction('rw', db.rides, db.legs, async () => {
+    await db.rides.clear();
+    await db.legs.clear();
 
-    const tripIdMapping = new Map<number, number>();
-    for (const trip of payload.trips) {
-      const { id: _oldId, ...tripData } = trip;
-      const newId = await db.trips.add(tripData) as number;
-      if (_oldId !== undefined) tripIdMapping.set(_oldId, newId);
+    const rideIdMapping = new Map<number, number>();
+    for (const ride of payload.rides) {
+      const { id: _oldId, ...rideData } = ride;
+      const newId = await db.rides.add(rideData) as number;
+      if (_oldId !== undefined) rideIdMapping.set(_oldId, newId);
     }
 
-    for (const page of payload.pages) {
-      const mappedTripId = tripIdMapping.get(page.tripId);
-      if (mappedTripId === undefined) continue;
+    for (const leg of payload.legs) {
+      const mappedRideId = rideIdMapping.get(leg.rideId);
+      if (mappedRideId === undefined) continue;
 
       const photoBlobs: Blob[] = [];
-      if (page.photos) {
-        for (const base64 of page.photos) {
+      if (leg.photos) {
+        for (const base64 of leg.photos) {
           photoBlobs.push(await base64ToBlob(base64));
         }
       }
 
-      await db.pages.add({
-        tripId: mappedTripId,
-        date: page.date,
-        note: page.note,
+      await db.legs.add({
+        rideId: mappedRideId,
+        date: leg.date,
+        note: leg.note,
         photos: photoBlobs,
-        km: page.km,
-        odo: page.odo,
-        location: page.location,
-        roadPath: page.roadPath,
+        km: leg.km,
+        odo: leg.odo,
+        location: leg.location,
+        roadPath: leg.roadPath,
       });
     }
   });

@@ -1,31 +1,31 @@
-import type { Page, LocationUnion } from './types';
+import type { Leg, LocationUnion } from './types';
 
 /**
- * Computes the cumulative distance for a trip from its pages.
+ * Computes the cumulative distance for a ride from its legs.
  * Rules:
- * - Pages are sorted chronologically by date.
- * - If a page has `km`, that direct distance is added. If it also has `odo`, we update our `lastOdo` anchor.
- * - If a page has `odo` (and no `km`), and we have a preceding `lastOdo` anchor, we add (odo - lastOdo) to the total.
- * - Otherwise, if page only has `odo` and no preceding anchor, we establish `lastOdo = odo` and add 0.
+ * - Legs are sorted chronologically by date.
+ * - If a leg has `km`, that direct distance is added. If it also has `odo`, we update our `lastOdo` anchor.
+ * - If a leg has `odo` (and no `km`), and we have a preceding `lastOdo` anchor, we add (odo - lastOdo) to the total.
+ * - Otherwise, if a leg only has `odo` and no preceding anchor, we establish `lastOdo = odo` and add 0.
  */
-export function computeTotalDistance(pages: Page[], startOdo?: number | null): number {
-  const sorted = [...pages].sort((a, b) => a.date.localeCompare(b.date));
+export function computeTotalDistance(legs: Leg[], startOdo?: number | null): number {
+  const sorted = [...legs].sort((a, b) => a.date.localeCompare(b.date));
   let total = 0;
   let lastOdo: number | null = startOdo ?? null;
 
-  for (const page of sorted) {
-    if (page.km != null) {
-      total += page.km;
-      if (page.odo != null) {
-        lastOdo = page.odo;
+  for (const leg of sorted) {
+    if (leg.km != null) {
+      total += leg.km;
+      if (leg.odo != null) {
+        lastOdo = leg.odo;
       }
-    } else if (page.odo != null) {
+    } else if (leg.odo != null) {
       if (lastOdo != null) {
-        if (page.odo > lastOdo) {
-          total += (page.odo - lastOdo);
+        if (leg.odo > lastOdo) {
+          total += (leg.odo - lastOdo);
         }
       }
-      lastOdo = page.odo;
+      lastOdo = leg.odo;
     }
   }
 
@@ -90,7 +90,7 @@ export function formatDateRange(firstDate: string, lastDate: string): string {
  * for a ride, starting from the departure point. Returns e.g.
  * ["Mysore", "Coorg", "Kochi", "Alleppey"].
  */
-export function buildStops(startLocation: LocationUnion | null | undefined, sortedPages: Page[]): string[] {
+export function buildStops(startLocation: LocationUnion | null | undefined, sortedLegs: Leg[]): string[] {
   const seen = new Set<string>();
   const places: string[] = [];
 
@@ -105,9 +105,9 @@ export function buildStops(startLocation: LocationUnion | null | undefined, sort
     add(startLocation.name);
   }
 
-  for (const page of sortedPages) {
-    if (page.location?.name) {
-      add(page.location.name);
+  for (const leg of sortedLegs) {
+    if (leg.location?.name) {
+      add(leg.location.name);
     }
   }
 
@@ -119,34 +119,34 @@ export function buildStops(startLocation: LocationUnion | null | undefined, sort
  * for a ride, starting from the departure point. Returns e.g.
  * "Mysore → Coorg → Kochi → Alleppey".
  */
-export function buildStopTrail(startLocation: LocationUnion | null | undefined, sortedPages: Page[]): string {
-  return buildStops(startLocation, sortedPages).join(' → ');
+export function buildStopTrail(startLocation: LocationUnion | null | undefined, sortedLegs: Leg[]): string {
+  return buildStops(startLocation, sortedLegs).join(' → ');
 }
 
 /**
- * Computes the per-day cumulative distance for a trip from its pages,
+ * Computes the per-day cumulative distance for a ride from its legs,
  * using the same km/odo anchoring rules as computeTotalDistance.
  * Returns a map of date (YYYY-MM-DD) → km.
  */
-export function computeDayDistances(pages: Page[], startOdo?: number | null): Map<string, number> {
-  const sorted = [...pages].sort((a, b) => a.date.localeCompare(b.date));
+export function computeDayDistances(legs: Leg[], startOdo?: number | null): Map<string, number> {
+  const sorted = [...legs].sort((a, b) => a.date.localeCompare(b.date));
   const byDate = new Map<string, number>();
   let lastOdo: number | null = startOdo ?? null;
 
-  for (const page of sorted) {
+  for (const leg of sorted) {
     let delta = 0;
-    if (page.km != null) {
-      delta = page.km;
-      if (page.odo != null) {
-        lastOdo = page.odo;
+    if (leg.km != null) {
+      delta = leg.km;
+      if (leg.odo != null) {
+        lastOdo = leg.odo;
       }
-    } else if (page.odo != null) {
-      if (lastOdo != null && page.odo > lastOdo) {
-        delta = page.odo - lastOdo;
+    } else if (leg.odo != null) {
+      if (lastOdo != null && leg.odo > lastOdo) {
+        delta = leg.odo - lastOdo;
       }
-      lastOdo = page.odo;
+      lastOdo = leg.odo;
     }
-    byDate.set(page.date, (byDate.get(page.date) || 0) + delta);
+    byDate.set(leg.date, (byDate.get(leg.date) || 0) + delta);
   }
 
   return byDate;

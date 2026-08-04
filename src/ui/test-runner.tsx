@@ -17,8 +17,8 @@ export function TestRunner() {
     // Test 1: Distance Calculator (KM only)
     try {
       const distance = computeTotalDistance([
-        { tripId: 1, date: '2026-08-01', note: '', photos: [], km: 100 },
-        { tripId: 1, date: '2026-08-02', note: '', photos: [], km: 150 }
+        { rideId: 1, date: '2026-08-01', note: '', photos: [], km: 100 },
+        { rideId: 1, date: '2026-08-02', note: '', photos: [], km: 150 }
       ]);
       if (distance === 250) {
         list.push({ name: 'Distance calculation (KM only)', status: 'PASS' });
@@ -32,9 +32,9 @@ export function TestRunner() {
     // Test 2: Distance Calculator (ODO only)
     try {
       const distance = computeTotalDistance([
-        { tripId: 1, date: '2026-08-01', note: '', photos: [], odo: 1000 },
-        { tripId: 1, date: '2026-08-02', note: '', photos: [], odo: 1250 },
-        { tripId: 1, date: '2026-08-03', note: '', photos: [], odo: 1300 }
+        { rideId: 1, date: '2026-08-01', note: '', photos: [], odo: 1000 },
+        { rideId: 1, date: '2026-08-02', note: '', photos: [], odo: 1250 },
+        { rideId: 1, date: '2026-08-03', note: '', photos: [], odo: 1300 }
       ]);
       if (distance === 300) {
         list.push({ name: 'Distance calculation (ODO only)', status: 'PASS' });
@@ -48,10 +48,10 @@ export function TestRunner() {
     // Test 3: Distance Calculator (Mixed KM and ODO)
     try {
       const distance = computeTotalDistance([
-        { tripId: 1, date: '2026-08-01', note: '', photos: [], odo: 1000 }, // anchor
-        { tripId: 1, date: '2026-08-02', note: '', photos: [], km: 50 },     // direct km: total = 50
-        { tripId: 1, date: '2026-08-03', note: '', photos: [], odo: 1120 },  // odo difference: 1120 - 1000 = 120. total = 170
-        { tripId: 1, date: '2026-08-04', note: '', photos: [], odo: 1150 }   // odo difference: 1150 - 1120 = 30. total = 200
+        { rideId: 1, date: '2026-08-01', note: '', photos: [], odo: 1000 }, // anchor
+        { rideId: 1, date: '2026-08-02', note: '', photos: [], km: 50 },     // direct km: total = 50
+        { rideId: 1, date: '2026-08-03', note: '', photos: [], odo: 1120 },  // odo difference: 1120 - 1000 = 120. total = 170
+        { rideId: 1, date: '2026-08-04', note: '', photos: [], odo: 1150 }   // odo difference: 1150 - 1120 = 30. total = 200
       ]);
       if (distance === 200) {
         list.push({ name: 'Distance calculation (Mixed KM & ODO)', status: 'PASS' });
@@ -64,26 +64,26 @@ export function TestRunner() {
 
     // Test 4: Dexie DB basic CRUD
     try {
-      const tripId = await db.trips.add({ title: 'Test Trip', createdAt: new Date().toISOString() });
-      const pageId = await db.pages.add({
-        tripId,
+      const rideId = await db.rides.add({ title: 'Test Ride', createdAt: new Date().toISOString() });
+      const legId = await db.legs.add({
+        rideId,
         date: '2026-08-01',
         note: 'Test Note',
         photos: []
       });
 
-      const retrievedTrip = await db.trips.get(tripId);
-      const retrievedPage = await db.pages.get(pageId);
+      const retrievedRide = await db.rides.get(rideId);
+      const retrievedLeg = await db.legs.get(legId);
 
-      if (retrievedTrip?.title === 'Test Trip' && retrievedPage?.note === 'Test Note') {
+      if (retrievedRide?.title === 'Test Ride' && retrievedLeg?.note === 'Test Note') {
         list.push({ name: 'IndexedDB CRUD write/read', status: 'PASS' });
       } else {
         list.push({ name: 'IndexedDB CRUD write/read', status: 'FAIL', message: 'Failed to retrieve written data correctly' });
       }
 
       // Cleanup
-      await db.trips.delete(tripId);
-      await db.pages.delete(pageId);
+      await db.rides.delete(rideId);
+      await db.legs.delete(legId);
       list.push({ name: 'IndexedDB CRUD deletion/cleanup', status: 'PASS' });
 
     } catch (e: unknown) {

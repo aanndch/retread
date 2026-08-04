@@ -5,7 +5,7 @@ import { ConfirmModal } from '../components/confirm-modal';
 import { Toast, useToast } from '../components/toast';
 import { PageHeader } from '../components/page-header';
 import { HASH_HOME, GDRIVE_AUTOSYNC_FILENAME } from '../constants';
-import type { Trip, LocationUnion } from '../types';
+import type { Ride, LocationUnion } from '../types';
 import type { JSX } from 'preact';
 import {
   loadGIScript,
@@ -29,10 +29,10 @@ interface BackupProps {
 }
 
 interface BackupPayload {
-  version: 1;
-  trips: Trip[];
-  pages: {
-    tripId: number;
+  version: 2;
+  rides: Ride[];
+  legs: {
+    rideId: number;
     date: string;
     note: string;
     km: number | null;
@@ -104,39 +104,39 @@ export function Backup({ onNavigate }: BackupProps) {
     setStatusText('Preparing export package...');
     
     try {
-      const trips = await db.trips.toArray();
-      const pages = await db.pages.toArray();
+      const rides = await db.rides.toArray();
+      const legs = await db.legs.toArray();
       
-      setStatusText(`Serializing database logs (${trips.length} rides, ${pages.length} legs)...`);
+      setStatusText(`Serializing database logs (${rides.length} rides, ${legs.length} legs)...`);
       
-      const serializedPages = [];
-      for (const page of pages) {
-        setStatusText(`Encoding photos for leg on ${page.date}...`);
+      const serializedLegs = [];
+      for (const leg of legs) {
+        setStatusText(`Encoding photos for leg on ${leg.date}...`);
         
         const base64Photos = [];
-        if (page.photos) {
-          for (const blob of page.photos) {
+        if (leg.photos) {
+          for (const blob of leg.photos) {
             const base64 = await blobToBase64(blob);
             base64Photos.push(base64);
           }
         }
         
-        serializedPages.push({
-          tripId: page.tripId,
-          date: page.date,
-          note: page.note,
-          km: page.km ?? null,
-          odo: page.odo ?? null,
-          location: page.location ?? null,
-          roadPath: page.roadPath ?? null,
+        serializedLegs.push({
+          rideId: leg.rideId,
+          date: leg.date,
+          note: leg.note,
+          km: leg.km ?? null,
+          odo: leg.odo ?? null,
+          location: leg.location ?? null,
+          roadPath: leg.roadPath ?? null,
           photos: base64Photos
         });
       }
       
       const payload: BackupPayload = {
-        version: 1,
-        trips,
-        pages: serializedPages
+        version: 2,
+        rides,
+        legs: serializedLegs
       };
       
       const jsonString = JSON.stringify(payload);
@@ -190,7 +190,7 @@ export function Backup({ onNavigate }: BackupProps) {
         reader.readAsText(file);
       });
       
-      if (parsedData.version !== 1 || !Array.isArray(parsedData.trips) || !Array.isArray(parsedData.pages)) {
+      if (parsedData.version !== 2 || !Array.isArray(parsedData.rides) || !Array.isArray(parsedData.legs)) {
         throw new Error('Unsupported or corrupted backup schema.');
       }
       
@@ -219,47 +219,47 @@ export function Backup({ onNavigate }: BackupProps) {
       const parsedData = pendingRestoreData;
       setPendingRestoreData(null);
 
-      await db.transaction('rw', db.trips, db.pages, async () => {
-        await db.trips.clear();
-        await db.pages.clear();
+      await db.transaction('rw', db.rides, db.legs, async () => {
+        await db.rides.clear();
+        await db.legs.clear();
         
-        setStatusText('Restoring trip indexes...');
+        setStatusText('Restoring ride indexes...');
         
-        const tripIdMapping = new Map<number, number>();
-        for (const trip of parsedData.trips) {
-          const { id: _oldId, ...tripData } = trip;
-          const newId = await db.trips.add(tripData) as number;
+        const rideIdMapping = new Map<number, number>();
+        for (const ride of parsedData.rides) {
+          const { id: _oldId, ...rideData } = ride;
+          const newId = await db.rides.add(rideData) as number;
           if (_oldId !== undefined) {
-            tripIdMapping.set(_oldId, newId);
+            rideIdMapping.set(_oldId, newId);
           }
         }
         
         setStatusText('Decoding and restoring ride data (this may take a few moments)...');
         
-        for (const page of parsedData.pages) {
-          const mappedTripId = tripIdMapping.get(page.tripId);
-          if (mappedTripId === undefined) {
-            console.warn(`Skipping page on ${page.date} due to missing trip index.`);
+        for (const leg of parsedData.legs) {
+          const mappedRideId = rideIdMapping.get(leg.rideId);
+          if (mappedRideId === undefined) {
+            console.warn(`Skipping leg on ${leg.date} due to missing ride index.`);
             continue;
           }
           
           const photoBlobs = [];
-          if (page.photos) {
-            for (const base64 of page.photos) {
+          if (leg.photos) {
+            for (const base64 of leg.photos) {
               const blob = await base64ToBlob(base64);
               photoBlobs.push(blob);
             }
           }
           
-          await db.pages.add({
-            tripId: mappedTripId,
-            date: page.date,
-            note: page.note,
+          await db.legs.add({
+            rideId: mappedRideId,
+            date: leg.date,
+            note: leg.note,
             photos: photoBlobs,
-            km: page.km,
-            odo: page.odo,
-            location: page.location,
-            roadPath: page.roadPath
+            km: leg.km,
+            odo: leg.odo,
+            location: leg.location,
+            roadPath: leg.roadPath
           });
         }
       });

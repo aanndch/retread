@@ -7,7 +7,7 @@ import { ConfirmModal } from "../components/confirm-modal";
 import { ArrowLeft, EditIcon, TrashIcon } from "../components/icons";
 import { SquiggleMap } from "./squiggle";
 import { MapModal } from "../components/map-modal";
-import { LegCard } from "./trip-detail/leg-card";
+import { LegCard } from "./ride-detail/leg-card";
 import { HASH_HOME } from "../constants";
 import {
   computeTotalDistance,
@@ -16,38 +16,38 @@ import {
   buildStops,
   computeDayDistances,
 } from "../lib";
-import type { Trip, Page } from "../types";
+import type { Ride, Leg } from "../types";
 
-function DayPhotoRail({ pages, onNavigate }: { pages: Page[]; onNavigate: (route: string) => void }) {
-  const [urls, setUrls] = useState<{ url: string; pageId: number }[]>([]);
+function DayPhotoRail({ legs, onNavigate }: { legs: Leg[]; onNavigate: (route: string) => void }) {
+  const [urls, setUrls] = useState<{ url: string; legId: number }[]>([]);
 
   useEffect(() => {
-    const collected: { url: string; pageId: number }[] = [];
+    const collected: { url: string; legId: number }[] = [];
     const handles: string[] = [];
 
-    for (const page of pages) {
-      for (const blob of page.photos || []) {
+    for (const leg of legs) {
+      for (const blob of leg.photos || []) {
         const url = URL.createObjectURL(blob);
         handles.push(url);
-        collected.push({ url, pageId: page.id! });
+        collected.push({ url, legId: leg.id! });
       }
     }
 
     setUrls(collected);
     return () => handles.forEach((h) => URL.revokeObjectURL(h));
-  }, [pages]);
+  }, [legs]);
 
   if (urls.length === 0) return null;
 
   return (
     <div class="photo-rail" role="list" aria-label="Day photos">
-      {urls.map(({ url, pageId }, idx) => (
+      {urls.map(({ url, legId }, idx) => (
         <button
           key={idx}
           class="photo-thumb"
           role="listitem"
           aria-label={`Open photo ${idx + 1}`}
-          onClick={() => onNavigate(`#/page/${pageId}`)}
+          onClick={() => onNavigate(`#/leg/${legId}`)}
         >
           <img src={url} alt={`Day photo ${idx + 1}`} />
         </button>
@@ -57,8 +57,8 @@ function DayPhotoRail({ pages, onNavigate }: { pages: Page[]; onNavigate: (route
 }
 
 
-interface TripDetailProps {
-  tripId: number;
+interface RideDetailProps {
+  rideId: number;
   onNavigate: (route: string) => void;
   onReady?: () => void;
 }
@@ -103,9 +103,9 @@ function RouteTrail({ stops }: { stops: string[] }) {
   );
 }
 
-export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
-  const [trip, setTrip] = useState<Trip | null>(null);
-  const [pages, setPages] = useState<Page[]>([]);
+export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
+  const [ride, setRide] = useState<Ride | null>(null);
+  const [legs, setLegs] = useState<Leg[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
@@ -144,17 +144,17 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
 
     async function loadData() {
       try {
-        const tripRecord = await db.trips.get(tripId);
-        if (!tripRecord) {
+        const rideRecord = await db.rides.get(rideId);
+        if (!rideRecord) {
           if (active) stableNavigate("#/");
           return;
         }
 
-        const pagesRecords = await db.pages
-          .where("tripId")
-          .equals(tripId)
+        const legsRecords = await db.legs
+          .where("rideId")
+          .equals(rideId)
           .toArray();
-        const sortedPages = [...pagesRecords].sort((a, b) => {
+        const sortedLegs = [...legsRecords].sort((a, b) => {
           const dComp = a.date.localeCompare(b.date);
           if (dComp !== 0) return dComp;
           const tA = a.time || '00:00';
@@ -163,8 +163,8 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
         });
 
         if (active) {
-          setTrip(tripRecord);
-          setPages(sortedPages);
+          setRide(rideRecord);
+          setLegs(sortedLegs);
           setLoading(false);
           onReady?.();
         }
@@ -181,13 +181,13 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
     return () => {
       active = false;
     };
-  }, [tripId]);
+  }, [rideId]);
 
-  const handleDeleteTrip = async () => {
+  const handleDeleteRide = async () => {
     try {
-      await db.transaction("rw", db.trips, db.pages, async () => {
-        await db.pages.where("tripId").equals(tripId).delete();
-        await db.trips.delete(tripId);
+      await db.transaction("rw", db.rides, db.legs, async () => {
+        await db.legs.where("rideId").equals(rideId).delete();
+        await db.rides.delete(rideId);
       });
       onNavigate("#/");
     } catch (err) {
@@ -202,48 +202,48 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
     return <p class="loading-text">Loading ride details...</p>;
   }
 
-  if (!trip) return null;
+  if (!ride) return null;
 
   // Compile cumulative GPS path segments for squiggle map
   const cumulativePath: { lat: number; lng: number }[] = [];
 
-  pages.forEach((p) => {
-    if (p.roadPath && p.roadPath.length > 0) {
-      cumulativePath.push(...p.roadPath);
-    } else if (p.location && p.location.kind === "gps") {
-      if (cumulativePath.length === 0 && trip.startLocation?.kind === "gps") {
+  legs.forEach((l) => {
+    if (l.roadPath && l.roadPath.length > 0) {
+      cumulativePath.push(...l.roadPath);
+    } else if (l.location && l.location.kind === "gps") {
+      if (cumulativePath.length === 0 && ride.startLocation?.kind === "gps") {
         cumulativePath.push({
-          lat: trip.startLocation.lat,
-          lng: trip.startLocation.lng,
+          lat: ride.startLocation.lat,
+          lng: ride.startLocation.lng,
         });
       }
-      cumulativePath.push({ lat: p.location.lat, lng: p.location.lng });
+      cumulativePath.push({ lat: l.location.lat, lng: l.location.lng });
     }
   });
 
   // Calculate cumulative stats
-  const totalDays = new Set(pages.map(p => p.date)).size;
-  const totalKm = computeTotalDistance(pages, trip?.startOdo);
+  const totalDays = new Set(legs.map(l => l.date)).size;
+  const totalKm = computeTotalDistance(legs, ride?.startOdo);
   const hasKm = totalKm > 0;
 
   // Format date range
   let dateRange = "No days logged yet.";
-  if (pages.length > 0) {
-    if (pages.length === 1) {
-      dateRange = formatIsoDateToDMY(pages[0].date);
+  if (legs.length > 0) {
+    if (legs.length === 1) {
+      dateRange = formatIsoDateToDMY(legs[0].date);
     } else {
-      dateRange = `${formatIsoDateToDMY(pages[0].date)} — ${formatIsoDateToDMY(pages[pages.length - 1].date)}`;
+      dateRange = `${formatIsoDateToDMY(legs[0].date)} — ${formatIsoDateToDMY(legs[legs.length - 1].date)}`;
     }
   }
 
   // Compile deduped trail of distinct stops + per-day distances
-  const stops = buildStops(trip.startLocation, pages);
-  const dayDistances = computeDayDistances(pages, trip?.startOdo);
+  const stops = buildStops(ride.startLocation, legs);
+  const dayDistances = computeDayDistances(legs, ride?.startOdo);
 
-  const uniqueDates = Array.from(new Set(pages.map((p) => p.date))).sort();
+  const uniqueDates = Array.from(new Set(legs.map((l) => l.date))).sort();
 
   return (
-    <div class="trip-detail-container">
+    <div class="ride-detail-container">
       {/* Top bar: back + actions */}
       <header class="ride-topbar">
         <Button
@@ -257,7 +257,7 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
         <Button
           variant="icon"
           aria-label="Edit ride"
-          onClick={() => onNavigate(`#/edit?mode=edit-trip&tripId=${tripId}`)}
+          onClick={() => onNavigate(`#/edit?mode=edit-ride&rideId=${rideId}`)}
         >
           <EditIcon size={14} />
         </Button>
@@ -271,11 +271,11 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
         </Button>
       </header>
 
-      <main class="trip-detail-content">
+      <main class="ride-detail-content">
         {/* Hero: kicker, title, route-line trail */}
         <section class="ride-hero">
           <span class="ride-hero-kicker">{dateRange}</span>
-          <h1 class="ride-hero-title">{trip.title || 'Untitled Ride'}</h1>
+          <h1 class="ride-hero-title">{ride.title || 'Untitled Ride'}</h1>
           {stops.length > 0 && <RouteTrail stops={stops} />}
         </section>
 
@@ -307,14 +307,14 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
         </section>
 
         {/* Ride statistics spec plate */}
-        <section class="trip-stats-card">
+        <section class="ride-stats-card">
           <div class="stat-item">
             <span class="stat-label">Days</span>
             <span class="stat-value">{totalDays}</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Legs</span>
-            <span class="stat-value">{pages.length}</span>
+            <span class="stat-value">{legs.length}</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Distance</span>
@@ -325,14 +325,14 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
         </section>
 
         {/* Day-grouped Timeline */}
-        <section class="trip-timeline">
-          {pages.length === 0 ? (
+        <section class="ride-timeline">
+          {legs.length === 0 ? (
             <div class="timeline-empty">
               <p>Log your first leg to start your ride book.</p>
               <Button
                 variant="primary"
                 onClick={() =>
-                  onNavigate(`#/edit?mode=new-leg&tripId=${tripId}`)
+                  onNavigate(`#/edit?mode=new-leg&rideId=${rideId}`)
                 }
               >
                 ＋ Log First Leg
@@ -341,7 +341,7 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
           ) : (
             <div class="timeline-list">
               {uniqueDates.map((date) => {
-                const dayPages = pages.filter((p) => p.date === date);
+                const dayLegs = legs.filter((l) => l.date === date);
                 const dayNum = uniqueDates.indexOf(date) + 1;
                 const dayKm = dayDistances.get(date) || 0;
 
@@ -363,17 +363,17 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
                       </div>
                     </div>
                     <div class="day-group-body">
-                      {dayPages.map((page) => (
+                      {dayLegs.map((leg) => (
                         <LegCard
-                          key={page.id}
-                          page={page}
-                          index={pages.indexOf(page)}
-                          pages={pages}
-                          trip={trip}
-                          label={dayPages.length > 1 ? `Leg ${dayPages.indexOf(page) + 1}` : ""}
+                          key={leg.id}
+                          leg={leg}
+                          index={legs.indexOf(leg)}
+                          legs={legs}
+                          ride={ride}
+                          label={dayLegs.length > 1 ? `Leg ${dayLegs.indexOf(leg) + 1}` : ""}
                         />
                       ))}
-                      <DayPhotoRail pages={dayPages} onNavigate={onNavigate} />
+                      <DayPhotoRail legs={dayLegs} onNavigate={onNavigate} />
                     </div>
                   </div>
                 );
@@ -384,12 +384,12 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
       </main>
 
       {/* Floating Action Button to add new leg */}
-      {pages.length > 0 && (
+      {legs.length > 0 && (
         <div class="fab-container">
           <Button
             variant="fab"
             aria-label="Add Leg"
-            onClick={() => onNavigate(`#/edit?mode=new-leg&tripId=${tripId}`)}
+            onClick={() => onNavigate(`#/edit?mode=new-leg&rideId=${rideId}`)}
           >
             ＋
           </Button>
@@ -402,9 +402,9 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
       {showDeleteModal && (
         <ConfirmModal
           title="Delete Ride Logbook?"
-          message={`This will permanently delete ${trip.title} and all of its legs. This action cannot be undone.`}
+          message={`This will permanently delete ${ride.title} and all of its legs. This action cannot be undone.`}
           confirmLabel="Confirm Delete"
-          onConfirm={handleDeleteTrip}
+          onConfirm={handleDeleteRide}
           onCancel={() => setShowDeleteModal(false)}
         />
       )}

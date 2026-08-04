@@ -26,14 +26,14 @@ This document details the architecture, file structures, core algorithms, and st
 ## 3. Database Schema (`src/db.ts`)
 We will create `src/db.ts` utilizing Dexie to declare our local databases:
 
-### Table: `trips`
+### Table: `rides`
 *   `id?: number` (Auto-incremented primary key)
-*   `title: string` (Defaults to trip start date)
+*   `title: string` (Defaults to ride start date)
 *   `createdAt: string` (ISO timestamp)
 
-### Table: `pages`
+### Table: `legs`
 *   `id?: number` (Auto-incremented primary key)
-*   `tripId: number` (Foreign key to `trips.id`)
+*   `rideId: number` (Foreign key to `rides.id`)
 *   `date: string` (Editable date, backdating supported)
 *   `note: string` (Freeform textarea text)
 *   `photos: Blob[]` (JPEG compressed, max 1600px edge)
@@ -63,20 +63,20 @@ Avoids IndexedDB bloating. High-resolution photos are compressed client-side on 
 ### B. Derived Distance Calculator (`src/lib.ts`)
 Odometer and KM inputs are computed chronologically without manual overrides:
 ```typescript
-export function computeTotalDistance(pages: Page[]): number {
-  const sorted = [...pages].sort((a, b) => a.date.localeCompare(b.date));
+export function computeTotalDistance(legs: Leg[]): number {
+  const sorted = [...legs].sort((a, b) => a.date.localeCompare(b.date));
   let total = 0;
   let lastOdo: number | null = null;
 
-  for (const page of sorted) {
-    if (page.km != null) {
-      total += page.km;
-      if (page.odo != null) lastOdo = page.odo;
-    } else if (page.odo != null) {
-      if (lastOdo != null && page.odo > lastOdo) {
-        total += (page.odo - lastOdo);
+  for (const leg of sorted) {
+    if (leg.km != null) {
+      total += leg.km;
+      if (leg.odo != null) lastOdo = leg.odo;
+    } else if (leg.odo != null) {
+      if (lastOdo != null && leg.odo > lastOdo) {
+        total += (leg.odo - lastOdo);
       }
-      lastOdo = page.odo;
+      lastOdo = leg.odo;
     }
   }
   return total;
@@ -86,7 +86,7 @@ export function computeTotalDistance(pages: Page[]): number {
 ### C. OSRM Snapping & Detour Check (`src/road.ts`)
 *   **Request URL:** `GET https://router.project-osrm.org/route/v1/driving/{A.lng},{A.lat};{B.lng},{B.lat}?overview=full&geometries=geojson`
 *   **Detour Safety Filter:** Before saving the snapping route, calculate the straight-line Haversine distance between Pin A and Pin B. If OSRM's route geometry distance exceeds `5x` the Haversine distance, ignore the snapped route and fall back to the straight line to protect against highway detours.
-*   **Retroactive Backfill:** A background job runs at launch to query OSRM for pages captured offline (missing `roadPath`), with a 200ms delay between segments.
+*   **Retroactive Backfill:** A background job runs at launch to query OSRM for legs captured offline (missing `roadPath`), with a 200ms delay between segments.
 
 ### D. SVG Squiggle Map (`src/squiggle.ts`)
 Converts geographical points to local SVG viewbox coordinates:
@@ -117,10 +117,10 @@ retread/
   │    ├── styles.css        # Core custom variables and tactile layout
   │    └── ui/
   │         ├── setup.tsx     # Country select screen and storage warnings
-  │         ├── home.tsx      # Trip list grid, global gear settings
-  │         ├── trip.tsx      # Day log journal and trip squiggle view
-  │         ├── page.tsx      # Photo view, notes text, segment squiggle map
-  │         ├── editor.tsx    # Consolidated creation/editing form
+  │         ├── home.tsx      # Ride list grid, global gear settings
+  │         ├── ride-detail.tsx  # Day log journal and ride squiggle view
+  │         ├── leg-detail.tsx   # Photo view, notes text, segment squiggle map
+  │         ├── editor/       # Consolidated creation/editing form
   │         └── backup.tsx    # JSON import/export handler
 ```
 
@@ -137,8 +137,8 @@ retread/
 - [x] Clean up default template files (delete mock assets, reset `src/main.tsx` and `src/App.tsx`).
 
 ### **Phase 2: Database & Utility Core**
-- [x] Establish `src/types.ts` defining Trip, Page, and discriminated location states.
-- [x] Set up `src/db.ts` containing the Dexie database schema for `trips` and `pages`.
+- [x] Establish `src/types.ts` defining Ride, Leg, and discriminated location states.
+- [x] Set up `src/db.ts` containing the Dexie database schema for `rides` and `legs`.
 - [x] Build `src/images.ts` Canvas-based photo compressor (JPEG, 80% quality, max 1600px edge length).
 - [x] Implement `src/lib.ts` odometer distance aggregator logic with chronologically sorted traversal.
 - [x] Write integration test checks for DB read/writes and image compression constraints.
@@ -147,13 +147,13 @@ retread/
 - [x] Define light/dark variables in `src/styles.css` (Cream Paper & Dark Ink/Brown, typography scales, monospace overrides).
 - [x] Implement reactive theme manager (local storage caching + system preference hook).
 - [x] Build `src/ui/setup.tsx` screen for first-run configuration and Storage Manager persistent registration request.
-- [x] Create the core dashboard layout `src/ui/home.tsx` displaying the trip list and settings menu (with theme toggle).
+- [x] Create the core dashboard layout `src/ui/home.tsx` displaying the ride list and settings menu (with theme toggle).
 - [x] Implement the routing controller inside `src/App.tsx` responding to `#/...` hash paths.
 
 ### **Phase 4: Editors & Backup/Restore**
-- [x] Construct the unified form component `src/ui/editor/index.tsx` supporting `new-trip`, `new-leg`, and `edit` states.
+- [x] Construct the unified form component `src/ui/editor/index.tsx` supporting `new-ride`, `edit-ride`, `new-leg`, and `edit` states.
 - [x] Wire multi-file image upload inside the editor to process files through the canvas compressor.
-- [x] Build JSON exporter inside `src/ui/backup.tsx` (packaging trip indexes and base64 encoded photo blobs).
+- [x] Build JSON exporter inside `src/ui/backup.tsx` (packaging ride indexes and base64 encoded photo blobs).
 - [x] Build JSON importer inside `src/ui/backup.tsx` (clearing existing records, restoring indexes, and reloading states).
 
 ### **Phase 5: Map Squiggle & OSRM Engine**
@@ -164,8 +164,8 @@ retread/
 - [x] Build background OSRM backfiller task processing offline pins on launch.
 
 ### **Phase 6: Integration & Verification**
-- [x] Connect trip timeline page `src/ui/trip-detail.tsx` displaying chronological day cards and cumulative routes.
-- [x] Assemble single-day screen `src/ui/page-detail.tsx` showing notes, full photo carousels, and highlighted segment maps.
+- [x] Connect ride timeline page `src/ui/ride-detail.tsx` displaying chronological day cards and cumulative routes.
+- [x] Assemble single-leg screen `src/ui/leg-detail.tsx` showing notes, full photo carousels, and highlighted segment maps.
 - [x] Perform offline simulation runs to check route fallbacks (named waypoints, straight lines, deferred snaps).
 - [x] Run typescript compiler check (`npm run build`) and refine micro-animations.
 
@@ -214,15 +214,15 @@ Add optional Google Drive backup/restore so users don't lose data when their pho
 
 ### 7.3 Backup Format
 
-Same JSON structure as current v1 (`BackupPayload`), compressed with gzip before upload.
+Same JSON structure as current v2 (`BackupPayload`), compressed with gzip before upload.
 
-- **Format version**: Still `version: 1` in the JSON payload (same schema)
+- **Format version**: `version: 2` in the JSON payload (schema with `rides` and `legs` arrays)
 - **Transport**: gzipped before upload, decompressed after download
 - **Detection**: Check for gzip magic bytes (`0x1f 0x8b`) on import to auto-detect compression
 - **File naming**: `retread-backup-YYYY-MM-DD.json.gz`
 - **App metadata**: Each uploaded file gets `appProperties: { isRetreadBackup: "true" }` so the app can find only its own files
 
-**Size estimates** (200 photos, 10 trips):
+**Size estimates** (200 photos, 10 rides):
 
 | Format | Size |
 |--------|------|
@@ -336,7 +336,7 @@ export async function deleteBackup(
 **Toggle**: "Auto-sync to Google Drive" checkbox in the GDrive backup section.
 
 **Behavior**:
-- When enabled, the app automatically uploads a compressed backup to Google Drive after every successful save (new trip, new day, edit, delete)
+- When enabled, the app automatically uploads a compressed backup to Google Drive after every successful save (new ride, new leg, edit, delete)
 - Uses a **debounce** of 5 seconds — if multiple saves happen in quick succession, only one upload is triggered
 - Stores the last sync timestamp in `localStorage` key `retread-gdrive-last-sync`
 - Shows a subtle sync indicator (spinning icon → checkmark) in the header or settings panel
@@ -446,8 +446,8 @@ async function performAutoSync(): Promise<void> {
 
 | Scenario | Handling |
 |----------|----------|
-| Import v1 JSON (uncompressed) | Auto-detect: parse as JSON directly |
-| Import v1+gzip (compressed) | Auto-detect: check gzip magic bytes, decompress first |
+| Import v2 JSON (uncompressed) | Auto-detect: parse as JSON directly |
+| Import v2+gzip (compressed) | Auto-detect: check gzip magic bytes, decompress first |
 | GDrive restore always compressed | Downloads are always gzipped |
 | Existing local export unchanged | Still generates uncompressed JSON file |
 | New GDrive backups always compressed | All uploads use gzip |
