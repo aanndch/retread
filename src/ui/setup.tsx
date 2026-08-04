@@ -30,7 +30,7 @@ export function Setup({ onComplete }: SetupProps) {
   return (
     <div class="setup-container">
       <h2 class="setup-title">retread</h2>
-      <p class="setup-tagline">A logbook for well-tread rides.</p>
+      <p class="setup-tagline">For well-tread rides.</p>
       
       <div class="setup-card">
         <div class="input-group">

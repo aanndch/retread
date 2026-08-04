@@ -22,6 +22,8 @@
   --spacing-xl: 32px;
 
   --border-radius: 4px; /* minimal, sharp */
+
+  --sticky-topbar-offset: 49px; /* ride-topbar height (40px icon button + 8px padding + 1px border) */
   --border-radius-sm: 2px;
 }
 
@@ -1524,10 +1526,13 @@ input[type=number] {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  width: 100%;
-  margin-bottom: var(--spacing-md);
+  margin: 0 -2px var(--spacing-md) -2px;
   border-bottom: 1px dashed var(--color-paper-dim);
-  padding-bottom: var(--spacing-sm);
+  padding: 0 2px var(--spacing-sm) 2px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--color-paper);
 }
 
 .ride-topbar-spacer {
@@ -1757,7 +1762,7 @@ input[type=number] {
   padding: var(--spacing-sm) 2px;
   margin: 0 -2px var(--spacing-sm) -2px;
   position: sticky;
-  top: 0;
+  top: var(--sticky-topbar-offset);
   z-index: 5;
   background-color: var(--color-paper);
 }

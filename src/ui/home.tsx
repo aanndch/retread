@@ -206,7 +206,7 @@ export function Home({ onNavigate, onReady }: HomeProps) {
           <div>
             <h1 class="logo" style={{ margin: 0, lineHeight: 1 }}>retread</h1>
             {ridesData && ridesData.length === 0 ? (
-              <p class="tagline home-tagline" style={{ margin: 0, marginTop: 'var(--spacing-xs)' }}>A logbook for well-tread rides.</p>
+              <p class="tagline home-tagline" style={{ margin: 0, marginTop: 'var(--spacing-xs)' }}>For well-tread rides.</p>
             ) : ridesData !== undefined ? (
               <p class="home-stats" style={{ margin: 0, marginTop: 'var(--spacing-xs)' }}>
                 {totalRides} {totalRides === 1 ? 'ride' : 'rides'} · {formatDistance(totalKm)}
