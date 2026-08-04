@@ -18,6 +18,9 @@ function monthLabel(monthKey: string): string {
   return `${name.toUpperCase()} ${year}`;
 }
 
+// Sentinel month key for rides that have no legs yet (undated drafts).
+const DRAFT_MONTH_KEY = '__drafts';
+
 export function TypewriterKey({ size = 40 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" style={{ display: 'block', flexShrink: 0 }}>
@@ -152,10 +155,10 @@ export function Home({ onNavigate, onReady }: HomeProps) {
       // Compile deduped trail of distinct stops
       const stopTrail = buildStopTrail(ride.startLocation, sortedLegs);
 
-      // Month bucket for the ride book: trip start (first leg date), falling
-      // back to the log date when the ride has no legs.
-      const startDate = sortedLegs.length > 0 ? sortedLegs[0].date : ride.createdAt.slice(0, 10);
-      const monthKey = startDate.slice(0, 7); // YYYY-MM
+      // Month bucket for the ride book: trip start (first leg date). Rides with
+      // no legs yet are undated and go into the DRAFTS section instead.
+      const startDate = sortedLegs.length > 0 ? sortedLegs[0].date : '';
+      const monthKey = startDate ? startDate.slice(0, 7) : DRAFT_MONTH_KEY; // YYYY-MM
 
       list.push({
         ride,
@@ -229,13 +232,15 @@ export function Home({ onNavigate, onReady }: HomeProps) {
 
   // Group rides into months of the trip start, newest month first. Rides are
   // fetched by log time, so group explicitly and sort by the trip start date —
-  // a backdated ride must land under its own month, not the log order.
+  // a backdated ride must land under its own month, not the log order. Rides
+  // with no legs (undated) are held out into a DRAFTS section at the bottom.
   interface MonthGroup {
     monthKey: string;
     label: string;
     rides: NonNullable<typeof ridesData>[number][];
     rideCount: number;
     monthKm: number;
+    draft?: boolean;
   }
   const byMonth = new Map<string, NonNullable<typeof ridesData>[number][]>();
   for (const entry of ridesData ?? []) {
@@ -244,6 +249,7 @@ export function Home({ onNavigate, onReady }: HomeProps) {
     byMonth.set(entry.monthKey, bucket);
   }
   const monthGroups: MonthGroup[] = Array.from(byMonth.entries())
+    .filter(([key]) => key !== DRAFT_MONTH_KEY)
     .sort((a, b) => b[0].localeCompare(a[0])) // newest month first (YYYY-MM)
     .map(([monthKey, rides]) => {
       const sorted = [...rides].sort((a, b) => {
@@ -259,6 +265,21 @@ export function Home({ onNavigate, onReady }: HomeProps) {
         monthKm: sorted.reduce((sum, r) => sum + r.totalKm, 0),
       };
     });
+
+  // Undated drafts (no legs yet) always sit after the dated months, newest
+  // creation first.
+  const draftEntries = byMonth.get(DRAFT_MONTH_KEY) || [];
+  if (draftEntries.length > 0) {
+    const drafts = [...draftEntries].sort((a, b) => (b.ride.id || 0) - (a.ride.id || 0));
+    monthGroups.push({
+      monthKey: DRAFT_MONTH_KEY,
+      label: 'DRAFTS',
+      rides: drafts,
+      rideCount: drafts.length,
+      monthKm: 0,
+      draft: true,
+    });
+  }
 
   return (
     <div class="home-container">
@@ -417,6 +438,9 @@ export function Home({ onNavigate, onReady }: HomeProps) {
                     {group.monthKm > 0 ? ` · ${formatDistance(group.monthKm)}` : ''}
                   </span>
                 </header>
+                {group.draft && (
+                  <p class="month-group-hint">Add a leg to place this ride on the timeline.</p>
+                )}
                 <div class="rides-grid">
                   {group.rides.map(({ ride, totalKm, firstPhotoBlob, coverKey, dateRange, stopTrail }) => (
                     <RideCard 

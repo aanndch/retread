@@ -897,6 +897,13 @@ button:focus,
   white-space: nowrap;
 }
 
+.month-group-hint {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  margin: 0 0 var(--spacing-xs);
+}
+
 /* Book-level summary row above the ride book: mirrors the month-group header
    anatomy (label left, meta right) one level up, but with a dashed hairline so
    it doesn't stack a second solid rule against the first month header. */
