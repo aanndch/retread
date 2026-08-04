@@ -343,35 +343,42 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
 
         {photoUrls.length > 0 && (
           <section class="gallery-carousel">
-            <div
-              class="carousel-viewport"
-              onTouchStart={(e: TouchEvent) => { touchStartX.current = e.touches[0].clientX; }}
-              onTouchEnd={(e: TouchEvent) => {
-                const delta = touchStartX.current - e.changedTouches[0].clientX;
-                if (Math.abs(delta) > 50) {
-                  if (delta > 0) {
-                    setActivePhotoIdx((i) => (i + 1) % photoUrls.length);
-                  } else {
-                    setActivePhotoIdx((i) => (i - 1 + photoUrls.length) % photoUrls.length);
+            <div class="gallery-card">
+              <div
+                class="carousel-viewport"
+                onTouchStart={(e: TouchEvent) => { touchStartX.current = e.touches[0].clientX; }}
+                onTouchEnd={(e: TouchEvent) => {
+                  const delta = touchStartX.current - e.changedTouches[0].clientX;
+                  if (Math.abs(delta) > 50) {
+                    if (delta > 0) {
+                      setActivePhotoIdx((i) => (i + 1) % photoUrls.length);
+                    } else {
+                      setActivePhotoIdx((i) => (i - 1 + photoUrls.length) % photoUrls.length);
+                    }
                   }
-                }
-              }}
-            >
-              <img
-                src={photoUrls[activePhotoIdx]}
-                alt={`Photo ${activePhotoIdx + 1}`}
-                class="carousel-active-image"
-                onClick={() => openPhotoModal(activePhotoIdx)}
-                style={{ cursor: "zoom-in" }}
-              />
+                }}
+              >
+                <img
+                  src={photoUrls[activePhotoIdx]}
+                  alt={`Photo ${activePhotoIdx + 1}`}
+                  class="carousel-active-image"
+                  onClick={() => openPhotoModal(activePhotoIdx)}
+                  style={{ cursor: "zoom-in" }}
+                />
+              </div>
 
-              {photoUrls.length > 1 && (
-                <div class="carousel-dots">
-                  {photoUrls.map((_, i) => (
-                    <span key={i} class={`carousel-dot${i === activePhotoIdx ? ' active' : ''}`} />
-                  ))}
-                </div>
-              )}
+              <div class="carousel-caption">
+                <span class="carousel-counter">
+                  PHOTO {String(activePhotoIdx + 1).padStart(2, "0")} / {String(photoUrls.length).padStart(2, "0")}
+                </span>
+                {photoUrls.length > 1 && (
+                  <div class="carousel-index">
+                    {photoUrls.map((_, i) => (
+                      <span key={i} class={`carousel-index-mark${i === activePhotoIdx ? " active" : ""}`} />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </section>
         )}

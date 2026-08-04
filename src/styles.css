@@ -1906,11 +1906,19 @@ input[type=number] {
   border-color: var(--color-error);
 }
 
-/* Gallery Carousel styling */
+/* Gallery carousel framed as a paper album mount: ink border, hard offset
+   shadow, and a dashed hairline mat like a photo taped into the ride book. */
 .gallery-carousel {
-  overflow: hidden;
   margin-bottom: var(--spacing-md);
   touch-action: pan-y;
+}
+
+.gallery-card {
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  background-color: var(--color-paper);
+  box-shadow: 2px 2px 0px var(--color-shadow);
+  padding: var(--spacing-sm);
 }
 
 .carousel-viewport {
@@ -1920,7 +1928,8 @@ input[type=number] {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-paper);
+  background-color: var(--color-paper-dim);
+  border: 1px dashed var(--color-paper-dim);
 }
 
 .carousel-active-image {
@@ -1931,20 +1940,43 @@ input[type=number] {
   object-fit: contain;
 }
 
-.carousel-dots {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
+/* Typewritten caption row: mechanical label + paper index marks */
+.carousel-caption {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 10px;
-  background-color: rgba(0, 0, 0, 0.4);
-  z-index: 10;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 2px 0;
 }
 
+.carousel-counter {
+  font-family: var(--font-mechanical);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.carousel-index {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.carousel-index-mark {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--color-ink-muted);
+  border-radius: 1px;
+}
+
+.carousel-index-mark.active {
+  background-color: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+/* Shared dot indicator (photo overlay) */
 .carousel-dot {
   width: 6px;
   height: 6px;
