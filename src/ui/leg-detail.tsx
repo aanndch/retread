@@ -56,6 +56,7 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
   const [legDistance, setLegDistance] = useState<number | null>(null);
   const [legNum, setLegNum] = useState(0);
   const [totalLegs, setTotalLegs] = useState(0);
+  const [dayNum, setDayNum] = useState(0);
   const [trailStart, setTrailStart] = useState("");
   const [trailEnd, setTrailEnd] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -162,6 +163,7 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
           setLegDistance(computedLeg);
           setLegNum(myIdx + 1);
           setTotalLegs(sorted.length);
+          setDayNum([...new Set(sorted.map((l) => l.date))].indexOf(legRecord.date) + 1);
           setTrailStart(locationName(startLoc));
           setTrailEnd(locationName(endLoc));
           setPrevLegId(myIdx > 0 ? sorted[myIdx - 1].id ?? null : null);
@@ -242,7 +244,7 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
         {/* Hero: kicker, title, leg route trail */}
         <section class="ride-hero">
           <span class="ride-hero-kicker">
-            {rideTitle} · {shortDate}
+            {rideTitle}{dayNum > 0 ? ` · Day ${dayNum}` : ""} · {shortDate}
           </span>
           <h1 class="ride-hero-title">{leg.title || "Untitled Leg"}</h1>
           {trailStart && trailEnd && (
@@ -256,19 +258,35 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
             <div class="map-interactive-trigger" onClick={openMapModal}>
               <SquiggleMap path={leg.roadPath} width={430} height={200} />
             </div>
+          ) : leg.location?.kind === "gps" ? (
+            <div class="map-interactive-trigger" onClick={() => openMapModal()}>
+              <SquiggleMap
+                path={[
+                  { lat: leg.location.lat, lng: leg.location.lng },
+                  { lat: leg.location.lat, lng: leg.location.lng },
+                ]}
+                width={430}
+                height={200}
+              />
+            </div>
           ) : (
-            leg.location?.kind === "gps" && (
-              <div class="map-interactive-trigger" onClick={() => openMapModal()}>
-                <SquiggleMap
-                  path={[
-                    { lat: leg.location.lat, lng: leg.location.lng },
-                    { lat: leg.location.lat, lng: leg.location.lng },
-                  ]}
-                  width={430}
-                  height={200}
-                />
-              </div>
-            )
+            <div class="squiggle-map-empty">
+              <svg
+                width="30"
+                height="30"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 17 L7 9 L11 14 L17 5 L21 10" stroke-dasharray="2 3" />
+                <circle cx="3" cy="17" r="1.6" fill="currentColor" />
+                <circle cx="21" cy="10" r="1.6" fill="currentColor" />
+              </svg>
+              <p>No map for this leg yet.</p>
+            </div>
           )}
         </section>
 
@@ -333,6 +351,18 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
           <section class="story-note-section">
             <span class="note-label">Rider's Note</span>
             <blockquote class="typewriter-blockquote">{leg.note}</blockquote>
+          </section>
+        )}
+
+        {photoUrls.length === 0 && !leg.note && (
+          <section class="timeline-empty">
+            <p>A quiet leg — no photos or note yet.</p>
+            <Button
+              variant="primary"
+              onClick={() => onNavigate(`#/edit?mode=edit&legId=${legId}`)}
+            >
+              Edit This Leg
+            </Button>
           </section>
         )}
 

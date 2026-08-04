@@ -28,6 +28,7 @@ export function App() {
   const scrollCacheRef = useRef(new Map<string, number>());
   const isPopRef = useRef(false);
   const revealTimerRef = useRef<number | null>(null);
+  const swapTimerRef = useRef<number | null>(null);
 
   // Reveal the new route once its content is ready to render (fade-in gate).
   const finishTransition = useCallback(() => {
@@ -96,19 +97,23 @@ export function App() {
       const isPop = isPopRef.current && nextHash !== prevHash;
       isPopRef.current = false;
 
-      // Content-gated transition: swap routes instantly but keep the viewport
+      // Content-gated transition (Option A): fade the outgoing route out,
+      // swap the route once that fade completes, then keep the viewport
       // invisible until the routed view reports its data is rendered (via
-      // onReady), then fade it in. Non-data views reveal immediately. A safety
+      // onReady), and fade it in. Non-data views reveal immediately. A safety
       // timer backstops views that never signal.
       setShowContent(false);
-      if (isGatedRoute(nextHash)) {
-        if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
-        revealTimerRef.current = window.setTimeout(finishTransition, 600);
-      } else {
-        finishTransition();
-      }
+      if (swapTimerRef.current !== null) clearTimeout(swapTimerRef.current);
+      swapTimerRef.current = window.setTimeout(() => {
+        setCurrentHash(nextHash);
 
-      setCurrentHash(nextHash);
+        if (isGatedRoute(nextHash)) {
+          if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
+          revealTimerRef.current = window.setTimeout(finishTransition, 600);
+        } else {
+          finishTransition();
+        }
+      }, 120);
 
       // Restore or reset scroll position after the new view mounts
       requestAnimationFrame(() => {
@@ -134,6 +139,7 @@ export function App() {
       window.removeEventListener('popstate', handlePop);
       window.removeEventListener('sw-update', handleSWUpdate);
       if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
+      if (swapTimerRef.current !== null) clearTimeout(swapTimerRef.current);
     };
   }, [finishTransition]);
 

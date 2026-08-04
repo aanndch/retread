@@ -194,7 +194,7 @@ export function MetricsStep({
           </div>
 
           {distanceMode === 'auto' && (
-            <span class="field-tip">Distance is auto-calculated from the road route between your GPS pins each leg.</span>
+            <span class="field-tip">Distance is auto-calculated from the road route between your GPS pins for each leg.</span>
           )}
 
           {distanceMode === 'manual' && (
@@ -214,7 +214,7 @@ export function MetricsStep({
                   setStartOdo(val ? parseFloat(val) : null);
                 }}
               />
-              <span class="field-tip">Record the odometer at each stop. Starting reading anchors your first leg.</span>
+              <span class="field-tip">Record your odometer at each stop. The starting reading anchors your first leg.</span>
             </div>
           )}
         </div>
@@ -276,7 +276,7 @@ export function MetricsStep({
           {/* Row 3: Distance Travelled (own row) */}
           {distanceMode !== 'odo' && (
             <div class="form-group">
-              <label class="input-label">Distance Travelled (KM)</label>
+              <label class="input-label">Distance Travelled (km)</label>
               <input 
                 type="number" 
                 class="form-input" 
