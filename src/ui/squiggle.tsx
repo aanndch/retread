@@ -168,11 +168,12 @@ export function SquiggleMap({
     }
 
     // Reserve room for the compass (top-right) and caption (bottom-right) so the
-    // route never runs underneath them; left/right stay at the base inset.
+    // route never runs underneath them, with a small gap so they don't touch;
+    // left/right stay at the base inset.
     const leftPad = 14;
     const rightPad = 14;
-    const topPad = compass ? 32 : 14;
-    const bottomPad = caption ? 20 : 14;
+    const topPad = compass ? 38 : 14;
+    const bottomPad = caption ? 26 : 14;
     const latSpan = Math.max(maxLat - minLat, 0.0001);
     const lngSpan = Math.max(maxLng - minLng, 0.0001);
 

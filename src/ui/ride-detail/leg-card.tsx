@@ -1,4 +1,5 @@
 import type { Leg, Ride } from '../../types';
+import { formatDistance } from '../../lib';
 
 interface LegCardProps {
   leg: Leg;
@@ -51,7 +52,7 @@ export function LegCard({ leg, index, legs, ride, label }: LegCardProps) {
             {(() => {
               if (leg.km !== null && leg.km !== undefined) {
                 return (
-                  <span class="card-stat">{leg.km} km</span>
+                  <span class="card-stat">{formatDistance(leg.km)}</span>
                 );
               }
               if (leg.odo !== null && leg.odo !== undefined) {
@@ -65,7 +66,7 @@ export function LegCard({ leg, index, legs, ride, label }: LegCardProps) {
                   const delta = leg.odo - prevOdo;
                   if (delta >= 0) {
                     return (
-                      <span class="card-stat">{delta} km</span>
+                      <span class="card-stat">{formatDistance(delta)}</span>
                     );
                   }
                 }

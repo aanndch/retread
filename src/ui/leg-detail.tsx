@@ -11,7 +11,7 @@ import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
 import { PhotoOverlay } from "../components/photo-overlay";
 import { backfillRideRoutes } from "../road";
-import { formatIsoDateToDMY } from "../lib";
+import { formatIsoDateToDMY, formatDistance } from "../lib";
 import type { Leg, LocationUnion } from "../types";
 
 interface LegDetailProps {
@@ -240,7 +240,7 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
   }
 
   const mapCaption =
-    legDistance !== null && legDistance !== undefined ? `${legDistance} km` : "";
+    legDistance !== null && legDistance !== undefined ? formatDistance(legDistance) : "";
 
   return (
     <div class="leg-detail-container">
@@ -303,7 +303,7 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
             <span class="stat-label">Distance</span>
             <span class="stat-value">
               {legDistance !== null && legDistance !== undefined
-                ? `${legDistance} km`
+                ? formatDistance(legDistance)
                 : "—"}
             </span>
           </div>

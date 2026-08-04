@@ -36,7 +36,9 @@ export function computeTotalDistance(legs: Leg[], startOdo?: number | null): num
  * Formats a distance number with a thousands separator and "km" unit.
  */
 export function formatDistance(km: number): string {
-  return `${Math.round(km).toLocaleString()} km`;
+  if (km >= 1000) return `${Math.round(km).toLocaleString()} km`;
+  const s = km.toFixed(1);
+  return `${s.replace(/\.0$/, '')} km`;
 }
 
 /**
