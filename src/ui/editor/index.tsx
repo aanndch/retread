@@ -440,9 +440,10 @@ export function Editor({ onNavigate }: EditorProps) {
 
   const handleConfirmPickerLocation = (lat: number, lng: number) => {
     if (mapPickerTarget === 'start') {
-      dispatch({ startLocation: { kind: 'gps', lat, lng, name: '' } });
+      // Keep any name the user already typed; the map picker only moves the pin.
+      dispatch({ startLocation: { kind: 'gps', lat, lng, name: startLocation?.name || '' } });
     } else {
-      dispatch({ location: { kind: 'gps', lat, lng, name: '' } });
+      dispatch({ location: { kind: 'gps', lat, lng, name: location?.name || '' } });
     }
   };
 

@@ -277,38 +277,8 @@ export function MetricsStep({
             )}
           </div>
 
-          {/* Row 3: Distance Travelled (own row) */}
-          {distanceMode !== 'odo' && (
-            <div class="form-group">
-              <label class="input-label">Distance Travelled (km)</label>
-              <input 
-                type="number" 
-                class="form-input" 
-                placeholder="e.g. 120"
-                value={km === null ? '' : km}
-                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setKm((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
-              />
-              {fallbackCenter && location?.kind === 'gps' && (
-                <button
-                  type="button"
-                  class="btn-calc-link"
-                  onClick={onAutoFillDistance}
-                  disabled={gpsLoading}
-                >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style={{ display: 'inline-block', marginRight: '4px' }}>
-                    <circle cx="5" cy="19" r="2.5" />
-                    <path d="M7 17c6-8-2-10 11-11" />
-                    <path d="M14 2l8 8M22 2l-8 8" />
-                  </svg>
-                  <span>{gpsLoading ? 'Calculating...' : 'Auto-calculate distance'}</span>
-                </button>
-              )}
-            </div>
-          )}
-
-
-          {/* Geolocation Section */}
-          <div class="form-group form-group-bordered">
+          {/* Row 3: End Point (location before distance so auto-calc has a destination) */}
+          <div class="form-group">
             <label class="input-label">End Point</label>
             
             {/* Destination Name Text Input */}
@@ -370,6 +340,35 @@ export function MetricsStep({
               </div>
             )}
           </div>
+
+          {/* Row 4: Distance Travelled (own row) */}
+          {distanceMode !== 'odo' && (
+            <div class="form-group">
+              <label class="input-label">Distance Travelled (km)</label>
+              <input 
+                type="number" 
+                class="form-input" 
+                placeholder="e.g. 120"
+                value={km === null ? '' : km}
+                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setKm((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
+              />
+              {fallbackCenter && location?.kind === 'gps' && (
+                <button
+                  type="button"
+                  class="btn-calc-link"
+                  onClick={onAutoFillDistance}
+                  disabled={gpsLoading}
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style={{ display: 'inline-block', marginRight: '4px' }}>
+                    <circle cx="5" cy="19" r="2.5" />
+                    <path d="M7 17c6-8-2-10 11-11" />
+                    <path d="M14 2l8 8M22 2l-8 8" />
+                  </svg>
+                  <span>{gpsLoading ? 'Calculating...' : 'Auto-calculate distance'}</span>
+                </button>
+              )}
+            </div>
+          )}
         </>
       )}
 
