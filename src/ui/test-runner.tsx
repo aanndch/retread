@@ -109,7 +109,7 @@ export function TestRunner() {
       const serialized = payload.legs.find(l => l.rideId === rideId);
 
       if (
-        payload.version === 3 &&
+        payload.version === 1 &&
         serialized?.title === 'Mysore to Madikeri' &&
         serialized?.time === '07:30'
       ) {

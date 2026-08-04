@@ -31,8 +31,8 @@ interface BackupProps {
 }
 
 interface BackupPayload {
-  version: 2 | 3;
-  rides: Ride[];
+  version: 1;
+  rides: (Omit<Ride, 'coverBlob'> & { coverBlob: string | null })[];
   legs: {
     rideId: number;
     title?: string;
@@ -132,6 +132,15 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
       
       setStatusText(`Serializing database logs (${rides.length} rides, ${legs.length} legs)...`);
       
+      const serializedRides: BackupPayload['rides'] = [];
+      for (const ride of rides) {
+        const { coverBlob, ...rest } = ride;
+        serializedRides.push({
+          ...rest,
+          coverBlob: coverBlob ? await blobToBase64(coverBlob) : null,
+        });
+      }
+      
       const serializedLegs = [];
       for (const leg of legs) {
         setStatusText(`Encoding photos for leg on ${leg.date}...`);
@@ -159,8 +168,8 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
       }
       
       const payload: BackupPayload = {
-        version: 2,
-        rides,
+        version: 1,
+        rides: serializedRides,
         legs: serializedLegs
       };
       
@@ -215,7 +224,7 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
         reader.readAsText(file);
       });
       
-      if ((parsedData.version !== 2 && parsedData.version !== 3) || !Array.isArray(parsedData.rides) || !Array.isArray(parsedData.legs)) {
+      if (parsedData.version !== 1 || !Array.isArray(parsedData.rides) || !Array.isArray(parsedData.legs)) {
         throw new Error('Unsupported or corrupted backup schema.');
       }
       
@@ -252,8 +261,9 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
         
         const rideIdMapping = new Map<number, number>();
         for (const ride of parsedData.rides) {
-          const { id: _oldId, ...rideData } = ride;
-          const newId = await db.rides.add(rideData) as number;
+          const { id: _oldId, coverBlob, ...rideData } = ride;
+          const coverBlobDecoded = coverBlob ? await base64ToBlob(coverBlob) : null;
+          const newId = await db.rides.add({ ...rideData, coverBlob: coverBlobDecoded }) as number;
           if (_oldId !== undefined) {
             rideIdMapping.set(_oldId, newId);
           }

@@ -8,6 +8,7 @@ export interface Ride {
   startLocation?: LocationUnion | null; // Departure pin
   distanceMode?: DistanceMode; // Preferred distance logging style
   startOdo?: number | null; // Starting odometer reading (only for odo mode)
+  coverBlob?: Blob | null; // Snapshot thumbnail chosen as the home-page cover
 }
 
 export type LocationUnion =

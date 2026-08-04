@@ -17,6 +17,7 @@ interface SaveData {
   startLocation: LocationUnion | null;
   photos: Blob[];
   photoThumbs: Blob[];
+  coverPhotoIndex: number | null;
 }
 
 export async function saveEditorDetails(
@@ -108,6 +109,15 @@ export async function saveEditorDetails(
     title: data.legTitle.trim()
   };
 
+  // The staged cover photo lives on this leg; snapshot its thumbnail onto the
+  // ride so the home card uses it (immune to later reorder/delete of this leg).
+  const applyCover = async (rideIdToUpdate: number) => {
+    if (data.coverPhotoIndex === null) return;
+    const thumb = data.photoThumbs[data.coverPhotoIndex] ?? data.photos[data.coverPhotoIndex];
+    if (!thumb) return;
+    await db.rides.update(rideIdToUpdate, { coverBlob: thumb });
+  };
+
   if (mode === 'edit' && legId !== null) {
     const existingLeg = await db.legs.get(legId);
     if (!existingLeg) throw new Error('Leg to update was not found.');
@@ -119,6 +129,7 @@ export async function saveEditorDetails(
       console.warn('Snapping routes failed during edit save:', snapErr);
       throw new Error(`Snapping failed: ${(snapErr as Error).message || snapErr}. Used straight-line fallback.`);
     }
+    await applyCover(existingLeg.rideId);
     scheduleAutoSync();
     return `#/ride/${existingLeg.rideId}`;
   } else {
@@ -132,6 +143,7 @@ export async function saveEditorDetails(
       console.warn('Snapping routes failed during new save:', snapErr);
       throw new Error(`Snapping failed: ${(snapErr as Error).message || snapErr}. Used straight-line fallback.`);
     }
+    await applyCover(activeRideId!);
     scheduleAutoSync();
     return `#/ride/${activeRideId}`;
   }

@@ -8,6 +8,9 @@ interface PhotosStepProps {
   compressing: boolean;
   handlePhotoChange: (e: JSX.TargetedEvent<HTMLInputElement>) => void;
   handleRemovePhoto: (idx: number) => void;
+  handleMovePhoto: (idx: number, direction: -1 | 1) => void;
+  handleSetCover: (idx: number) => void;
+  coverPhotoIndex: number | null;
   handleStepJump: (s: 1 | 2 | 3) => void;
 }
 
@@ -17,6 +20,9 @@ export function PhotosStep({
   compressing,
   handlePhotoChange,
   handleRemovePhoto,
+  handleMovePhoto,
+  handleSetCover,
+  coverPhotoIndex,
   handleStepJump
 }: PhotosStepProps) {
   return (
@@ -43,10 +49,38 @@ export function PhotosStep({
             {photoPreviews.map((url, index) => (
               <div key={index} class="photo-preview-item">
                 <img src={url} alt="Upload preview" class="photo-preview-img" />
+                <button
+                  type="button"
+                  class={`btn-cover${coverPhotoIndex === index ? ' active' : ''}`}
+                  aria-label={coverPhotoIndex === index ? 'Remove as ride cover' : 'Set as ride cover'}
+                  title={coverPhotoIndex === index ? 'Ride cover' : 'Set as ride cover'}
+                  onClick={() => handleSetCover(index)}
+                >
+                  {coverPhotoIndex === index ? '★' : '☆'}
+                </button>
                 <button type="button" class="btn-photo-remove" aria-label="Remove photo" onClick={() => handleRemovePhoto(index)}>&times;</button>
+                <div class="photo-move-btns">
+                  <button
+                    type="button"
+                    class="btn-photo-move"
+                    aria-label="Move earlier"
+                    disabled={index === 0}
+                    onClick={() => handleMovePhoto(index, -1)}
+                  >&uarr;</button>
+                  <button
+                    type="button"
+                    class="btn-photo-move"
+                    aria-label="Move later"
+                    disabled={index === photoPreviews.length - 1}
+                    onClick={() => handleMovePhoto(index, 1)}
+                  >&darr;</button>
+                </div>
               </div>
             ))}
           </div>
+        )}
+        {photoPreviews.length > 1 && (
+          <span class="field-tip">Tap ☆ on a photo to make it this ride's cover. Use the arrows to order them.</span>
         )}
       </div>
 

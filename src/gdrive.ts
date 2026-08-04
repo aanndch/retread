@@ -18,11 +18,12 @@ import type { Ride, LocationUnion } from './types';
 // Types
 // ---------------------------------------------------------------------------
 
-// v3 adds per-leg title/time (previously lost on export/restore).
-// v2 backups are still accepted on import for backwards compatibility.
+// v1: rides + legs with per-leg title/time, and the ride cover snapshot
+// (Ride.coverBlob, base64-serialized). Pre-release; the format is reset to 1
+// whenever the schema changes since there's no production data to migrate.
 interface BackupPayload {
-  version: 2 | 3;
-  rides: Ride[];
+  version: 1;
+  rides: (Omit<Ride, 'coverBlob'> & { coverBlob: string | null })[];
   legs: {
     rideId: number;
     title?: string;
@@ -253,6 +254,15 @@ export async function buildBackupPayload(): Promise<BackupPayload> {
   const rides = await db.rides.toArray();
   const legs = await db.legs.toArray();
 
+  const serializedRides: BackupPayload['rides'] = [];
+  for (const ride of rides) {
+    const { coverBlob, ...rest } = ride;
+    serializedRides.push({
+      ...rest,
+      coverBlob: coverBlob ? await blobToBase64(coverBlob) : null,
+    });
+  }
+
   const serializedLegs = [];
   for (const leg of legs) {
     const base64Photos: string[] = [];
@@ -275,7 +285,7 @@ export async function buildBackupPayload(): Promise<BackupPayload> {
     });
   }
 
-  return { version: 3, rides, legs: serializedLegs };
+  return { version: 1, rides: serializedRides, legs: serializedLegs };
 }
 
 // ---------------------------------------------------------------------------
@@ -398,7 +408,7 @@ export async function performRestore(
   const jsonStr = await (gzipped ? gunzipBlob(blob) : blob.text());
   const payload: BackupPayload = JSON.parse(jsonStr);
 
-  if ((payload.version !== 2 && payload.version !== 3) || !Array.isArray(payload.rides) || !Array.isArray(payload.legs)) {
+  if (payload.version !== 1 || !Array.isArray(payload.rides) || !Array.isArray(payload.legs)) {
     throw new Error('Unsupported or corrupted backup schema.');
   }
 
@@ -412,7 +422,14 @@ export async function performRestore(
   // them there would commit it too early and throw "transaction committed too
   // early" — with the rides already written, making the restore appear to
   // succeed anyway. Pre-compute everything, then run a pure-Dexie transaction.
-  const ridesToAdd = payload.rides.map(({ id: _oldId, ...rideData }) => rideData);
+  const ridesToAdd: Ride[] = [];
+  for (const ride of payload.rides) {
+    const { id: _oldId, coverBlob, ...rideData } = ride;
+    ridesToAdd.push({
+      ...rideData,
+      coverBlob: coverBlob ? await base64ToBlob(coverBlob) : null,
+    });
+  }
 
   const legsToAdd: {
     leg: BackupPayload['legs'][number];

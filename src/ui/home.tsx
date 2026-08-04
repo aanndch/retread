@@ -109,17 +109,24 @@ export function Home({ onNavigate, onReady }: HomeProps) {
         const tB = b.time || '00:00';
         return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
       });
+      // A user-picked cover snapshot wins; otherwise fall back to the first
+      // chronological leg that has a photo.
       const legWithPhoto = sortedLegs.find(l => l.photos && l.photos.length > 0);
-      // Stable key for the cover slot (leg + photo index) so a live-query
-      // re-emit — which returns fresh Blob references for the same bytes —
-      // doesn't recreate the object URL and flicker the cover image.
-      const coverKey = legWithPhoto ? `${legWithPhoto.id}:0` : '';
+      const customCover = ride.coverBlob ? ride.coverBlob : null;
+      // Stable key for the cover slot (leg + photo index, or the custom cover)
+      // so a live-query re-emit — which returns fresh Blob references for the
+      // same bytes — doesn't recreate the object URL and flicker the cover.
+      const coverKey = customCover
+        ? `${ride.id}:cover`
+        : legWithPhoto ? `${legWithPhoto.id}:0` : '';
       // Prefer the small cover thumbnail when available; fall back to full-res
-      const firstPhotoBlob = legWithPhoto
-        ? (legWithPhoto.photoThumbs && legWithPhoto.photoThumbs.length > 0
-            ? legWithPhoto.photoThumbs[0]
-            : legWithPhoto.photos[0])
-        : null;
+      const firstPhotoBlob = customCover
+        ? customCover
+        : legWithPhoto
+          ? (legWithPhoto.photoThumbs && legWithPhoto.photoThumbs.length > 0
+              ? legWithPhoto.photoThumbs[0]
+              : legWithPhoto.photos[0])
+          : null;
 
       // Compute date range for display
       let dateRange = '';

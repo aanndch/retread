@@ -1061,6 +1061,62 @@ button:focus,
   color: var(--color-paper);
 }
 
+/* Cover badge on editor photo thumbnails */
+.btn-cover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: var(--color-paper);
+  color: var(--color-ink-muted);
+  border: none;
+  border-right: 1px solid var(--color-ink);
+  border-bottom: 1px solid var(--color-ink);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.1s ease-in-out;
+}
+
+.btn-cover.active {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+}
+
+/* Move earlier/later arrows shared by editor grid and arrange sheet */
+.btn-photo-move {
+  border: 1px solid var(--color-ink-muted);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-photo-move:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.photo-move-btns {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  gap: 2px;
+  background-color: var(--color-paper);
+  border: 1px solid var(--color-ink);
+  padding: 2px;
+}
+
 /* Form Actions */
 .form-actions {
   display: flex;
@@ -1987,6 +2043,133 @@ input[type=number] {
 
 .carousel-dot.active {
   background-color: rgba(255, 255, 255, 0.9);
+}
+
+.carousel-caption-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.btn-arrange {
+  font-family: var(--font-mechanical);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  background: none;
+  border: none;
+  border-left: 1px solid var(--color-paper-dim);
+  padding: 0 0 0 var(--spacing-sm);
+  cursor: pointer;
+}
+
+.btn-arrange:hover {
+  color: var(--color-ink);
+}
+
+/* Photo arrange sheet (leg page) */
+.arrange-backdrop {
+  z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+}
+
+.arrange-sheet {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  background-color: var(--color-paper);
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+  box-shadow: 0 -4px 0 var(--color-shadow);
+  padding: var(--spacing-md);
+  max-height: 75vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.arrange-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px dashed var(--color-paper-dim);
+  padding-bottom: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+}
+
+.arrange-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: 2px;
+}
+
+.arrange-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xs);
+  background-color: var(--color-paper);
+  box-shadow: 1px 1px 0px var(--color-shadow);
+}
+
+.arrange-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border: 1px solid var(--color-paper-dim);
+  border-radius: var(--border-radius-sm);
+  flex-shrink: 0;
+}
+
+.arrange-index {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--color-ink-muted);
+  flex: 1;
+}
+
+.arrange-moves {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.arrange-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+/* 'Set as ride cover' in the fullscreen photo overlay */
+.btn-overlay-cover {
+  position: fixed;
+  bottom: calc(var(--spacing-xl) + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-paper);
+  background-color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  padding: 8px 14px;
+  cursor: pointer;
+  z-index: 1010;
+  box-shadow: 2px 2px 0px var(--color-shadow);
+}
+
+.btn-overlay-cover:hover {
+  background-color: var(--color-ink-muted);
 }
 
 /* Typewriter blocks */

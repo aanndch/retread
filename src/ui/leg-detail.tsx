@@ -50,6 +50,9 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showArrange, setShowArrange] = useState(false);
+  // Draft order (indices into the original photo arrays) while arranging.
+  const [arrangeDraft, setArrangeDraft] = useState<number[]>([]);
   const { toasts, showToast, removeToast } = useToast();
 
   // Fullscreen Photo Modal states & handlers
@@ -88,6 +91,45 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
       return;
     }
     setShowMapModal(false);
+  };
+
+  // Open the photo-arrange sheet seeded with the current order.
+  const openArrange = () => {
+    setArrangeDraft((leg?.photos || []).map((_, i) => i));
+    setShowArrange(true);
+  };
+
+  // Move a photo one slot up or down within the draft order.
+  const handleArrangeMove = (position: number, direction: -1 | 1) => {
+    const target = position + direction;
+    if (target < 0 || target >= arrangeDraft.length) return;
+    setArrangeDraft((draft) => {
+      const next = [...draft];
+      [next[position], next[target]] = [next[target], next[position]];
+      return next;
+    });
+  };
+
+  // Persist the reordered photo arrays; the live query re-renders the carousel.
+  const handleArrangeSave = async () => {
+    if (!leg) return;
+    const originalPhotos = leg.photos || [];
+    const originalThumbs = leg.photoThumbs || [];
+    const photos = arrangeDraft.map((i) => originalPhotos[i]).filter(Boolean);
+    const photoThumbs = arrangeDraft.map((i) => originalThumbs[i]).filter(Boolean);
+    await db.legs.update(legId, { photos, photoThumbs });
+    setShowArrange(false);
+    setActivePhotoIdx(0);
+    showToast("Photo order saved.");
+  };
+
+  // Snapshot the current photo as the ride's home cover (immediate persist).
+  const handleSetCover = async (idx: number) => {
+    if (!leg) return;
+    const thumb = (leg.photoThumbs && leg.photoThumbs[idx]) || (leg.photos && leg.photos[idx]);
+    if (!thumb) return;
+    await db.rides.update(leg.rideId, { coverBlob: thumb });
+    showToast("Set as ride cover.");
   };
 
   useEffect(() => {
@@ -371,16 +413,66 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
                 <span class="carousel-counter">
                   PHOTO {String(activePhotoIdx + 1).padStart(2, "0")} / {String(photoUrls.length).padStart(2, "0")}
                 </span>
-                {photoUrls.length > 1 && (
-                  <div class="carousel-index">
-                    {photoUrls.map((_, i) => (
-                      <span key={i} class={`carousel-index-mark${i === activePhotoIdx ? " active" : ""}`} />
-                    ))}
-                  </div>
-                )}
+                <div class="carousel-caption-right">
+                  {photoUrls.length > 1 && (
+                    <div class="carousel-index">
+                      {photoUrls.map((_, i) => (
+                        <span key={i} class={`carousel-index-mark${i === activePhotoIdx ? " active" : ""}`} />
+                      ))}
+                    </div>
+                  )}
+                  <button type="button" class="btn-arrange" onClick={openArrange}>
+                    Arrange
+                  </button>
+                </div>
               </div>
             </div>
           </section>
+        )}
+
+        {showArrange && leg && (
+          <div class="modal-backdrop arrange-backdrop" onClick={() => setShowArrange(false)}>
+            <div class="arrange-sheet" onClick={(e) => e.stopPropagation()}>
+              <div class="arrange-sheet-header">
+                <span class="note-label">Arrange Photos</span>
+                <button type="button" class="btn-close-overlay" aria-label="Close arrange" onClick={() => setShowArrange(false)}>
+                  &times;
+                </button>
+              </div>
+              <div class="arrange-list">
+                {arrangeDraft.map((originalIdx, position) => (
+                  <div key={originalIdx} class="arrange-item">
+                    <img src={photoUrls[originalIdx]} alt={`Photo ${position + 1}`} class="arrange-thumb" />
+                    <span class="arrange-index">{String(position + 1).padStart(2, "0")}</span>
+                    <div class="arrange-moves">
+                      <button
+                        type="button"
+                        class="btn-photo-move"
+                        aria-label="Move earlier"
+                        disabled={position === 0}
+                        onClick={() => handleArrangeMove(position, -1)}
+                      >&uarr;</button>
+                      <button
+                        type="button"
+                        class="btn-photo-move"
+                        aria-label="Move later"
+                        disabled={position === arrangeDraft.length - 1}
+                        onClick={() => handleArrangeMove(position, 1)}
+                      >&darr;</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div class="arrange-actions">
+                <Button variant="secondary" size="sm" onClick={() => setShowArrange(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleArrangeSave}>
+                  Save Order
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
         {leg.note && (
@@ -463,6 +555,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
         activeIdx={activePhotoIdx}
         setActiveIdx={setActivePhotoIdx}
         onClose={closePhotoModal}
+        onSetCover={handleSetCover}
       />
 
       {/* Fullscreen Map Overlay */}

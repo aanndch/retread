@@ -18,12 +18,17 @@ export async function seedDemoRide(): Promise<number> {
   // Write everything in a single transaction so the UI updates once (not once
   // per leg), which avoids the demo card flickering/animating as it appears.
   return db.transaction('rw', db.rides, db.legs, async () => {
+  // Reused as the ride's home-page cover AND as the day-3 photo so the demo
+  // shows off the user-picked cover feature (home renders coverBlob directly).
+  const coverPhoto = createMockPhoto("Day 3: Nine hairpins", "#586954");
+
   const newRideId = await db.rides.add({
     title: "Western Ghats Loop",
     createdAt: new Date().toISOString(),
     startLocation: { kind: 'gps', lat: 12.2958, lng: 76.6394, name: "Mysore" },
     distanceMode: 'odo',
-    startOdo: 21560
+    startOdo: 21560,
+    coverBlob: coverPhoto
   }) as number;
 
   await db.legs.add({
@@ -69,7 +74,7 @@ export async function seedDemoRide(): Promise<number> {
     odo: 21892,
     location: { kind: 'gps', lat: 11.2588, lng: 75.7804, name: "Kozhikode" },
     photos: [
-      createMockPhoto("Day 3: Nine hairpins", "#586954")
+      coverPhoto
     ]
   });
 

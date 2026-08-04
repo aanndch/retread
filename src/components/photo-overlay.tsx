@@ -6,6 +6,7 @@ interface PhotoOverlayProps {
   activeIdx: number;
   setActiveIdx: (idx: number | ((i: number) => number)) => void;
   onClose: () => void;
+  onSetCover?: (idx: number) => void;
 }
 
 export function PhotoOverlay({
@@ -14,6 +15,7 @@ export function PhotoOverlay({
   activeIdx,
   setActiveIdx,
   onClose,
+  onSetCover,
 }: PhotoOverlayProps) {
   const [imgScale, setImgScale] = useState(1);
   const [imgOffset, setImgOffset] = useState({ x: 0, y: 0 });
@@ -196,6 +198,12 @@ export function PhotoOverlay({
             <span key={idx} class={`carousel-dot${idx === activeIdx ? ' active' : ''}`} />
           ))}
         </div>
+      )}
+
+      {onSetCover && (
+        <button type="button" class="btn-overlay-cover" onClick={() => onSetCover(activeIdx)}>
+          ★ Set as ride cover
+        </button>
       )}
     </div>
   );

@@ -40,6 +40,8 @@ interface EditorState {
   photoPreviews: string[];
   compressing: boolean;
   loading: boolean;
+  // Index of the photo staged as this ride's home cover, or null for none.
+  coverPhotoIndex: number | null;
 }
 
 const initialEditorState: EditorState = {
@@ -66,6 +68,7 @@ const initialEditorState: EditorState = {
   photoPreviews: [],
   compressing: false,
   loading: false,
+  coverPhotoIndex: null,
 };
 
 // Simple merging reducer (acts like this.setState)
@@ -131,6 +134,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     loading,
     photos,
     photoThumbs,
+    coverPhotoIndex,
   } = state;
 
   const photosRef = useRef<Blob[]>([]);
@@ -424,6 +428,32 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     });
   };
 
+  // Move a photo one slot up or down (keep the thumb array aligned). Also
+  // adjust the staged cover index so it keeps pointing at the same photo.
+  const handleMovePhoto = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= photos.length) return;
+    const reorder = <T,>(arr: T[]) => {
+      const next = [...arr];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    };
+    dispatch({
+      photos: reorder(photos),
+      photoThumbs: reorder(photoThumbs),
+      photoPreviews: reorder(photoPreviews),
+      coverPhotoIndex:
+        coverPhotoIndex === index ? target
+        : coverPhotoIndex === target ? index
+        : coverPhotoIndex,
+    });
+  };
+
+  // Stage a photo as the ride cover. Persisted on save via save-helper.
+  const handleSetCover = (index: number) => {
+    dispatch({ coverPhotoIndex: coverPhotoIndex === index ? null : index });
+  };
+
   const handleStepJump = (targetStep: 1 | 2 | 3) => {
     if (mode === 'new-ride' && !rideTitle.trim() && targetStep > 1) {
       dispatch({ titleError: 'Ride Title is required to start a new ride.' });
@@ -581,6 +611,9 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               compressing={compressing}
               handlePhotoChange={handlePhotoChange}
               handleRemovePhoto={handleRemovePhoto}
+              handleMovePhoto={handleMovePhoto}
+              handleSetCover={handleSetCover}
+              coverPhotoIndex={coverPhotoIndex}
               handleStepJump={handleStepJump}
             />
           )}
