@@ -6,6 +6,7 @@
 export const HASH_HOME = '#/';
 export const HASH_BACKUP = '#/backup';
 export const HASH_EDIT = '#/edit';
+export const HASH_TODO = '#/todo';
 export const HASH_RIDE_PREFIX = '#/ride/';
 export const HASH_LEG_PREFIX = '#/leg/';
 

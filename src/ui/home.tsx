@@ -164,7 +164,8 @@ export function Home({ onNavigate, onReady }: HomeProps) {
         coverKey,
         dateRange,
         stopTrail,
-        monthKey
+        monthKey,
+        startDate
       });
     }
     
@@ -226,7 +227,9 @@ export function Home({ onNavigate, onReady }: HomeProps) {
   const totalRides = ridesData?.length ?? 0;
   const totalKm = (ridesData ?? []).reduce((sum, t) => sum + t.totalKm, 0);
 
-  // Group rides into months of the trip start, newest month first.
+  // Group rides into months of the trip start, newest month first. Rides are
+  // fetched by log time, so group explicitly and sort by the trip start date —
+  // a backdated ride must land under its own month, not the log order.
   interface MonthGroup {
     monthKey: string;
     label: string;
@@ -234,23 +237,28 @@ export function Home({ onNavigate, onReady }: HomeProps) {
     rideCount: number;
     monthKm: number;
   }
-  const monthGroups = (ridesData ?? []).reduce<MonthGroup[]>((groups, entry) => {
-    const last = groups[groups.length - 1];
-    if (last && last.monthKey === entry.monthKey) {
-      last.rides.push(entry);
-      last.rideCount += 1;
-      last.monthKm += entry.totalKm;
-    } else {
-      groups.push({
-        monthKey: entry.monthKey,
-        label: monthLabel(entry.monthKey),
-        rides: [entry],
-        rideCount: 1,
-        monthKm: entry.totalKm,
+  const byMonth = new Map<string, NonNullable<typeof ridesData>[number][]>();
+  for (const entry of ridesData ?? []) {
+    const bucket = byMonth.get(entry.monthKey) || [];
+    bucket.push(entry);
+    byMonth.set(entry.monthKey, bucket);
+  }
+  const monthGroups: MonthGroup[] = Array.from(byMonth.entries())
+    .sort((a, b) => b[0].localeCompare(a[0])) // newest month first (YYYY-MM)
+    .map(([monthKey, rides]) => {
+      const sorted = [...rides].sort((a, b) => {
+        const d = b.startDate.localeCompare(a.startDate); // most recent trip first
+        if (d !== 0) return d;
+        return (b.ride.id || 0) - (a.ride.id || 0);
       });
-    }
-    return groups;
-  }, []);
+      return {
+        monthKey,
+        label: monthLabel(monthKey),
+        rides: sorted,
+        rideCount: sorted.length,
+        monthKm: sorted.reduce((sum, r) => sum + r.totalKm, 0),
+      };
+    });
 
   return (
     <div class="home-container">
@@ -339,6 +347,20 @@ export function Home({ onNavigate, onReady }: HomeProps) {
                     disabled={seedingDemo}
                   >
                     {seedingDemo ? 'Seeding demo ride…' : 'Seed Western Ghats Demo Ride'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Build Log (changelog/roadmap) */}
+              <div class="setting-item">
+                <label>Build Log</label>
+                <div class="settings-buttons">
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={() => closeSettings(() => onNavigate('#/todo'))}
+                  >
+                    View Build Log
                   </Button>
                 </div>
               </div>

@@ -983,6 +983,101 @@ button:focus,
   color: var(--color-ink);
 }
 
+/* Build Log (changelog/roadmap) */
+.todo-container {
+  display: flex;
+  flex-direction: column;
+  margin-top: calc(var(--sticky-topbar-inset) - var(--spacing-lg));
+}
+
+.todo-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.todo-sub {
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin: 0;
+}
+
+.todo-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.todo-section-label {
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-ink);
+  padding-bottom: var(--spacing-xs);
+  margin: 0;
+}
+
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.todo-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.todo-check {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--color-paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  margin-top: 1px;
+  color: var(--color-paper);
+}
+
+.todo-item.is-done .todo-check {
+  background-color: var(--color-ink);
+}
+
+.todo-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.todo-title {
+  font-family: var(--font-typewriter);
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.todo-note {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  color: var(--color-ink-muted);
+}
+
+.todo-item:not(.is-done) .todo-title {
+  color: var(--color-ink-muted);
+}
+
 .editor-form {
   display: flex;
   flex-direction: column;
