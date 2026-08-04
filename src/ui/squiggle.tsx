@@ -45,6 +45,27 @@ function truncateLabel(label: string, max = 14): string {
   return label.length > max ? `${label.slice(0, max - 1)}…` : label;
 }
 
+// Horizontal label placement for side-anchored markers (start ring / end dot).
+// Picks the side with more open space so text never runs past the map edge.
+function sideAnchor(ptX: number, width: number): { x: number; anchor: 'start' | 'end' } {
+  const margin = 7;
+  const roomLeft = ptX - margin - 3;
+  const roomRight = width - 3 - (ptX + margin);
+  if (roomLeft >= roomRight) return { x: ptX - margin, anchor: 'end' };
+  return { x: ptX + margin, anchor: 'start' };
+}
+
+// Label placement for centered intermediate stops: keep the label on the
+// inner half of the map vertically, and nudge it sideways when hugging an edge.
+function centerLabel(pt: { x: number; y: number }, width: number, height: number) {
+  const above = pt.y >= height / 2;
+  let x = pt.x;
+  let anchor: 'start' | 'middle' | 'end' = 'middle';
+  if (pt.x < width * 0.28) { x = pt.x + 6; anchor = 'start'; }
+  else if (pt.x > width * 0.72) { x = pt.x - 6; anchor = 'end'; }
+  return { x, y: pt.y + (above ? -7 : 13), anchor };
+}
+
 function simplifyPath(pts: { lat: number; lng: number }[], maxPoints: number): { lat: number; lng: number }[] {
   if (pts.length <= maxPoints) return pts;
 
@@ -288,19 +309,21 @@ export function SquiggleMap({
             stroke="var(--color-ink)"
             stroke-width="2"
           />
-          {startLabel && (
-            <text x={startPt.x + 7} y={startPt.y + 3} text-anchor="start" class="sqg-stop-label">
-              {truncateLabel(startLabel)}
-            </text>
-          )}
+          {startLabel && (() => {
+            const { x, anchor } = sideAnchor(startPt.x, width);
+            return (
+              <text x={x} y={startPt.y + 3} text-anchor={anchor} class="sqg-stop-label">
+                {truncateLabel(startLabel)}
+              </text>
+            );
+          })()}
         </g>
       )}
 
       {interStops.map((st, i) => {
         if (!project) return null;
         const pt = project({ lat: st.lat, lng: st.lng });
-        const above = i % 2 === 0;
-        const dy = above ? -7 : 13;
+        const { x, y, anchor } = centerLabel(pt, width, height);
         return (
           <g key={`stop-${i}`}>
             <circle
@@ -313,9 +336,9 @@ export function SquiggleMap({
             />
             {st.label && (
               <text
-                x={pt.x}
-                y={pt.y + dy}
-                text-anchor="middle"
+                x={x}
+                y={y}
+                text-anchor={anchor}
                 class="sqg-stop-label"
               >
                 {truncateLabel(st.label)}
@@ -331,11 +354,14 @@ export function SquiggleMap({
         return (
           <g>
             <circle cx={cx} cy={cy} r="4" fill="var(--color-green)" />
-            {endLabel && (
-              <text x={cx - 7} y={cy + 3} text-anchor="end" class="sqg-stop-label">
-                {truncateLabel(endLabel)}
-              </text>
-            )}
+            {endLabel && (() => {
+              const { x, anchor } = sideAnchor(cx, width);
+              return (
+                <text x={x} y={cy + 3} text-anchor={anchor} class="sqg-stop-label">
+                  {truncateLabel(endLabel)}
+                </text>
+              );
+            })()}
           </g>
         );
       })()}
