@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'preact/hooks';
 import { SquiggleMap } from '../ui/squiggle';
 import type { SquiggleSegment, SquiggleStop } from '../ui/squiggle';
+import { CloseIcon } from './icons';
 
 interface MapModalProps {
   isOpen: boolean;
@@ -162,7 +163,7 @@ export function MapModal({ isOpen, path, segments, stops, compass, caption, onCl
         aria-label="Close map" 
         onClick={(e) => { e.stopPropagation(); handleClose(onClose); }}
       >
-        &times;
+        <CloseIcon size={16} />
       </button>
       
       <div 

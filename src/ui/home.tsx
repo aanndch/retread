@@ -2,12 +2,11 @@ import { useState, useEffect } from 'preact/hooks';
 import { Button } from '../components/button';
 import { Dropdown } from '../components/dropdown';
 import { Toast, useToast } from '../components/toast';
-import { CloseIcon, GearIcon } from '../components/icons';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
-import { computeTotalDistance, formatDistance, formatDateRange, buildStopTrail } from '../lib';
+import { CloseIcon, GearIcon, SearchIcon } from '../components/icons';
+import { formatDistance } from '../lib';
 import { getSavedTheme, saveTheme, Theme } from '../theme';
 import { seedDemoRide } from './seed-demo';
+import { coverUrlCache, DRAFT_MONTH_KEY, type HomeRideEntry } from './use-ride-book';
 import type { Ride } from '../types';
 
 // "2026-07" -> "JULY 2026"
@@ -17,9 +16,6 @@ function monthLabel(monthKey: string): string {
     .toLocaleDateString(undefined, { month: 'long' });
   return `${name.toUpperCase()} ${year}`;
 }
-
-// Sentinel month key for rides that have no legs yet (undated drafts).
-const DRAFT_MONTH_KEY = '__drafts';
 
 // "2026-07" -> "JUL 26" for the compact month index chips.
 function monthChipLabel(monthKey: string): string {
@@ -82,11 +78,13 @@ export function TypewriterKey({ size = 40 }: { size?: number }) {
 }
 
 interface HomeProps {
+  ridesData: HomeRideEntry[] | undefined;
   onNavigate: (route: string) => void;
+  onOpenSearch: () => void;
   onReady?: () => void;
 }
 
-export function Home({ onNavigate, onReady }: HomeProps) {
+export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [settingsClosing, setSettingsClosing] = useState(false);
   const [themeMode, setThemeMode] = useState<'system' | Theme>('system');
@@ -104,85 +102,6 @@ export function Home({ onNavigate, onReady }: HomeProps) {
       setThemeMode('system');
     }
   }, []);
-
-  // Live query for rides + their first leg's first photo for the cover
-  const ridesData = useLiveQuery(async () => {
-    const allRides = await db.rides.orderBy('createdAt').reverse().toArray();
-    const allLegs = await db.legs.toArray();
-    const legsByRide = new Map<number, typeof allLegs>();
-    for (const leg of allLegs) {
-      const list = legsByRide.get(leg.rideId) || [];
-      list.push(leg);
-      legsByRide.set(leg.rideId, list);
-    }
-    
-    const list = [];
-    
-    for (const ride of allRides) {
-      const legs = legsByRide.get(ride.id!) || [];
-      
-      // Find the first leg chronologically that has at least one photo
-      const sortedLegs = [...legs].sort((a, b) => {
-        const dComp = a.date.localeCompare(b.date);
-        if (dComp !== 0) return dComp;
-        const tA = a.time || '00:00';
-        const tB = b.time || '00:00';
-        return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
-      });
-      // A user-picked cover snapshot wins; otherwise fall back to the first
-      // chronological leg that has a photo.
-      const legWithPhoto = sortedLegs.find(l => l.photos && l.photos.length > 0);
-      const customCover = ride.coverBlob ? ride.coverBlob : null;
-      // Prefer the small cover thumbnail when available; fall back to full-res
-      const firstPhotoBlob = customCover
-        ? customCover
-        : legWithPhoto
-          ? (legWithPhoto.photoThumbs && legWithPhoto.photoThumbs.length > 0
-              ? legWithPhoto.photoThumbs[0]
-              : legWithPhoto.photos[0])
-          : null;
-      // Cache key for the cover slot. The blob's content hash is included so a
-      // changed cover or changed first photo busts the cached object URL (and
-      // the home card updates immediately), while identical bytes on a
-      // live-query re-emit still hit the cache and don't flicker.
-      const coverFingerprint = firstPhotoBlob ? await blobFingerprint(firstPhotoBlob) : '';
-      const coverKey = firstPhotoBlob
-        ? customCover
-          ? `${ride.id}:cover:${coverFingerprint}`
-          : `${legWithPhoto!.id}:0:${coverFingerprint}`
-        : '';
-
-      // Compute date range for display
-      let dateRange = '';
-      if (sortedLegs.length > 0) {
-        dateRange = formatDateRange(
-          sortedLegs[0].date,
-          sortedLegs[sortedLegs.length - 1].date
-        );
-      }
-
-      // Compile deduped trail of distinct stops
-      const stopTrail = buildStopTrail(ride.startLocation, sortedLegs);
-
-      // Month bucket for the ride book: trip start (first leg date). Rides with
-      // no legs yet are undated and go into the DRAFTS section instead.
-      const startDate = sortedLegs.length > 0 ? sortedLegs[0].date : '';
-      const monthKey = startDate ? startDate.slice(0, 7) : DRAFT_MONTH_KEY; // YYYY-MM
-
-      list.push({
-        ride,
-        totalKm: computeTotalDistance(legs, ride.startOdo),
-        firstPhotoBlob,
-        coverKey,
-        dateRange,
-        stopTrail,
-        monthKey,
-        startDate
-      });
-    }
-    
-    return list;
-  });
 
   // Only show skeleton after a 200ms delay to avoid flash on fast loads
   useEffect(() => {
@@ -308,13 +227,22 @@ export function Home({ onNavigate, onReady }: HomeProps) {
             <p class="tagline home-tagline">For well-tread rides.</p>
           </div>
         </div>
-        <Button 
-          variant="icon" 
-          aria-label="Settings" 
-          onClick={() => setShowSettings(true)}
-        >
-          <GearIcon size={20} />
-        </Button>
+        <div class="home-actions">
+          <Button
+            variant="icon"
+            aria-label="Search"
+            onClick={onOpenSearch}
+          >
+            <SearchIcon size={18} />
+          </Button>
+          <Button
+            variant="icon"
+            aria-label="Settings"
+            onClick={() => setShowSettings(true)}
+          >
+            <GearIcon size={20} />
+          </Button>
+        </div>
       </header>
 
       {/* Book-level stats row, shown once there are rides */}
@@ -333,9 +261,9 @@ export function Home({ onNavigate, onReady }: HomeProps) {
           <div class={`modal-content settings-modal${settingsClosing ? ' closing' : ''}`} onClick={(e) => e.stopPropagation()}>
             <div class="modal-header">
               <h3>Settings</h3>
-              <Button variant="icon" class="btn-close" aria-label="Close settings" onClick={() => closeSettings()}>
-                <CloseIcon />
-              </Button>
+              <button type="button" class="btn-close" aria-label="Close settings" onClick={() => closeSettings()}>
+                <CloseIcon size={16} />
+              </button>
             </div>
             
             <div class="settings-body">
@@ -514,26 +442,6 @@ export function Home({ onNavigate, onReady }: HomeProps) {
   );
 }
 
-// Object URLs for ride cover images, cached by the cover slot (leg + photo
-// index). Live-query re-emits hand back fresh Blob references for identical
-// bytes, so without this the cover would re-decode and flicker on every emit.
-const coverUrlCache = new Map<string, { blob: Blob; url: string }>();
-
-// Content fingerprint of the displayed cover blob, used in the cache key so a
-// changed cover (or changed first photo) busts the cached object URL while
-// identical bytes keep hitting the cache and don't flicker.
-async function blobFingerprint(blob: Blob): Promise<string> {
-  try {
-    if (crypto.subtle) {
-      const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
-      return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
-    }
-  } catch {
-    // fall through to size/type below
-  }
-  return `${blob.size}:${blob.type}`;
-}
-
 interface RideCardProps {
   ride: Ride;
   totalKm: number;
@@ -545,7 +453,7 @@ interface RideCardProps {
   onRevealEnd?: () => void;
 }
 
-function RideCard({ ride, totalKm, firstPhotoBlob, coverKey, dateRange, stopTrail, reveal, onRevealEnd }: RideCardProps) {
+export function RideCard({ ride, totalKm, firstPhotoBlob, coverKey, dateRange, stopTrail, reveal, onRevealEnd }: RideCardProps) {
   const [imgUrl, setImgUrl] = useState('');
 
   // Reuse the cached object URL for the same cover slot; only create a new one

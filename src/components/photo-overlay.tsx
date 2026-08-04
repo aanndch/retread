@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'preact/hooks';
+import { CloseIcon } from './icons';
 
 interface PhotoOverlayProps {
   isOpen: boolean;
@@ -169,7 +170,7 @@ export function PhotoOverlay({
           onClose();
         }}
       >
-        &times;
+        <CloseIcon size={16} />
       </button>
 
       <div
