@@ -288,7 +288,7 @@ export function Editor({ onNavigate }: EditorProps) {
 
   if (!mode) {
     if (isClosing) {
-      return <div class="editor-container closing" />;
+      return <div class="editor-container" />;
     }
     return <p class="loading-text">Invalid editor mode.</p>;
   }
@@ -489,7 +489,7 @@ export function Editor({ onNavigate }: EditorProps) {
   };
 
   return (
-    <div class={`editor-container${isClosing ? ' closing' : ''}`}>
+    <div class="editor-container">
       <PageHeader onBack={handleCancel} />
 
       {/* Mode title */}

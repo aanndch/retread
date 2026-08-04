@@ -213,17 +213,6 @@ body {
   transition: opacity 0.12s ease-out;
 }
 
-@keyframes page-slide-out {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-}
-
 /* Lock viewport height while the editor is open: it fits the screen but
    scrolls internally when the form overflows. Padding-top is intentionally 0:
    sticky offsets are measured from the scroll container's padding edge, so a
@@ -859,10 +848,6 @@ button:focus,
   display: flex;
   flex-direction: column;
   flex: 1; /* Stretch to fill the entire remaining height of the locked viewport */
-}
-
-.editor-container.closing {
-  animation: page-slide-out 0.12s ease-in forwards !important;
 }
 
 /* Shared page top bar: back + optional edit/delete. Rests and sticks at the
