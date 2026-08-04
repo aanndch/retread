@@ -7,6 +7,7 @@ import {
   GDRIVE_AUTOSYNC_DELAY_MS,
   GDRIVE_LOCAL_STORAGE_KEY_LAST_SYNC,
   GDRIVE_LOCAL_STORAGE_KEY_AUTOSYNC,
+  HASH_BACKUP,
 } from './constants';
 import { gzipString, gunzipBlob, isGzipped } from './backup-compress';
 import { createThumbnail } from './images';
@@ -44,31 +45,6 @@ export interface DriveBackupFile {
 }
 
 // ---------------------------------------------------------------------------
-// GIS Script Loader
-// ---------------------------------------------------------------------------
-
-let gisLoaded = false;
-
-export async function loadGIScript(): Promise<void> {
-  if (gisLoaded || typeof google !== 'undefined' && google.accounts) return;
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector('script[src*="gsi/client"]');
-    if (existing) {
-      existing.addEventListener('load', () => { gisLoaded = true; resolve(); });
-      existing.addEventListener('error', () => reject(new Error('Failed to load Google Identity Services')));
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => { gisLoaded = true; resolve(); };
-    script.onerror = () => reject(new Error('Failed to load Google Identity Services'));
-    document.head.appendChild(script);
-  });
-}
-
-// ---------------------------------------------------------------------------
 // Token Management (memory-only)
 // ---------------------------------------------------------------------------
 
@@ -87,54 +63,137 @@ export function isConnected(): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// OAuth2 — request access token via popup
+// OAuth2 — manual implicit-grant redirect flow
 // ---------------------------------------------------------------------------
+//
+// GIS's popup flow (initTokenClient) relays results through
+// accounts.google.com/gsi/transform via window.opener.postMessage(). In an
+// installed standalone PWA that opener link is severed, the relay throws, and
+// the page dies. So we drive the plain oauth2/v2/auth endpoint ourselves with a
+// full-page redirect: the token comes back in the URL fragment
+// (#access_token=...), and handleOAuthRedirect() parses it before the hash
+// router reads it.
 
-function describeOAuthError(raw: unknown): string {
-  const message = raw instanceof Error ? raw.message : String(raw ?? '');
-  const lowered = message.toLowerCase();
-  if (lowered.includes('invalid_client') || lowered.includes('origin') || lowered.includes('mismatch')) {
-    return "Google rejected this client. Check that the client ID is valid and this site's origin is listed under Authorized JavaScript origins in Google Cloud.";
-  }
-  if (lowered.includes('access_denied') || lowered.includes('popup') || lowered.includes('user_cancelled')) {
-    return 'Authorization cancelled — the window was closed.';
-  }
-  return message || 'Authorization failed.';
+const OAUTH_STATE_KEY = 'retread-gdrive-oauth-state';
+const OAUTH_RESULT_KEY = 'retread-gdrive-oauth-result';
+
+function oauthRedirectUri(): string {
+  const base = `${window.location.origin}${window.location.pathname}`;
+  // Google's validator rejects redirect URIs ending in '/'. Register it without
+  // the slash and send the same string; GitHub Pages' /retread -> /retread/
+  // 301 keeps the token fragment intact.
+  return base.endsWith('/') ? base.slice(0, -1) : base;
 }
 
+// Begins the OAuth dance and navigates the whole page to Google. The returned
+// promise only settles if the client ID is missing or navigation is blocked —
+// on success the page unloads and the token is picked up on the way back by
+// handleOAuthRedirect().
 export function requestAccessToken(): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return new Promise((_resolve, reject) => {
     if (!GDRIVE_CLIENT_ID) {
       return reject(new Error('Google Drive client ID not configured.'));
     }
 
-    const tokenClient = google.accounts.oauth2.initTokenClient({
+    const state =
+      typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2);
+    sessionStorage.setItem(OAUTH_STATE_KEY, state);
+
+    const params = new URLSearchParams({
       client_id: GDRIVE_CLIENT_ID,
+      redirect_uri: oauthRedirectUri(),
+      response_type: 'token',
       scope: GDRIVE_SCOPES,
-      callback: (tokenResponse) => {
-        if (tokenResponse.error) {
-          return reject(new Error(describeOAuthError(tokenResponse.error)));
-        }
-        const token = tokenResponse.access_token;
-        if (!token) {
-          return reject(new Error('No access token received.'));
-        }
-        cachedToken = token;
-        resolve(token);
-      },
+      state,
+      prompt: 'select_account',
     });
 
     try {
-      tokenClient.requestAccessToken({ prompt: '' });
+      window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
     } catch (err) {
       reject(new Error(describeOAuthError(err)));
     }
   });
 }
 
+// Called from main.tsx before the app renders. Detects an OAuth return in the
+// URL fragment, verifies the CSRF state, stores the token, cleans the fragment
+// off the URL, and lands on the backup page. Returns true when it consumed an
+// OAuth redirect.
+export function handleOAuthRedirect(): boolean {
+  const hash = window.location.hash;
+  const isReturn = hash.startsWith('#access_token=') || hash.startsWith('#error=');
+  if (!isReturn) return false;
+
+  const params = new URLSearchParams(hash.slice(1));
+  const expectedState = sessionStorage.getItem(OAUTH_STATE_KEY);
+  sessionStorage.removeItem(OAUTH_STATE_KEY);
+
+  const error = params.get('error');
+  const state = params.get('state');
+
+  if (error) {
+    setOAuthResult(false, describeOAuthError(error));
+  } else if (!expectedState || state !== expectedState) {
+    setOAuthResult(false, 'Authorization expired — try connecting again.');
+  } else {
+    const token = params.get('access_token');
+    if (token) {
+      cachedToken = token;
+      setOAuthResult(true);
+    } else {
+      setOAuthResult(false, 'No access token received.');
+    }
+  }
+
+  history.replaceState(null, '', `${window.location.pathname}${window.location.search}${HASH_BACKUP}`);
+  return true;
+}
+
+type OAuthResult = { ok: true } | { ok: false; error: string };
+
+function setOAuthResult(ok: boolean, error?: string): void {
+  const result: OAuthResult = ok
+    ? { ok: true }
+    : { ok: false, error: error || 'Authorization failed.' };
+  sessionStorage.setItem(OAUTH_RESULT_KEY, JSON.stringify(result));
+}
+
+// backup.tsx calls this once on mount to surface the outcome of a redirect.
+export function consumeOAuthResult(): OAuthResult | null {
+  const raw = sessionStorage.getItem(OAUTH_RESULT_KEY);
+  if (!raw) return null;
+  sessionStorage.removeItem(OAUTH_RESULT_KEY);
+  try {
+    return JSON.parse(raw) as OAuthResult;
+  } catch {
+    return null;
+  }
+}
+
+function describeOAuthError(raw: unknown): string {
+  const message = raw instanceof Error ? raw.message : String(raw ?? '');
+  const lowered = message.toLowerCase();
+  if (lowered.includes('invalid_client') || lowered.includes('origin') || lowered.includes('mismatch') || lowered.includes('redirect_uri')) {
+    return "Google rejected this client. Check that the client ID is valid and this site's redirect URI is listed under Authorized redirect URIs in Google Cloud.";
+  }
+  if (lowered.includes('access_denied')) {
+    return 'Authorization cancelled.';
+  }
+  return message || 'Authorization failed.';
+}
+
 export function disconnect(): void {
   if (cachedToken) {
-    google.accounts.oauth2.revoke(cachedToken, () => {});
+    try {
+      fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(cachedToken)}`, {
+        method: 'POST',
+      }).catch(() => {});
+    } catch {
+      // best-effort — the token is dropped regardless
+    }
   }
   cachedToken = null;
 }
@@ -417,22 +476,3 @@ async function findAutosyncFile(accessToken: string): Promise<DriveBackupFile | 
   const files = await listBackups(accessToken);
   return files.find(f => f.name === GDRIVE_AUTOSYNC_FILENAME) || null;
 }
-
-// ---------------------------------------------------------------------------
-// Type declaration for Google Identity Services
-// ---------------------------------------------------------------------------
-
-declare const google: {
-  accounts: {
-    oauth2: {
-      initTokenClient(config: {
-        client_id: string;
-        scope: string;
-        callback: (response: { access_token?: string; error?: string }) => void;
-      }): {
-        requestAccessToken: (options?: { prompt?: string }) => void;
-      };
-      revoke(token: string, callback: () => void): void;
-    };
-  };
-};

@@ -9,11 +9,11 @@ import { HASH_HOME, GDRIVE_AUTOSYNC_FILENAME } from '../constants';
 import type { Ride, LocationUnion } from '../types';
 import type { JSX } from 'preact';
 import {
-  loadGIScript,
   requestAccessToken,
   getAccessToken,
   disconnect,
   isConnected,
+  consumeOAuthResult,
   performBackup,
   performRestore,
   listBackups,
@@ -83,6 +83,20 @@ export function Backup({ onNavigate }: BackupProps) {
   useEffect(() => {
     if (gdriveConnected) refreshGdriveFiles();
   }, [gdriveConnected, refreshGdriveFiles]);
+
+  // Surface the outcome of a full-page OAuth redirect (connect navigates away
+  // and reloads the page; the result is stashed in sessionStorage for us here).
+  useEffect(() => {
+    const result = consumeOAuthResult();
+    if (!result) return;
+    if (result.ok) {
+      setGdriveConnected(true);
+      showToast('Connected to Google Drive.', 'success');
+    } else {
+      showToast(`Connection failed: ${result.error}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Helper: Convert Blob to Base64 Data URL
   const blobToBase64 = (blob: Blob): Promise<string> => {
@@ -299,14 +313,14 @@ export function Backup({ onNavigate }: BackupProps) {
   const handleGDriveConnect = async () => {
     setGdriveConnecting(true);
     try {
-      await loadGIScript();
+      // Full-page redirect to Google — on success the page unloads and we
+      // land back here via consumeOAuthResult(); the finally below only runs
+      // if navigation was blocked (e.g. missing client ID).
       await requestAccessToken();
-      setGdriveConnected(true);
-      showToast('Connected to Google Drive.', 'success');
+      setGdriveConnecting(false);
     } catch (err) {
       console.error('GDrive connect failed:', err);
       showToast(`Connection failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
       setGdriveConnecting(false);
     }
   };
