@@ -257,7 +257,7 @@ export function Home({ onNavigate, onReady }: HomeProps) {
       {/* Top Header Bar — pinned like every page top bar */}
       <header class="home-header">
         <div class="home-brand">
-          <TypewriterKey size={24} />
+          <TypewriterKey size={34} />
           <div class="home-brand-text">
             <h1 class="logo home-logo">retread</h1>
             <p class="tagline home-tagline">For well-tread rides.</p>
