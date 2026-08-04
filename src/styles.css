@@ -1529,6 +1529,7 @@ input[type=number] {
   margin: 0 -2px var(--spacing-md) -2px;
   border-bottom: 1px dashed var(--color-paper-dim);
   padding: 0 2px var(--spacing-sm) 2px;
+  height: var(--sticky-topbar-offset);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -1762,7 +1763,7 @@ input[type=number] {
   padding: var(--spacing-sm) 2px;
   margin: 0 -2px var(--spacing-sm) -2px;
   position: sticky;
-  top: var(--sticky-topbar-offset);
+  top: calc(var(--sticky-topbar-offset) - 1px);
   z-index: 5;
   background-color: var(--color-paper);
 }
