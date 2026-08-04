@@ -288,7 +288,12 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   }, []);
 
   if (!mode) {
-    if (isClosing) {
+    // The hash may have already left the editor while the App is still fading
+    // the outgoing view out (Android back / forward). In that window there is
+    // no valid mode to render, but it's not an error — keep the closing
+    // container so the exit transition stays smooth.
+    const stillEditorRoute = window.location.hash.startsWith('#/edit');
+    if (isClosing || !stillEditorRoute) {
       return <div class="editor-container" />;
     }
     return <p class="loading-text">Invalid editor mode.</p>;
