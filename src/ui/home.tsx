@@ -70,6 +70,7 @@ export function Home({ onNavigate, onReady }: HomeProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [themeMode, setThemeMode] = useState<'system' | Theme>('system');
   const [showSkeleton, setShowSkeleton] = useState(false);
+  const [seedingDemo, setSeedingDemo] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
 
   // Load saved theme preference on mount
@@ -157,13 +158,17 @@ export function Home({ onNavigate, onReady }: HomeProps) {
   };
 
   const handleSeedDemoRide = async () => {
+    if (seedingDemo) return;
+    setSeedingDemo(true);
     try {
-      const newRideId = await seedDemoRide();
+      await seedDemoRide();
       setShowSettings(false);
-      onNavigate(`#/ride/${newRideId}`);
+      showToast("Demo ride added.", "success");
     } catch (err) {
       console.error("Failed to seed demo data:", err);
       showToast("Error seeding demo data.");
+    } finally {
+      setSeedingDemo(false);
     }
   };
 
@@ -251,8 +256,9 @@ export function Home({ onNavigate, onReady }: HomeProps) {
                     variant="primary" 
                     size="sm"
                     onClick={handleSeedDemoRide}
+                    disabled={seedingDemo}
                   >
-                    Seed Western Ghats Demo Ride
+                    {seedingDemo ? 'Seeding demo ride…' : 'Seed Western Ghats Demo Ride'}
                   </Button>
                 </div>
               </div>
@@ -292,8 +298,9 @@ export function Home({ onNavigate, onReady }: HomeProps) {
               <Button 
                 variant="secondary" 
                 onClick={handleSeedDemoRide}
+                disabled={seedingDemo}
               >
-                See a Demo Ride
+                {seedingDemo ? 'Seeding demo ride…' : 'See a Demo Ride'}
               </Button>
             </div>
           </div>

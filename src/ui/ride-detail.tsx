@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "preact/hooks";
+import { useLiveQuery } from "dexie-react-hooks";
 import { Fragment } from "preact";
 import { db } from "../db";
 import { Button } from "../components/button";
@@ -105,9 +106,6 @@ function RouteTrail({ stops }: { stops: string[] }) {
 }
 
 export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
-  const [ride, setRide] = useState<Ride | null>(null);
-  const [legs, setLegs] = useState<Leg[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
 
@@ -140,49 +138,44 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
     onNavigateRef.current(route);
   }, []);
 
+  // Reactive ride + legs: re-fires whenever routes are backfilled (e.g. OSRM
+  // snapping finishing after the page mounted), so the map fills in live.
+  const liveData = useLiveQuery(
+    async () => {
+      const rideRecord = await db.rides.get(rideId);
+      const legsRecords = await db.legs
+        .where("rideId")
+        .equals(rideId)
+        .toArray();
+      const sortedLegs = [...legsRecords].sort((a, b) => {
+        const dComp = a.date.localeCompare(b.date);
+        if (dComp !== 0) return dComp;
+        const tA = a.time || '00:00';
+        const tB = b.time || '00:00';
+        return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
+      });
+      return { ride: rideRecord, legs: sortedLegs };
+    },
+    [rideId]
+  );
+
+  const ride: Ride | null = liveData?.ride ?? null;
+  const legs: Leg[] = liveData?.legs ?? [];
+  const loading = liveData === undefined;
+
+  // Fade the page in once the ride data has actually rendered.
   useEffect(() => {
-    let active = true;
+    if (liveData?.ride) onReady?.();
+  }, [liveData, onReady]);
 
-    async function loadData() {
-      try {
-        const rideRecord = await db.rides.get(rideId);
-        if (!rideRecord) {
-          if (active) stableNavigate("#/");
-          return;
-        }
-
-        const legsRecords = await db.legs
-          .where("rideId")
-          .equals(rideId)
-          .toArray();
-        const sortedLegs = [...legsRecords].sort((a, b) => {
-          const dComp = a.date.localeCompare(b.date);
-          if (dComp !== 0) return dComp;
-          const tA = a.time || '00:00';
-          const tB = b.time || '00:00';
-          return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
-        });
-
-        if (active) {
-          setRide(rideRecord);
-          setLegs(sortedLegs);
-          setLoading(false);
-          onReady?.();
-        }
-      } catch (err) {
-        console.error("Failed to load ride details:", err);
-        if (active) {
-          setLoading(false);
-          stableNavigate("#/");
-        }
-      }
+  // If the ride no longer exists, bounce back home (guarded to run once).
+  const redirectedRef = useRef(false);
+  useEffect(() => {
+    if (liveData !== undefined && !liveData.ride && !redirectedRef.current) {
+      redirectedRef.current = true;
+      stableNavigate("#/");
     }
-
-    loadData();
-    return () => {
-      active = false;
-    };
-  }, [rideId]);
+  }, [liveData, stableNavigate]);
 
   const handleDeleteRide = async () => {
     try {

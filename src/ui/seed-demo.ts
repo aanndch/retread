@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { backfillRideRoutes } from '../road';
+import { DEMO_ROUTE_PATHS } from './demo-routes';
 
 function createMockPhoto(title: string, color: string) {
   const escapedTitle = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -28,6 +28,7 @@ export async function seedDemoRide(): Promise<number> {
     date: "2026-07-14",
     time: "06:10",
     title: "Mysore to Madikeri (First climb into Coorg)",
+    roadPath: DEMO_ROUTE_PATHS[0],
     note: "Rolled out of Mysore before the city woke up. Coffee plantations start right after the last town. The climb into Madikeri is tight and green—hairpins through cardamom shade. Stopped for filter coffee and a view across the Brahmagiri hills. Checked into a homestay surrounded by coffee estates.",
     km: 118,
     odo: 21678,
@@ -43,6 +44,7 @@ export async function seedDemoRide(): Promise<number> {
     date: "2026-07-15",
     time: "07:45",
     title: "Madikeri to Kalpetta (Into Wayanad)",
+    roadPath: DEMO_ROUTE_PATHS[1],
     note: "Took the little-known route via Virajpet, dropping down into the Wayanad plateau. The descent into Kalpetta is long and technical—road carved into the hillside. Mist rolled through the forest all morning. Crossed into Kerala at the border checkpoint and the tea shops changed from Kannada to Malayalam menus.",
     km: 122,
     odo: 21800,
@@ -58,6 +60,7 @@ export async function seedDemoRide(): Promise<number> {
     date: "2026-07-16",
     time: "08:20",
     title: "Kalpetta to Kozhikode (Thamarassery ghat)",
+    roadPath: DEMO_ROUTE_PATHS[2],
     note: "The Thamarassery ghat road has the famous 9 hairpins—each one tighter than the last. Caught up behind a loaded truck and was stuck crawling for the middle section. At the bottom the landscape flattened into coconut palms. Rode into Kozhikode in the late afternoon and ate the town's legendary biryani.",
     km: 92,
     odo: 21892,
@@ -72,6 +75,7 @@ export async function seedDemoRide(): Promise<number> {
     date: "2026-07-17",
     time: "06:50",
     title: "Kozhikode to Thrissur",
+    roadPath: DEMO_ROUTE_PATHS[3],
     note: "Coastal NH66 southbound. Dense traffic out of the city, but it thins out past Ponnani. Paddy fields on both sides. Short coffee stop at a roadside stall serving banana chips with chai.",
     km: 95,
     odo: 21987,
@@ -86,6 +90,7 @@ export async function seedDemoRide(): Promise<number> {
     date: "2026-07-17",
     time: "14:30",
     title: "Thrissur to Kochi (Backwaters light)",
+    roadPath: DEMO_ROUTE_PATHS[4],
     note: "Away from the highway onto the backroad through Angamaly. Long straights past banana plantations. Hit the metro outskirts by evening—ferry across to Fort Kochi was the perfect end to the day.",
     km: 110,
     odo: 22097,
@@ -101,6 +106,7 @@ export async function seedDemoRide(): Promise<number> {
     date: "2026-07-18",
     time: "07:05",
     title: "Kochi to Alleppey (Lazy canal country)",
+    roadPath: DEMO_ROUTE_PATHS[5],
     note: "Short ride south down the peninsular coast. Turned off the highway for the backwater roads—narrow lanes running between canals and paddy. Spent the afternoon on a country boat. Flat light, green water, absolutely no rush.",
     km: 54,
     odo: 22151,
@@ -116,6 +122,7 @@ export async function seedDemoRide(): Promise<number> {
     date: "2026-07-19",
     time: "05:30",
     title: "Alleppey to Mysore (Home run)",
+    roadPath: DEMO_ROUTE_PATHS[6],
     note: "The long haul home. Out before sunrise, through Kochi before traffic built up, then back over the ghats on the Palakkad gap. The Western Ghats felt different heading east—greener on the Kerala side, drier and brown by the time we crossed back into Karnataka. Rolled into Mysore in the dark, 385 km done.",
     km: 385,
     odo: 22536,
@@ -124,8 +131,6 @@ export async function seedDemoRide(): Promise<number> {
       createMockPhoto("Day 6: Palakkad gap climb", "#6e6255")
     ]
   });
-
-  await backfillRideRoutes(newRideId);
 
   return newRideId;
 }

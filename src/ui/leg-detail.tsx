@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "preact/hooks";
+import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db";
 import { Button } from "../components/button";
 import { Toast, useToast } from "../components/toast";
@@ -49,24 +50,9 @@ function LegTrail({ start, end }: { start: string; end: string }) {
 }
 
 export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
-  const [leg, setLeg] = useState<Leg | null>(null);
-  const [rideTitle, setRideTitle] = useState("");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [legDistance, setLegDistance] = useState<number | null>(null);
-  const [legNum, setLegNum] = useState(0);
-  const [totalLegs, setTotalLegs] = useState(0);
-  const [dayNum, setDayNum] = useState(0);
-  const [trailStart, setTrailStart] = useState("");
-  const [trailEnd, setTrailEnd] = useState("");
-  const [fromLoc, setFromLoc] = useState<LocationUnion | null | undefined>(null);
-  const [toLoc, setToLoc] = useState<LocationUnion | null | undefined>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [prevLegId, setPrevLegId] = useState<number | null>(null);
-  const [nextLegId, setNextLegId] = useState<number | null>(null);
-  const [prevDate, setPrevDate] = useState("");
-  const [nextDate, setNextDate] = useState("");
   const { toasts, showToast, removeToast } = useToast();
 
   // Fullscreen Photo Modal states & handlers
@@ -106,93 +92,91 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
   const photoUrlsRef = useRef<string[]>([]);
   const touchStartX = useRef(0);
 
+  // Reactive leg + ride context: re-fires when routes are backfilled (e.g. OSRM
+  // snapping finishing after the page mounted), so the map fills in live.
+  const liveData = useLiveQuery(
+    async () => {
+      const legRecord = await db.legs.get(legId);
+      if (!legRecord) return null;
+      const rideRecord = await db.rides.get(legRecord.rideId);
+      const allLegs = await db.legs
+        .where("rideId")
+        .equals(legRecord.rideId)
+        .toArray();
+      const sorted = [...allLegs].sort((a, b) => {
+        const dComp = a.date.localeCompare(b.date);
+        if (dComp !== 0) return dComp;
+        const tA = a.time || '00:00';
+        const tB = b.time || '00:00';
+        return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
+      });
+      return { leg: legRecord, ride: rideRecord, sorted };
+    },
+    [legId]
+  );
+
+  const leg: Leg | null = liveData?.leg ?? null;
+  const sorted = liveData?.sorted ?? [];
+  const loading = liveData === undefined;
+
+  // Photo object URLs, recreated whenever the leg's photo set changes.
   useEffect(() => {
-    let active = true;
+    const blobs = leg?.photos || [];
+    const urls = blobs.map((blob) => URL.createObjectURL(blob));
+    setPhotoUrls(urls);
+    photoUrlsRef.current = urls;
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [leg]);
 
-    async function loadData() {
-      try {
-        const legRecord = await db.legs.get(legId);
-        if (!legRecord) {
-          if (active) onNavigate("#/");
-          return;
-        }
+  // Fade the page in once the leg data has actually rendered.
+  useEffect(() => {
+    if (liveData?.leg) onReady?.();
+  }, [liveData, onReady]);
 
-        const rideRecord = await db.rides.get(legRecord.rideId);
-        const rideName = rideRecord ? rideRecord.title : "Ride Logbook";
-
-        const urls = (legRecord.photos || []).map((blob) =>
-          URL.createObjectURL(blob),
-        );
-
-        const allLegs = await db.legs
-          .where("rideId")
-          .equals(legRecord.rideId)
-          .toArray();
-        const sorted = [...allLegs].sort((a, b) => {
-          const dComp = a.date.localeCompare(b.date);
-          if (dComp !== 0) return dComp;
-          const tA = a.time || '00:00';
-          const tB = b.time || '00:00';
-          return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
-        });
-        const myIdx = sorted.findIndex((l) => l.id === legRecord.id);
-
-        let computedLeg: number | null = null;
-        if (legRecord.km !== null && legRecord.km !== undefined) {
-          computedLeg = legRecord.km;
-        } else if (legRecord.odo !== null && legRecord.odo !== undefined) {
-          if (myIdx > 0) {
-            const prevLeg = sorted[myIdx - 1];
-            if (prevLeg.odo !== null && prevLeg.odo !== undefined) {
-              computedLeg = legRecord.odo - prevLeg.odo;
-              if (computedLeg < 0) computedLeg = null;
-            }
-          } else if (rideRecord?.startOdo !== null && rideRecord?.startOdo !== undefined) {
-            computedLeg = legRecord.odo - rideRecord.startOdo;
-            if (computedLeg < 0) computedLeg = null;
-          }
-        }
-
-        // Trail: start = ride departure (first leg) or previous leg's end point
-        const startLoc =
-          myIdx === 0 ? rideRecord?.startLocation : sorted[myIdx - 1]?.location;
-        const endLoc = legRecord.location;
-
-        if (active) {
-          setLeg(legRecord);
-          setRideTitle(rideName);
-          setPhotoUrls(urls);
-          photoUrlsRef.current = urls;
-          setLegDistance(computedLeg);
-          setLegNum(myIdx + 1);
-          setTotalLegs(sorted.length);
-          setDayNum([...new Set(sorted.map((l) => l.date))].indexOf(legRecord.date) + 1);
-          setTrailStart(locationName(startLoc));
-          setTrailEnd(locationName(endLoc));
-          setFromLoc(startLoc);
-          setToLoc(endLoc);
-          setPrevLegId(myIdx > 0 ? sorted[myIdx - 1].id ?? null : null);
-          setNextLegId(myIdx < sorted.length - 1 ? sorted[myIdx + 1].id ?? null : null);
-          setPrevDate(myIdx > 0 ? formatIsoDateToDMY(sorted[myIdx - 1].date) : "");
-          setNextDate(myIdx < sorted.length - 1 ? formatIsoDateToDMY(sorted[myIdx + 1].date) : "");
-          setLoading(false);
-          onReady?.();
-        }
-      } catch (err) {
-        console.error("Failed to load leg details:", err);
-        if (active) {
-          setLoading(false);
-          onNavigate("#/");
-        }
-      }
+  // If the leg no longer exists, bounce back home (guarded to run once).
+  const redirectedRef = useRef(false);
+  useEffect(() => {
+    if (liveData === null && !redirectedRef.current) {
+      redirectedRef.current = true;
+      onNavigate("#/");
     }
+  }, [liveData, onNavigate]);
 
-    loadData();
-    return () => {
-      active = false;
-      photoUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [legId, onNavigate]);
+  // Derived display values: pure recomputes on every live emit.
+  const rideTitle = liveData?.ride?.title ?? "Ride Logbook";
+  const myIdx = leg ? sorted.findIndex((l) => l.id === leg.id) : -1;
+
+  let legDistance: number | null = null;
+  if (leg && leg.km !== null && leg.km !== undefined) {
+    legDistance = leg.km;
+  } else if (leg && leg.odo !== null && leg.odo !== undefined) {
+    if (myIdx > 0) {
+      const prevLeg = sorted[myIdx - 1];
+      if (prevLeg.odo !== null && prevLeg.odo !== undefined) {
+        legDistance = leg.odo - prevLeg.odo;
+        if (legDistance < 0) legDistance = null;
+      }
+    } else if (liveData?.ride?.startOdo !== null && liveData?.ride?.startOdo !== undefined) {
+      legDistance = leg.odo - liveData.ride.startOdo;
+      if (legDistance < 0) legDistance = null;
+    }
+  }
+
+  // Trail: start = ride departure (first leg) or previous leg's end point
+  const startLoc =
+    myIdx === 0 ? liveData?.ride?.startLocation : myIdx > 0 ? sorted[myIdx - 1]?.location : undefined;
+  const fromLoc: LocationUnion | null | undefined = startLoc;
+  const toLoc: LocationUnion | null | undefined = leg?.location;
+  const trailStart = fromLoc ? locationName(fromLoc) : "";
+  const trailEnd = toLoc ? locationName(toLoc) : "";
+
+  const dayNum = leg ? [...new Set(sorted.map((l) => l.date))].indexOf(leg.date) + 1 : 0;
+  const legNum = myIdx + 1;
+  const totalLegs = sorted.length;
+  const prevLegId = myIdx > 0 ? sorted[myIdx - 1].id ?? null : null;
+  const nextLegId = myIdx >= 0 && myIdx < sorted.length - 1 ? sorted[myIdx + 1].id ?? null : null;
+  const prevDate = myIdx > 0 ? formatIsoDateToDMY(sorted[myIdx - 1].date) : "";
+  const nextDate = myIdx >= 0 && myIdx < sorted.length - 1 ? formatIsoDateToDMY(sorted[myIdx + 1].date) : "";
 
   const handleDelete = async () => {
     if (!leg) return;
