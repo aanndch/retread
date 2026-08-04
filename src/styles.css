@@ -1004,7 +1004,7 @@ button:focus,
 .todo-body {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-xl);
 }
 
 .todo-sub {
@@ -1021,13 +1021,39 @@ button:focus,
 }
 
 .todo-section-label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
   font-family: var(--font-mechanical);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--color-ink);
   border-bottom: 1px solid var(--color-ink);
   padding-bottom: var(--spacing-xs);
+  margin: 0;
+}
+
+.todo-section--planned .todo-section-label {
+  color: var(--color-tint-2);
+  border-bottom-color: var(--color-tint-2);
+}
+
+.todo-count {
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  letter-spacing: 0.5px;
+}
+
+.todo-section--planned .todo-count {
+  color: var(--color-tint-3);
+}
+
+.todo-section-desc {
+  font-family: var(--font-typewriter);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
   margin: 0;
 }
 
@@ -1044,26 +1070,33 @@ button:focus,
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px dashed var(--color-paper-dim);
+}
+
+.todo-item:last-child {
+  border-bottom: none;
 }
 
 .todo-check {
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border: 1px solid var(--color-ink);
   border-radius: var(--border-radius-sm);
   background-color: var(--color-paper);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1;
   margin-top: 1px;
   color: var(--color-paper);
 }
 
 .todo-item.is-done .todo-check {
-  background-color: var(--color-ink);
+  background-color: var(--color-green);
+  border-color: var(--color-green);
 }
 
 .todo-text {
@@ -1071,6 +1104,25 @@ button:focus,
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+
+.todo-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.todo-badge {
+  flex-shrink: 0;
+  font-family: var(--font-mechanical);
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-paper);
+  background-color: var(--color-tint-2);
+  border-radius: var(--border-radius-sm);
+  padding: 1px 5px;
 }
 
 .todo-title {
@@ -1083,10 +1135,11 @@ button:focus,
   font-family: var(--font-mechanical);
   font-size: 10px;
   color: var(--color-ink-muted);
+  line-height: 1.4;
 }
 
 .todo-item:not(.is-done) .todo-title {
-  color: var(--color-ink-muted);
+  color: var(--color-ink);
 }
 
 .editor-form {
