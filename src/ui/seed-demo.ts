@@ -15,6 +15,9 @@ function createMockPhoto(title: string, color: string) {
 }
 
 export async function seedDemoRide(): Promise<number> {
+  // Write everything in a single transaction so the UI updates once (not once
+  // per leg), which avoids the demo card flickering/animating as it appears.
+  return db.transaction('rw', db.rides, db.legs, async () => {
   const newRideId = await db.rides.add({
     title: "Western Ghats Loop",
     createdAt: new Date().toISOString(),
@@ -133,4 +136,5 @@ export async function seedDemoRide(): Promise<number> {
   });
 
   return newRideId;
+  });
 }

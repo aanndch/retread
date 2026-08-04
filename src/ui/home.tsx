@@ -68,6 +68,7 @@ interface HomeProps {
 
 export function Home({ onNavigate, onReady }: HomeProps) {
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsClosing, setSettingsClosing] = useState(false);
   const [themeMode, setThemeMode] = useState<'system' | Theme>('system');
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [seedingDemo, setSeedingDemo] = useState(false);
@@ -108,6 +109,10 @@ export function Home({ onNavigate, onReady }: HomeProps) {
         return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
       });
       const legWithPhoto = sortedLegs.find(l => l.photos && l.photos.length > 0);
+      // Stable key for the cover slot (leg + photo index) so a live-query
+      // re-emit — which returns fresh Blob references for the same bytes —
+      // doesn't recreate the object URL and flicker the cover image.
+      const coverKey = legWithPhoto ? `${legWithPhoto.id}:0` : '';
       // Prefer the small cover thumbnail when available; fall back to full-res
       const firstPhotoBlob = legWithPhoto
         ? (legWithPhoto.photoThumbs && legWithPhoto.photoThumbs.length > 0
@@ -131,6 +136,7 @@ export function Home({ onNavigate, onReady }: HomeProps) {
         ride,
         totalKm: computeTotalDistance(legs, ride.startOdo),
         firstPhotoBlob,
+        coverKey,
         dateRange,
         stopTrail
       });
@@ -157,13 +163,28 @@ export function Home({ onNavigate, onReady }: HomeProps) {
     saveTheme(theme);
   };
 
+  const closeSettings = (afterClose?: () => void) => {
+    if (settingsClosing) return;
+    if (!showSettings) {
+      afterClose?.();
+      return;
+    }
+    setSettingsClosing(true);
+    setTimeout(() => {
+      setShowSettings(false);
+      setSettingsClosing(false);
+      afterClose?.();
+    }, 250);
+  };
+
   const handleSeedDemoRide = async () => {
     if (seedingDemo) return;
     setSeedingDemo(true);
     try {
       await seedDemoRide();
-      setShowSettings(false);
-      showToast("Demo ride added.", "success");
+      // Sequence the reveal: the settings sheet animates out first, letting
+      // the freshly added ride card fade in beneath it before the toast lands.
+      closeSettings(() => showToast("Demo ride added.", "success"));
     } catch (err) {
       console.error("Failed to seed demo data:", err);
       showToast("Error seeding demo data.");
@@ -204,11 +225,11 @@ export function Home({ onNavigate, onReady }: HomeProps) {
 
       {/* Settings Panel Overlay */}
       {showSettings && (
-        <div class="modal-backdrop" onClick={() => setShowSettings(false)}>
-          <div class="modal-content settings-modal" onClick={(e) => e.stopPropagation()}>
+        <div class={`modal-backdrop${settingsClosing ? ' closing' : ''}`} onClick={() => closeSettings()}>
+          <div class={`modal-content settings-modal${settingsClosing ? ' closing' : ''}`} onClick={(e) => e.stopPropagation()}>
             <div class="modal-header">
               <h3>Settings</h3>
-              <Button variant="icon" class="btn-close" aria-label="Close settings" onClick={() => setShowSettings(false)}>
+              <Button variant="icon" class="btn-close" aria-label="Close settings" onClick={() => closeSettings()}>
                 <CloseIcon />
               </Button>
             </div>
@@ -241,7 +262,7 @@ export function Home({ onNavigate, onReady }: HomeProps) {
                   <Button 
                     variant="secondary" 
                     size="sm"
-                    onClick={() => { setShowSettings(false); onNavigate('#/backup'); }}
+                    onClick={() => closeSettings(() => onNavigate('#/backup'))}
                   >
                     Backup & Restore
                   </Button>
@@ -308,12 +329,13 @@ export function Home({ onNavigate, onReady }: HomeProps) {
           <>
             <p class="ride-book-label">Ride Book</p>
             <div class="rides-grid">
-              {ridesData.map(({ ride, totalKm, firstPhotoBlob, dateRange, stopTrail }) => (
+              {ridesData.map(({ ride, totalKm, firstPhotoBlob, coverKey, dateRange, stopTrail }) => (
                 <RideCard 
                   key={ride.id} 
                   ride={ride} 
                   totalKm={totalKm} 
                   firstPhotoBlob={firstPhotoBlob} 
+                  coverKey={coverKey}
                   dateRange={dateRange}
                   stopTrail={stopTrail}
                 />
@@ -343,24 +365,36 @@ export function Home({ onNavigate, onReady }: HomeProps) {
   );
 }
 
+// Object URLs for ride cover images, cached by the cover slot (leg + photo
+// index). Live-query re-emits hand back fresh Blob references for identical
+// bytes, so without this the cover would re-decode and flicker on every emit.
+const coverUrlCache = new Map<string, { blob: Blob; url: string }>();
+
 interface RideCardProps {
   ride: Ride;
   totalKm: number;
   firstPhotoBlob: Blob | null;
+  coverKey: string;
   dateRange: string;
   stopTrail: string;
 }
 
-function RideCard({ ride, totalKm, firstPhotoBlob, dateRange, stopTrail }: RideCardProps) {
+function RideCard({ ride, totalKm, firstPhotoBlob, coverKey, dateRange, stopTrail }: RideCardProps) {
   const [imgUrl, setImgUrl] = useState('');
 
-  // Handle object URL lifecycle to prevent memory leaks
+  // Reuse the cached object URL for the same cover slot; only create a new one
+  // when the cover actually changes (different leg/photo).
   useEffect(() => {
-    if (!firstPhotoBlob) return;
+    if (!firstPhotoBlob || !coverKey) return;
+    const cached = coverUrlCache.get(coverKey);
+    if (cached) {
+      setImgUrl(cached.url);
+      return;
+    }
     const url = URL.createObjectURL(firstPhotoBlob);
+    coverUrlCache.set(coverKey, { blob: firstPhotoBlob, url });
     setImgUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [firstPhotoBlob]);
+  }, [firstPhotoBlob, coverKey]);
 
   return (
     <a href={`#/ride/${ride.id}`} class="ride-card-link">
