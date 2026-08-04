@@ -17,6 +17,7 @@ import type { Leg, LocationUnion } from "../types";
 interface LegDetailProps {
   legId: number;
   onNavigate: (route: string) => void;
+  onNavigateBack: (logicalParent: string | null) => void;
   onReady?: () => void;
 }
 
@@ -45,7 +46,7 @@ function LegTrail({ start, end }: { start: string; end: string }) {
   );
 }
 
-export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
+export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDetailProps) {
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -254,7 +255,7 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
     <div class="leg-detail-container">
       {/* Top bar: back + edit + delete */}
       <PageHeader
-        onBack={() => onNavigate(`#/ride/${leg.rideId}`)}
+        onBack={() => onNavigateBack(`#/ride/${leg.rideId}`)}
         onEdit={() => onNavigate(`#/edit?mode=edit&legId=${legId}`)}
         onDelete={() => setShowDeleteModal(true)}
       />

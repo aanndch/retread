@@ -27,6 +27,7 @@ import {
 
 interface BackupProps {
   onNavigate: (route: string) => void;
+  onNavigateBack: (logicalParent: string | null) => void;
 }
 
 interface BackupPayload {
@@ -46,7 +47,7 @@ interface BackupPayload {
   }[];
 }
 
-export function Backup({ onNavigate }: BackupProps) {
+export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
   const [working, setWorking] = useState(false);
   const [statusText, setStatusText] = useState('');
   const [showConfirmRestore, setShowConfirmRestore] = useState(false);
@@ -426,7 +427,7 @@ export function Backup({ onNavigate }: BackupProps) {
 
   return (
     <div class="backup-container">
-      <PageHeader onBack={() => onNavigate(HASH_HOME)} disabled={working} />
+      <PageHeader onBack={() => onNavigateBack(HASH_HOME)} disabled={working} />
 
       <main class="backup-body">
         <h2 class="page-heading">Backup & Restore</h2>

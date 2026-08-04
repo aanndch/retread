@@ -29,6 +29,13 @@ export function App() {
   const isPopRef = useRef(false);
   const revealTimerRef = useRef<number | null>(null);
   const swapTimerRef = useRef<number | null>(null);
+  // Depth of in-app entries pushed above the initial load. The in-app back
+  // button pops one of these with history.back() when > 0; at 0 it falls back
+  // to navigating (replace) to the page's logical parent so a deep link never
+  // accidentally leaves the app. A replace-fallback marks skipDepth so the
+  // resulting hashchange isn't counted as a fresh forward push.
+  const navDepthRef = useRef(0);
+  const skipDepthRef = useRef(false);
 
   // Reveal the new route once its content is ready to render (fade-in gate).
   const finishTransition = useCallback(() => {
@@ -97,6 +104,18 @@ export function App() {
       const isPop = isPopRef.current && nextHash !== prevHash;
       isPopRef.current = false;
 
+      // Keep the in-app depth counter in sync so navigateBack knows whether a
+      // history.back() is safe. Pops subtract, forward pushes add; a
+      // replace-fallback from navigateBack is flagged with skipDepth so the
+      // resulting hashchange isn't counted as a fresh push.
+      if (skipDepthRef.current) {
+        skipDepthRef.current = false;
+      } else if (isPop) {
+        navDepthRef.current = Math.max(0, navDepthRef.current - 1);
+      } else {
+        navDepthRef.current += 1;
+      }
+
       // Content-gated transition (Option A): fade the outgoing route out,
       // swap the route once that fade completes, then keep the viewport
       // invisible until the routed view reports its data is rendered (via
@@ -149,6 +168,21 @@ export function App() {
     window.location.hash = route;
   }, []);
 
+  // Back navigation: pop the browser history when there's an in-app entry to
+  // return to, otherwise fall back to the page's logical parent (replacing the
+  // current entry so a deep link doesn't pile up). At the root with no history
+  // there is no parent, so back simply does nothing and Android back exits.
+  const navigateBack = useCallback((logicalParent: string | null) => {
+    if (navDepthRef.current > 0) {
+      history.back();
+      return;
+    }
+    if (logicalParent) {
+      skipDepthRef.current = true;
+      window.location.replace(logicalParent);
+    }
+  }, []);
+
   // 1. Force Setup Wizard on first launch
   if (!setupComplete) {
     return (
@@ -179,22 +213,22 @@ export function App() {
       const rideId = hash.split('/').pop();
       const parsedId = rideId ? parseInt(rideId, 10) : NaN;
       if (isNaN(parsedId)) return <Home onNavigate={navigateTo} onReady={finishTransition} />;
-      return <RideDetail rideId={parsedId} onNavigate={navigateTo} onReady={finishTransition} />;
+      return <RideDetail rideId={parsedId} onNavigate={navigateTo} onNavigateBack={navigateBack} onReady={finishTransition} />;
     }
 
     if (hash.startsWith(HASH_LEG_PREFIX)) {
       const legId = hash.split('/').pop();
       const parsedId = legId ? parseInt(legId, 10) : NaN;
       if (isNaN(parsedId)) return <Home onNavigate={navigateTo} onReady={finishTransition} />;
-      return <LegDetail legId={parsedId} onNavigate={navigateTo} onReady={finishTransition} />;
+      return <LegDetail legId={parsedId} onNavigate={navigateTo} onNavigateBack={navigateBack} onReady={finishTransition} />;
     }
 
     if (hash.startsWith(HASH_EDIT)) {
-      return <Editor onNavigate={navigateTo} />;
+      return <Editor onNavigate={navigateTo} onNavigateBack={navigateBack} />;
     }
 
     if (hash === HASH_BACKUP) {
-      return <Backup onNavigate={navigateTo} />;
+      return <Backup onNavigate={navigateTo} onNavigateBack={navigateBack} />;
     }
 
     // Fallback 404

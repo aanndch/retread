@@ -45,10 +45,20 @@ export interface DriveBackupFile {
 }
 
 // ---------------------------------------------------------------------------
-// Token Management (memory-only)
+// Token Management (session-scoped)
 // ---------------------------------------------------------------------------
 
 let cachedToken: string | null = null;
+
+// The token lives in sessionStorage too so the OAuth return's history collapse
+// (which reloads the page back to the pre-auth entry) doesn't lose the
+// connection. sessionStorage is cleared when the tab closes, so this is still
+// transient — no token ever persists across sessions.
+const OAUTH_TOKEN_KEY = 'retread-gdrive-token';
+
+// Restore a token left by an earlier OAuth return in this tab.
+const storedToken = sessionStorage.getItem(OAUTH_TOKEN_KEY);
+if (storedToken) cachedToken = storedToken;
 
 export function getAccessToken(): string | null {
   return cachedToken;
@@ -56,6 +66,8 @@ export function getAccessToken(): string | null {
 
 export function setAccessToken(token: string | null): void {
   cachedToken = token;
+  if (token) sessionStorage.setItem(OAUTH_TOKEN_KEY, token);
+  else sessionStorage.removeItem(OAUTH_TOKEN_KEY);
 }
 
 export function isConnected(): boolean {
@@ -76,6 +88,10 @@ export function isConnected(): boolean {
 
 const OAUTH_STATE_KEY = 'retread-gdrive-oauth-state';
 const OAUTH_RESULT_KEY = 'retread-gdrive-oauth-result';
+// Browser history.length at the moment we navigate away to Google. On the way
+// back, handleOAuthRedirect() walks back past the Google pages to this entry
+// so Android back never re-traverses the OAuth flow.
+const OAUTH_HISTORY_BASELINE_KEY = 'retread-gdrive-oauth-history-baseline';
 
 function oauthRedirectUri(): string {
   const base = `${window.location.origin}${window.location.pathname}`;
@@ -111,6 +127,9 @@ export function requestAccessToken(): Promise<string> {
     });
 
     try {
+      // Record where we are before leaving, so the return can collapse the
+      // Google pages out of the back stack (see handleOAuthRedirect).
+      sessionStorage.setItem(OAUTH_HISTORY_BASELINE_KEY, String(window.history.length));
       window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
     } catch (err) {
       reject(new Error(describeOAuthError(err)));
@@ -143,7 +162,7 @@ export function handleOAuthRedirect(): boolean {
   } else if (!expectedState || state !== expectedState) {
     setOAuthResult(false, 'Authorization expired — try connecting again.');
   } else {
-    cachedToken = token;
+    setAccessToken(token);
     setOAuthResult(true);
     // The Backup view may already be mounted (same-document return), so notify
     // it directly in addition to the sessionStorage marker consumed on mount.
@@ -151,6 +170,22 @@ export function handleOAuthRedirect(): boolean {
   }
 
   history.replaceState(null, '', `${window.location.pathname}${window.location.search}${HASH_BACKUP}`);
+
+  // Collapse the Google pages out of the back stack so Android back from the
+  // backup page goes to the app's previous page instead of re-walking the whole
+  // OAuth flow. depth is how many history entries were added since we recorded
+  // the baseline in requestAccessToken(); landing on the pre-OAuth entry reloads
+  // the app there, where consumeOAuthResult() surfaces the outcome and the token
+  // (persisted in sessionStorage) keeps the connection alive.
+  const baselineRaw = sessionStorage.getItem(OAUTH_HISTORY_BASELINE_KEY);
+  sessionStorage.removeItem(OAUTH_HISTORY_BASELINE_KEY);
+  if (baselineRaw !== null) {
+    const baseline = parseInt(baselineRaw, 10);
+    const depth = window.history.length - baseline;
+    if (depth > 0) {
+      window.history.go(-depth);
+    }
+  }
   return true;
 }
 
@@ -198,6 +233,7 @@ export function disconnect(): void {
     }
   }
   cachedToken = null;
+  sessionStorage.removeItem(OAUTH_TOKEN_KEY);
 }
 
 // ---------------------------------------------------------------------------

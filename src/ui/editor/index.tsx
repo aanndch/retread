@@ -80,9 +80,10 @@ const formReducer = (state: EditorState, action: Partial<EditorState>) => {
 
 interface EditorProps {
   onNavigate: (route: string) => void;
+  onNavigateBack: (logicalParent: string | null) => void;
 }
 
-export function Editor({ onNavigate }: EditorProps) {
+export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   // Parse routing parameters from hash
   const hashParts = window.location.hash.split('?');
   const params = new URLSearchParams(hashParts[1] || '');
@@ -447,10 +448,13 @@ export function Editor({ onNavigate }: EditorProps) {
     }
   };
 
-  const triggerClose = (path: string) => {
+  // Cancel closes back to the page's logical parent (pops in-app history when
+  // possible). Save moves forward to the created/edited page (pushes). Both
+  // share the same exit fade, so the nav function is passed in.
+  const triggerClose = (nav: (path: string) => void, path: string) => {
     setIsClosing(true);
     setTimeout(() => {
-      onNavigate(path);
+      nav(path);
     }, 100);
   };
 
@@ -473,7 +477,7 @@ export function Editor({ onNavigate }: EditorProps) {
 
     try {
       const redirectPath = await saveEditorDetails(mode, rideId, legId, state);
-      triggerClose(redirectPath);
+      triggerClose(onNavigate, redirectPath);
     } catch (err) {
       showToast((err as Error).message);
     }
@@ -481,11 +485,11 @@ export function Editor({ onNavigate }: EditorProps) {
 
   const handleCancel = () => {
     if (mode === 'edit' && legId !== null) {
-      triggerClose(`#/leg/${legId}`);
+      triggerClose(onNavigateBack, `#/leg/${legId}`);
     } else if (mode === 'new-leg' || mode === 'edit-ride') {
-      triggerClose(`#/ride/${rideId}`);
+      triggerClose(onNavigateBack, `#/ride/${rideId}`);
     } else {
-      triggerClose('#/');
+      triggerClose(onNavigateBack, '#/');
     }
   };
 

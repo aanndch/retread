@@ -62,6 +62,7 @@ function DayPhotoRail({ legs, onNavigate }: { legs: Leg[]; onNavigate: (route: s
 interface RideDetailProps {
   rideId: number;
   onNavigate: (route: string) => void;
+  onNavigateBack: (logicalParent: string | null) => void;
   onReady?: () => void;
 }
 
@@ -105,7 +106,7 @@ function RouteTrail({ stops }: { stops: string[] }) {
   );
 }
 
-export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
+export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: RideDetailProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
 
@@ -287,7 +288,7 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
     <div class="ride-detail-container">
       {/* Top bar: back + edit + delete */}
       <PageHeader
-        onBack={() => onNavigate(HASH_HOME)}
+        onBack={() => onNavigateBack(HASH_HOME)}
         onEdit={() => onNavigate(`#/edit?mode=edit-ride&rideId=${rideId}`)}
         onDelete={() => setShowDeleteModal(true)}
       />
