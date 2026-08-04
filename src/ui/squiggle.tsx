@@ -167,16 +167,23 @@ export function SquiggleMap({
       if (p.lng > maxLng) maxLng = p.lng;
     }
 
-    const padding = 14;
+    // Reserve room for the compass (top-right) and caption (bottom-right) so the
+    // route never runs underneath them; left/right stay at the base inset.
+    const leftPad = 14;
+    const rightPad = 14;
+    const topPad = compass ? 32 : 14;
+    const bottomPad = caption ? 20 : 14;
     const latSpan = Math.max(maxLat - minLat, 0.0001);
     const lngSpan = Math.max(maxLng - minLng, 0.0001);
 
-    const scaleX = (width - 2 * padding) / lngSpan;
-    const scaleY = (height - 2 * padding) / latSpan;
+    const contentH = height - topPad - bottomPad;
+    const contentW = width - leftPad - rightPad;
+    const scaleX = contentW / lngSpan;
+    const scaleY = contentH / latSpan;
     const scale = Math.min(scaleX, scaleY);
 
-    const xOffset = (width - lngSpan * scale) / 2;
-    const yOffset = (height - latSpan * scale) / 2;
+    const xOffset = leftPad + (contentW - lngSpan * scale) / 2;
+    const yOffset = topPad + (contentH - latSpan * scale) / 2;
 
     const project = (p: { lat: number; lng: number }) => ({
       x: xOffset + (p.lng - minLng) * scale,
@@ -207,7 +214,7 @@ export function SquiggleMap({
       routeStartPt: firstSegPts.length ? project(firstSegPts[0]) : null,
       routeEndPt: lastSegPts.length ? project(lastSegPts[lastSegPts.length - 1]) : null,
     };
-  }, [hasContent, allPts, simplified, width, height]);
+  }, [hasContent, allPts, simplified, width, height, compass, caption]);
 
   // Explicit start/end stops override the route-derived markers; everything
   // else renders as an intermediate stop.
