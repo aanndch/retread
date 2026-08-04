@@ -371,34 +371,49 @@ export async function performRestore(
     return await res.blob();
   };
 
+  // Prepare every record BEFORE the transaction: Dexie cannot track the
+  // non-Dexie awaits inside a transaction (fetch/blob/thumbnail), so doing
+  // them there would commit it too early and throw "transaction committed too
+  // early" — with the rides already written, making the restore appear to
+  // succeed anyway. Pre-compute everything, then run a pure-Dexie transaction.
+  const ridesToAdd = payload.rides.map(({ id: _oldId, ...rideData }) => rideData);
+
+  const legsToAdd: {
+    leg: BackupPayload['legs'][number];
+    photoBlobs: Blob[];
+    photoThumbs: Blob[];
+  }[] = [];
+  for (const leg of payload.legs) {
+    const photoBlobs: Blob[] = [];
+    const photoThumbs: Blob[] = [];
+    if (leg.photos) {
+      for (const base64 of leg.photos) {
+        const blob = await base64ToBlob(base64);
+        photoBlobs.push(blob);
+        try {
+          photoThumbs.push(await createThumbnail(blob));
+        } catch {
+          photoThumbs.push(blob); // keep arrays aligned even if thumb fails
+        }
+      }
+    }
+    legsToAdd.push({ leg, photoBlobs, photoThumbs });
+  }
+
   await db.transaction('rw', db.rides, db.legs, async () => {
     await db.rides.clear();
     await db.legs.clear();
 
     const rideIdMapping = new Map<number, number>();
-    for (const ride of payload.rides) {
-      const { id: _oldId, ...rideData } = ride;
-      const newId = await db.rides.add(rideData) as number;
+    for (let i = 0; i < ridesToAdd.length; i++) {
+      const newId = await db.rides.add(ridesToAdd[i]) as number;
+      const _oldId = payload.rides[i].id;
       if (_oldId !== undefined) rideIdMapping.set(_oldId, newId);
     }
 
-    for (const leg of payload.legs) {
+    for (const { leg, photoBlobs, photoThumbs } of legsToAdd) {
       const mappedRideId = rideIdMapping.get(leg.rideId);
       if (mappedRideId === undefined) continue;
-
-      const photoBlobs: Blob[] = [];
-      const photoThumbs: Blob[] = [];
-      if (leg.photos) {
-        for (const base64 of leg.photos) {
-          const blob = await base64ToBlob(base64);
-          photoBlobs.push(blob);
-          try {
-            photoThumbs.push(await createThumbnail(blob));
-          } catch {
-            photoThumbs.push(blob); // keep arrays aligned even if thumb fails
-          }
-        }
-      }
 
       await db.legs.add({
         rideId: mappedRideId,
