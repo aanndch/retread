@@ -214,7 +214,7 @@ export function MetricsStep({
                   setStartOdo(val ? parseFloat(val) : null);
                 }}
               />
-              <span class="field-tip">Record the odometer at each stop. Starting reading anchors Day 1.</span>
+              <span class="field-tip">Record the odometer at each stop. Starting reading anchors your first leg.</span>
             </div>
           )}
         </div>

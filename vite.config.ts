@@ -21,7 +21,7 @@ export default defineConfig({
         short_name: 'Retread',
         id: '/retread/',
         scope: '/retread/',
-        description: 'A journal for well-tread journeys.',
+        description: 'A logbook for well-tread rides.',
         theme_color: '#1a1a1a',
         background_color: '#1a1a1a',
         display: 'standalone',

@@ -151,7 +151,7 @@ retread/
 - [x] Implement the routing controller inside `src/App.tsx` responding to `#/...` hash paths.
 
 ### **Phase 4: Editors & Backup/Restore**
-- [x] Construct the unified form component `src/ui/editor.tsx` supporting `new-trip`, `new-day`, and `edit` states.
+- [x] Construct the unified form component `src/ui/editor/index.tsx` supporting `new-trip`, `new-leg`, and `edit` states.
 - [x] Wire multi-file image upload inside the editor to process files through the canvas compressor.
 - [x] Build JSON exporter inside `src/ui/backup.tsx` (packaging trip indexes and base64 encoded photo blobs).
 - [x] Build JSON importer inside `src/ui/backup.tsx` (clearing existing records, restoring indexes, and reloading states).

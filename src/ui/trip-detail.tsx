@@ -301,7 +301,7 @@ export function TripDetail({ tripId, onNavigate, onReady }: TripDetailProps) {
                 <circle cx="3" cy="17" r="1.6" fill="currentColor" />
                 <circle cx="21" cy="10" r="1.6" fill="currentColor" />
               </svg>
-              <p>Log 2+ days with GPS pins to draw your ride route map.</p>
+              <p>Log 2+ legs with GPS pins to draw your ride route map.</p>
             </div>
           )}
         </section>
