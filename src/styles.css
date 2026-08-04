@@ -213,15 +213,6 @@ body {
   transition: opacity 0.12s ease-out;
 }
 
-@keyframes page-slide-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @keyframes page-slide-out {
   from {
     opacity: 1;
@@ -863,7 +854,6 @@ button:focus,
   display: flex;
   flex-direction: column;
   flex: 1; /* Stretch to fill the entire remaining height of the locked viewport */
-  animation: page-slide-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 .editor-container.closing {

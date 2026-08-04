@@ -113,16 +113,18 @@ export function App() {
         } else {
           finishTransition();
         }
-      }, 120);
 
-      // Restore or reset scroll position after the new view mounts
-      requestAnimationFrame(() => {
-        if (isPop) {
-          restoreScroll(scrollCacheRef.current.get(nextHash));
-        } else {
-          window.scrollTo(0, 0);
-        }
-      });
+        // Restore or reset scroll only after the outgoing view has faded out
+        // and the new one has mounted. Snapping earlier would yank a scrolled
+        // page to the top while it is still visible and fading out.
+        requestAnimationFrame(() => {
+          if (isPop) {
+            restoreScroll(scrollCacheRef.current.get(nextHash));
+          } else {
+            window.scrollTo(0, 0);
+          }
+        });
+      }, 120);
     };
 
     const handlePop = () => {
