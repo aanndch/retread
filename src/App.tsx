@@ -23,6 +23,7 @@ export function App() {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [showContent, setShowContent] = useState(true);
   const [hasSWUpdate, setHasSWUpdate] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const appPrompt = useAppPrompts();
   const [dismissedPrompt, setDismissedPrompt] = useState(false);
   const activePrompt = dismissedPrompt ? null : appPrompt;
@@ -170,6 +171,21 @@ export function App() {
     window.location.hash = route;
   }, []);
 
+  // Show the scroll-to-top button once the page has scrolled down far enough
+  // to be worth jumping back. Hides again when near the top.
+  useEffect(() => {
+    const onScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Back navigation: pop the browser history when there's an in-app entry to
   // return to, otherwise fall back to the page's logical parent (replacing the
   // current entry so a deep link doesn't pile up). At the root with no history
@@ -263,6 +279,20 @@ export function App() {
       <main class={`viewport${showContent ? '' : ' preparing'}`}>
         {renderRoute()}
       </main>
+
+      {showScrollTop && (
+        <button
+          type="button"
+          class="btn-scroll-top"
+          aria-label="Scroll to top"
+          onClick={scrollToTop}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
+          </svg>
+        </button>
+      )}
 
       {activePrompt === 'pwa-install' && (
         <PWAInstallPrompt onClose={() => setDismissedPrompt(true)} />

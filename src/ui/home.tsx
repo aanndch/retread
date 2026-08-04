@@ -21,6 +21,15 @@ function monthLabel(monthKey: string): string {
 // Sentinel month key for rides that have no legs yet (undated drafts).
 const DRAFT_MONTH_KEY = '__drafts';
 
+// "2026-07" -> "JUL 26" for the compact month index chips.
+function monthChipLabel(monthKey: string): string {
+  if (monthKey === DRAFT_MONTH_KEY) return 'DRAFTS';
+  const [year, month] = monthKey.split('-');
+  const name = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1)
+    .toLocaleDateString(undefined, { month: 'short' });
+  return `${name.toUpperCase()} ${year.slice(2)}`;
+}
+
 export function TypewriterKey({ size = 40 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" style={{ display: 'block', flexShrink: 0 }}>
@@ -281,6 +290,13 @@ export function Home({ onNavigate, onReady }: HomeProps) {
     });
   }
 
+  // Jump to a month section (or the drafts section) instead of scrolling.
+  const scrollToMonth = (monthKey: string) => {
+    const el = document.getElementById(`month-${monthKey}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <div class="home-container">
       {/* Top Header Bar — pinned like every page top bar */}
@@ -429,8 +445,22 @@ export function Home({ onNavigate, onReady }: HomeProps) {
           </div>
         ) : (
           <div class="ride-book">
+            {monthGroups.length > 1 && (
+              <nav class="month-index" aria-label="Jump to month">
+                {monthGroups.map((group) => (
+                  <button
+                    type="button"
+                    class="month-index-chip"
+                    key={group.monthKey}
+                    onClick={() => scrollToMonth(group.monthKey)}
+                  >
+                    {monthChipLabel(group.monthKey)}
+                  </button>
+                ))}
+              </nav>
+            )}
             {monthGroups.map((group) => (
-              <section class="month-group" key={group.monthKey}>
+              <section class="month-group" id={`month-${group.monthKey}`} key={group.monthKey}>
                 <header class="month-group-header">
                   <span class="month-group-label">{group.label}</span>
                   <span class="month-group-meta">

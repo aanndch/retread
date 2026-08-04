@@ -392,6 +392,37 @@ button:focus,
   box-shadow: 0px 0px 0px var(--color-ink);
 }
 
+/* Scroll-to-top button: minimal, sits clear of the centered FAB at bottom-right */
+.btn-scroll-top {
+  position: fixed;
+  right: calc(var(--spacing-lg) + env(safe-area-inset-right));
+  bottom: calc(var(--spacing-xl) + env(safe-area-inset-bottom));
+  width: 40px;
+  height: 40px;
+  border-radius: var(--border-radius);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  box-shadow: 2px 2px 0px var(--color-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.1s ease;
+}
+
+.btn-scroll-top:hover {
+  background-color: var(--color-paper-dim);
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px var(--color-shadow);
+}
+
+.btn-scroll-top:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px var(--color-shadow);
+}
+
 /* Home Header — pinned like every page top bar: paper fills the strip above
    and a 2px overhang prevents card-shadow bleed. The month-group headers stick
    just below it via the same sticky-topbar offset used by day-group headers. */
@@ -866,9 +897,52 @@ button:focus,
   gap: var(--spacing-lg);
 }
 
+/* Compact month index chips for jumping to a month without scrolling.
+   Single horizontal strip that scrolls when there are many months. */
+.month-index {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+  padding-bottom: var(--spacing-xs);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.month-index::-webkit-scrollbar {
+  display: none;
+}
+
+.month-index-chip {
+  flex: 0 0 auto;
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  background: none;
+  border: 1px solid var(--color-ink-muted);
+  border-radius: var(--border-radius-sm);
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: color 0.1s ease, border-color 0.1s ease, background-color 0.1s ease;
+}
+
+.month-index-chip:hover {
+  color: var(--color-ink);
+  border-color: var(--color-ink);
+  background-color: var(--color-paper-dim);
+}
+
+.month-index-chip:active {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+}
+
 .month-group {
   display: flex;
   flex-direction: column;
+  /* Land below the pinned home header when jumped to via the month index. */
+  scroll-margin-top: calc(var(--sticky-topbar-inset) + var(--sticky-topbar-offset));
 }
 
 .month-group-header {
