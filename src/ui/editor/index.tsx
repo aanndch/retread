@@ -287,6 +287,9 @@ export function Editor({ onNavigate }: EditorProps) {
   }, []);
 
   if (!mode) {
+    if (isClosing) {
+      return <div class="editor-container closing" />;
+    }
     return <p class="loading-text">Invalid editor mode.</p>;
   }
 

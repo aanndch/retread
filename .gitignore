@@ -28,3 +28,6 @@ coverage/
 
 # Review docs
 CODE_REVIEW.md
+
+# Local agent instructions
+AGENTS.md

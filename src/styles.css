@@ -234,12 +234,14 @@ body {
 }
 
 /* Lock viewport height while the editor is open: it fits the screen but
-   scrolls internally when the form overflows. */
+   scrolls internally when the form overflows. Padding-top is intentionally 0:
+   sticky offsets are measured from the scroll container's padding edge, so a
+   nonzero padding-top would push the pinned page-header below its 12px inset. */
 .viewport:has(.editor-container) {
   height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   overflow-y: auto;
-  padding-top: var(--sticky-topbar-inset);
+  padding-top: 0;
   padding-bottom: var(--spacing-md);
   box-sizing: border-box;
 }
