@@ -166,13 +166,21 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
   const trailStart = fromLoc ? locationName(fromLoc) : "";
   const trailEnd = toLoc ? locationName(toLoc) : "";
 
-  const dayNum = leg ? [...new Set(sorted.map((l) => l.date))].indexOf(leg.date) + 1 : 0;
+  const uniqueDates = [...new Set(sorted.map((l) => l.date))];
+  const dayNumFor = (date: string) => uniqueDates.indexOf(date) + 1;
+  const dayNum = leg ? dayNumFor(leg.date) : 0;
   const legNum = myIdx + 1;
   const totalLegs = sorted.length;
-  const prevLegId = myIdx > 0 ? sorted[myIdx - 1].id ?? null : null;
-  const nextLegId = myIdx >= 0 && myIdx < sorted.length - 1 ? sorted[myIdx + 1].id ?? null : null;
-  const prevDate = myIdx > 0 ? formatIsoDateToDMY(sorted[myIdx - 1].date) : "";
-  const nextDate = myIdx >= 0 && myIdx < sorted.length - 1 ? formatIsoDateToDMY(sorted[myIdx + 1].date) : "";
+  const prevLeg = myIdx > 0 ? sorted[myIdx - 1] : null;
+  const nextLeg = myIdx >= 0 && myIdx < sorted.length - 1 ? sorted[myIdx + 1] : null;
+  const prevLegId = prevLeg?.id ?? null;
+  const nextLegId = nextLeg?.id ?? null;
+  // A day boundary is only worth signalling when the adjacent leg starts a new
+  // day; same-day legs show just the title since they share this leg's day.
+  const prevDayChange = prevLeg ? prevLeg.date !== leg?.date : false;
+  const nextDayChange = nextLeg ? nextLeg.date !== leg?.date : false;
+  const prevLegDay = prevLeg ? dayNumFor(prevLeg.date) : 0;
+  const nextLegDay = nextLeg ? dayNumFor(nextLeg.date) : 0;
 
   const handleDelete = async () => {
     if (!leg) return;
@@ -385,7 +393,14 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
               <ArrowLeft size={12} />
               <span>Prev</span>
             </span>
-            {prevDate && <span class="pager-date">{prevDate}</span>}
+            {prevLeg && (
+              <>
+                <span class="pager-leg-title">{prevLeg.title || "Untitled Leg"}</span>
+                {prevDayChange && prevLegDay > 0 && (
+                  <span class="pager-day">Day {prevLegDay}</span>
+                )}
+              </>
+            )}
           </Button>
           <span class="pager-center">{legNum} / {totalLegs}</span>
           <Button
@@ -398,7 +413,14 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
               <span>Next</span>
               <ArrowRight size={12} />
             </span>
-            {nextDate && <span class="pager-date">{nextDate}</span>}
+            {nextLeg && (
+              <>
+                <span class="pager-leg-title">{nextLeg.title || "Untitled Leg"}</span>
+                {nextDayChange && nextLegDay > 0 && (
+                  <span class="pager-day">Day {nextLegDay}</span>
+                )}
+              </>
+            )}
           </Button>
         </section>
       </main>

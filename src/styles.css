@@ -2004,7 +2004,7 @@ input[type=number] {
 
 .leg-pager {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--spacing-sm);
   margin-top: var(--spacing-md);
   margin-bottom: var(--spacing-xl);
@@ -2035,14 +2035,26 @@ input[type=number] {
   font-size: 11px;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.pager-date {
+.pager-leg-title {
   font-family: var(--font-typewriter);
   font-size: 12px;
   font-weight: bold;
   color: var(--color-ink);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pager-day {
+  font-family: var(--font-mechanical);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
 }
 
 .pager-center {
