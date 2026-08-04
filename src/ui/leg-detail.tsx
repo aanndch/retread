@@ -9,7 +9,8 @@ import {
   EditIcon,
   TrashIcon,
 } from "../components/icons";
-import { SquiggleMap } from "./squiggle";
+import { SquiggleMap, DAY_COLORS } from "./squiggle";
+import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
 import { PhotoOverlay } from "../components/photo-overlay";
 import { backfillRideRoutes } from "../road";
@@ -59,6 +60,8 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
   const [dayNum, setDayNum] = useState(0);
   const [trailStart, setTrailStart] = useState("");
   const [trailEnd, setTrailEnd] = useState("");
+  const [fromLoc, setFromLoc] = useState<LocationUnion | null | undefined>(null);
+  const [toLoc, setToLoc] = useState<LocationUnion | null | undefined>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [prevLegId, setPrevLegId] = useState<number | null>(null);
   const [nextLegId, setNextLegId] = useState<number | null>(null);
@@ -166,6 +169,8 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
           setDayNum([...new Set(sorted.map((l) => l.date))].indexOf(legRecord.date) + 1);
           setTrailStart(locationName(startLoc));
           setTrailEnd(locationName(endLoc));
+          setFromLoc(startLoc);
+          setToLoc(endLoc);
           setPrevLegId(myIdx > 0 ? sorted[myIdx - 1].id ?? null : null);
           setNextLegId(myIdx < sorted.length - 1 ? sorted[myIdx + 1].id ?? null : null);
           setPrevDate(myIdx > 0 ? formatIsoDateToDMY(sorted[myIdx - 1].date) : "");
@@ -211,6 +216,52 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
 
   const shortDate = formatIsoDateToDMY(leg.date);
 
+  // Map inputs: day-tinted route segment, named start/end stops, and a
+  // single destination pin for GPS-only legs. Day color mirrors the ride
+  // page's day-group swatch for continuity when deep-linking into a leg.
+  const dayColor = DAY_COLORS[Math.max(0, dayNum - 1) % DAY_COLORS.length];
+  const hasRoute = !!leg.roadPath && leg.roadPath.length >= 2;
+
+  const mapSegments: SquiggleSegment[] | undefined = hasRoute
+    ? [{ path: leg.roadPath!, fallback: leg.roadPath!.length <= 2, color: dayColor }]
+    : undefined;
+
+  const mapStops: SquiggleStop[] = [];
+  if (hasRoute) {
+    if (fromLoc?.kind === "gps") {
+      mapStops.push({
+        lat: fromLoc.lat,
+        lng: fromLoc.lng,
+        label: fromLoc.name || "Start",
+        kind: "start",
+      });
+    }
+    if (toLoc?.kind === "gps") {
+      const loopsHome =
+        fromLoc?.kind === "gps" &&
+        Math.abs(toLoc.lat - fromLoc.lat) < 0.001 &&
+        Math.abs(toLoc.lng - fromLoc.lng) < 0.001;
+      if (!loopsHome) {
+        mapStops.push({
+          lat: toLoc.lat,
+          lng: toLoc.lng,
+          label: toLoc.name || "",
+          kind: "end",
+        });
+      }
+    }
+  } else if (leg.location?.kind === "gps") {
+    mapStops.push({
+      lat: leg.location.lat,
+      lng: leg.location.lng,
+      label: leg.location.name || "",
+      kind: "end",
+    });
+  }
+
+  const mapCaption =
+    legDistance !== null && legDistance !== undefined ? `${legDistance} km` : "";
+
   return (
     <div class="leg-detail-container">
       {/* Top bar: back + edit + delete */}
@@ -254,17 +305,13 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
 
         {/* Segment route map */}
         <section class="ride-map-hero">
-          {leg.roadPath && leg.roadPath.length >= 2 ? (
+          {mapSegments || mapStops.length > 0 ? (
             <div class="map-interactive-trigger" onClick={openMapModal}>
-              <SquiggleMap path={leg.roadPath} width={430} height={200} />
-            </div>
-          ) : leg.location?.kind === "gps" ? (
-            <div class="map-interactive-trigger" onClick={() => openMapModal()}>
               <SquiggleMap
-                path={[
-                  { lat: leg.location.lat, lng: leg.location.lng },
-                  { lat: leg.location.lat, lng: leg.location.lng },
-                ]}
+                segments={mapSegments}
+                stops={mapStops}
+                caption={mapCaption}
+                compass
                 width={430}
                 height={200}
               />
@@ -285,7 +332,7 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
                 <circle cx="3" cy="17" r="1.6" fill="currentColor" />
                 <circle cx="21" cy="10" r="1.6" fill="currentColor" />
               </svg>
-              <p>No map for this leg yet.</p>
+              <p>No map for this leg yet. Add a GPS pin to draw your route.</p>
             </div>
           )}
         </section>
@@ -418,16 +465,10 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
       {/* Fullscreen Map Overlay */}
       <MapModal
         isOpen={showMapModal}
-        path={
-          leg.roadPath && leg.roadPath.length >= 2
-            ? leg.roadPath
-            : leg.location?.kind === "gps"
-              ? [
-                  { lat: leg.location.lat, lng: leg.location.lng },
-                  { lat: leg.location.lat, lng: leg.location.lng }
-                ]
-              : []
-        }
+        segments={mapSegments}
+        stops={mapStops}
+        compass
+        caption={mapCaption}
         onClose={closeMapModal}
       />
 

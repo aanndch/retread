@@ -1,12 +1,48 @@
 import { useMemo } from 'preact/hooks';
 
-interface SquiggleMapProps {
+export interface SquiggleSegment {
   path: { lat: number; lng: number }[];
+  fallback?: boolean;
+  color?: string;
+}
+
+export interface SquiggleStop {
+  lat: number;
+  lng: number;
+  label?: string;
+  kind?: 'start' | 'stop' | 'end';
+}
+
+interface SquiggleMapProps {
+  path?: { lat: number; lng: number }[];
+  segments?: SquiggleSegment[];
+  stops?: SquiggleStop[];
   width?: number;
   height?: number;
   hideWrapper?: boolean;
   hideGrid?: boolean;
   skipFilter?: boolean;
+  compass?: boolean;
+  caption?: string;
+}
+
+// Day palette shared by the squiggle map and the ride timeline so a ride's
+// route colors always match its day-group labels. Ordered as a near-monotonic
+// lightness ramp: day 1 is the strongest ink, then warms upward through earth
+// tones and lands on sage — echoing the green finish pin without colliding
+// with it. Saturated green is deliberately NOT in the cycle: it is reserved
+// for the end-destination marker.
+export const DAY_COLORS = [
+  'var(--color-ink)',            // 1 — near-black (departure)
+  'var(--color-tint-2)',         // 2 — dark umber
+  'var(--color-ink-muted)',      // 3 — warm gray
+  'var(--color-tint-1)',         // 4 — tan
+  'var(--color-tint-3)',         // 5 — light khaki
+  'var(--color-green-light)',    // 6 — sage (arrival)
+];
+
+function truncateLabel(label: string, max = 14): string {
+  return label.length > max ? `${label.slice(0, max - 1)}…` : label;
 }
 
 function simplifyPath(pts: { lat: number; lng: number }[], maxPoints: number): { lat: number; lng: number }[] {
@@ -58,32 +94,55 @@ function simplifyPath(pts: { lat: number; lng: number }[], maxPoints: number): {
 
 export function SquiggleMap({ 
   path, 
+  segments,
+  stops,
   width = 300, 
   height = 150, 
   hideWrapper = false, 
   hideGrid = false,
-  skipFilter = false
+  skipFilter = false,
+  compass = false,
+  caption
 }: SquiggleMapProps) {
-  const simplified = useMemo(() => {
-    if (!path || path.length < 2) return [];
-    return simplifyPath(path, 200);
-  }, [path]);
+  const segmentsNorm = useMemo(() => {
+    if (segments && segments.length > 0) return segments;
+    if (path && path.length > 0) return [{ path }];
+    return [];
+  }, [segments, path]);
 
-  const { pathD, startPt, endPt } = useMemo(() => {
-    if (simplified.length < 2) return { pathD: '', startPt: null, endPt: null };
+  const stopsNorm = stops || [];
 
-    const lats = simplified.map(p => p.lat);
-    const lngs = simplified.map(p => p.lng);
-    
+  // Every point that drives the projection: all segment shapes plus all stops,
+  // so markers and labels always share the route's transform.
+  const allPts = useMemo(() => {
+    const pts: { lat: number; lng: number }[] = [];
+    for (const s of segmentsNorm) pts.push(...s.path);
+    for (const st of stopsNorm) pts.push({ lat: st.lat, lng: st.lng });
+    return pts;
+  }, [segmentsNorm, stopsNorm]);
+
+  // A map can be route-less but still meaningful when stops exist (a single
+  // GPS pin without a snapped path), so a lone stop must render, not empty.
+  const hasContent = allPts.length >= 2 || stopsNorm.length > 0;
+
+  // Simplify each segment on its own so multi-day routes keep per-leg detail.
+  const simplified = useMemo(
+    () => segmentsNorm.map((s) => ({ ...s, pts: s.path.length < 2 ? [] : simplifyPath(s.path, 200) })),
+    [segmentsNorm]
+  );
+
+  const { project, pathDs, routeStartPt, routeEndPt } = useMemo(() => {
+    if (!hasContent) return { project: null, pathDs: [], routeStartPt: null, routeEndPt: null };
+
     let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-    for (let i = 0; i < lats.length; i++) {
-      if (lats[i] < minLat) minLat = lats[i];
-      if (lats[i] > maxLat) maxLat = lats[i];
-      if (lngs[i] < minLng) minLng = lngs[i];
-      if (lngs[i] > maxLng) maxLng = lngs[i];
+    for (const p of allPts) {
+      if (p.lat < minLat) minLat = p.lat;
+      if (p.lat > maxLat) maxLat = p.lat;
+      if (p.lng < minLng) minLng = p.lng;
+      if (p.lng > maxLng) maxLng = p.lng;
     }
 
-    const padding = 8;
+    const padding = 14;
     const latSpan = Math.max(maxLat - minLat, 0.0001);
     const lngSpan = Math.max(maxLng - minLng, 0.0001);
 
@@ -94,30 +153,48 @@ export function SquiggleMap({
     const xOffset = (width - lngSpan * scale) / 2;
     const yOffset = (height - latSpan * scale) / 2;
 
-    const points2D = simplified.map(p => ({
+    const project = (p: { lat: number; lng: number }) => ({
       x: xOffset + (p.lng - minLng) * scale,
       y: yOffset + (maxLat - p.lat) * scale,
-    }));
+    });
 
-    let d = `M ${points2D[0].x} ${points2D[0].y}`;
-    for (let i = 0; i < points2D.length - 1; i++) {
-      const p0 = points2D[i];
-      const p1 = points2D[i + 1];
-      const cpX1 = p0.x + (p1.x - p0.x) / 3;
-      const cpY1 = p0.y + (p1.y - p0.y) / 3;
-      const cpX2 = p0.x + (2 * (p1.x - p0.x)) / 3;
-      const cpY2 = p0.y + (2 * (p1.y - p0.y)) / 3;
-      d += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${p1.x} ${p1.y}`;
-    }
+    const pathDs = simplified.map((s) => {
+      const pts = s.pts.map(project);
+      let d = `M ${pts[0].x} ${pts[0].y}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i];
+        const p1 = pts[i + 1];
+        const cpX1 = p0.x + (p1.x - p0.x) / 3;
+        const cpY1 = p0.y + (p1.y - p0.y) / 3;
+        const cpX2 = p0.x + (2 * (p1.x - p0.x)) / 3;
+        const cpY2 = p0.y + (2 * (p1.y - p0.y)) / 3;
+        d += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${p1.x} ${p1.y}`;
+      }
+      return d;
+    });
+
+    const firstSegPts = simplified[0]?.pts || [];
+    const lastSegPts = simplified[simplified.length - 1]?.pts || [];
 
     return {
-      pathD: d,
-      startPt: points2D[0],
-      endPt: points2D[points2D.length - 1],
+      project,
+      pathDs,
+      routeStartPt: firstSegPts.length ? project(firstSegPts[0]) : null,
+      routeEndPt: lastSegPts.length ? project(lastSegPts[lastSegPts.length - 1]) : null,
     };
-  }, [simplified, width, height]);
+  }, [hasContent, allPts, simplified, width, height]);
 
-  if (!path || path.length < 2) {
+  // Explicit start/end stops override the route-derived markers; everything
+  // else renders as an intermediate stop.
+  const explicitStart = stopsNorm.find((s) => s.kind === 'start');
+  const explicitEnd = stopsNorm.find((s) => s.kind === 'end');
+  const startPt = explicitStart && project ? project({ lat: explicitStart.lat, lng: explicitStart.lng }) : routeStartPt;
+  const endPt = explicitEnd && project ? project({ lat: explicitEnd.lat, lng: explicitEnd.lng }) : routeEndPt;
+  const startLabel = explicitStart?.label;
+  const endLabel = explicitEnd?.label;
+  const interStops = stopsNorm.filter((s) => s.kind !== 'start' && s.kind !== 'end');
+
+  if (!hasContent) {
     return (
       <div class="squiggle-map-empty">
         <svg
@@ -159,68 +236,135 @@ export function SquiggleMap({
       )}
 
       {!hideGrid && (
-        <g class="map-grid-lines">
-          <line x1="0" y1="50" x2={width} y2="50" stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
-          <line x1="0" y1="100" x2={width} y2="100" stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
-          <line x1="100" y1="0" x2="100" y2={height} stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
-          <line x1="200" y1="0" x2="200" y2={height} stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
+        <g class="sqg-grid">
+          <line x1="0" y1={height * 0.25} x2={width} y2={height * 0.25} stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
+          <line x1="0" y1={height * 0.5} x2={width} y2={height * 0.5} stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
+          <line x1="0" y1={height * 0.75} x2={width} y2={height * 0.75} stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
+          <line x1={width * 0.25} y1="0" x2={width * 0.25} y2={height} stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
+          <line x1={width * 0.5} y1="0" x2={width * 0.5} y2={height} stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
+          <line x1={width * 0.75} y1="0" x2={width * 0.75} y2={height} stroke="var(--color-paper-dim)" stroke-dasharray="2,4" />
         </g>
       )}
 
-      {pathD && (
-        <>
-          <path 
-            d={pathD} 
-            fill="none" 
-            stroke="var(--color-ink)" 
-            stroke-width="5" 
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            opacity="0.12"
-            filter={filterAttr}
-          />
-          <path 
-            d={pathD} 
-            fill="none" 
-            stroke="var(--color-ink)" 
-            stroke-width="2" 
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            opacity="0.9"
-            filter={filterAttr}
-            class={skipFilter ? undefined : 'map-route-path'}
-          />
-        </>
-      )}
+      {pathDs.map((d, i) => {
+        const s = simplified[i];
+        const stroke = s.color || 'var(--color-ink)';
+        const dashed = s.fallback;
+        return (
+          <g key={i}>
+            <path
+              d={d}
+              fill="none"
+              stroke={stroke}
+              stroke-width="5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              opacity="0.12"
+              filter={filterAttr}
+              stroke-dasharray={dashed ? '3 4' : undefined}
+            />
+            <path
+              d={d}
+              fill="none"
+              stroke={stroke}
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              opacity="0.9"
+              filter={filterAttr}
+              class={dashed ? 'sqg-fallback' : skipFilter ? undefined : 'map-route-path'}
+            />
+          </g>
+        );
+      })}
 
       {startPt && (
-        <g filter={filterAttr}>
-          <circle 
-            cx={startPt.x} 
-            cy={startPt.y} 
-            r="3.5" 
-            fill="var(--color-ink)" 
+        <g>
+          <circle
+            cx={startPt.x}
+            cy={startPt.y}
+            r="5"
+            fill="var(--color-paper)"
+            stroke="var(--color-ink)"
+            stroke-width="2"
           />
+          {startLabel && (
+            <text x={startPt.x + 7} y={startPt.y + 3} text-anchor="start" class="sqg-stop-label">
+              {truncateLabel(startLabel)}
+            </text>
+          )}
         </g>
       )}
+
+      {interStops.map((st, i) => {
+        if (!project) return null;
+        const pt = project({ lat: st.lat, lng: st.lng });
+        const above = i % 2 === 0;
+        const dy = above ? -7 : 13;
+        return (
+          <g key={`stop-${i}`}>
+            <circle
+              cx={pt.x}
+              cy={pt.y}
+              r="4"
+              fill="var(--color-paper)"
+              stroke="var(--color-ink)"
+              stroke-width="2"
+            />
+            {st.label && (
+              <text
+                x={pt.x}
+                y={pt.y + dy}
+                text-anchor="middle"
+                class="sqg-stop-label"
+              >
+                {truncateLabel(st.label)}
+              </text>
+            )}
+          </g>
+        );
+      })}
 
       {endPt && (() => {
         const cx = endPt.x;
         const cy = endPt.y;
-        const r = 4.5;
         return (
-          <g filter={filterAttr}>
-            <line 
-              x1={cx - r} y1={cy - r} x2={cx + r} y2={cy + r} 
-              stroke="var(--color-green)" stroke-width="2.5" stroke-linecap="round"
-            />
-            <line 
-              x1={cx + r} y1={cy - r} x2={cx - r} y2={cy + r} 
-              stroke="var(--color-green)" stroke-width="2.5" stroke-linecap="round"
-            />
+          <g>
+            <circle cx={cx} cy={cy} r="4" fill="var(--color-green)" />
+            {endLabel && (
+              <text x={cx - 7} y={cy + 3} text-anchor="end" class="sqg-stop-label">
+                {truncateLabel(endLabel)}
+              </text>
+            )}
           </g>
         );
       })()}
+
+      {compass && (
+        <g class="sqg-compass" transform={`translate(${width - 24}, 18)`} filter={filterAttr}>
+          <path
+            d="M0 4 L0 -6 L-2.5 -3.5 M0 -6 L2.5 -3.5"
+            fill="none"
+            stroke="var(--color-ink-muted)"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <text x="0" y="12" text-anchor="middle" class="sqg-compass-label">N</text>
+        </g>
+      )}
+
+      {caption && (
+        <text
+          x={width - 6}
+          y={height - 6}
+          text-anchor="end"
+          dominant-baseline="bottom"
+          class="sqg-caption"
+        >
+          {caption}
+        </text>
+      )}
     </svg>
   );
 

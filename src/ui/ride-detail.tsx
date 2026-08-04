@@ -5,7 +5,8 @@ import { Button } from "../components/button";
 import { Toast, useToast } from "../components/toast";
 import { ConfirmModal } from "../components/confirm-modal";
 import { ArrowLeft, EditIcon, TrashIcon } from "../components/icons";
-import { SquiggleMap } from "./squiggle";
+import { SquiggleMap, DAY_COLORS } from "./squiggle";
+import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
 import { LegCard } from "./ride-detail/leg-card";
 import { HASH_HOME } from "../constants";
@@ -242,6 +243,47 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
 
   const uniqueDates = Array.from(new Set(legs.map((l) => l.date))).sort();
 
+  // Day-colored map segments: one per leg that has a snapped road path.
+  const segments: SquiggleSegment[] = legs
+    .filter((l) => l.roadPath && l.roadPath.length > 0)
+    .map((l) => ({
+      path: l.roadPath!,
+      fallback: (l.roadPath?.length ?? 0) <= 2,
+      color: DAY_COLORS[Math.max(0, uniqueDates.indexOf(l.date)) % DAY_COLORS.length],
+    }));
+
+  // Route stops: ride start pin + every GPS leg location.
+  const mapStops: SquiggleStop[] = [];
+  if (ride.startLocation?.kind === "gps") {
+    mapStops.push({
+      lat: ride.startLocation.lat,
+      lng: ride.startLocation.lng,
+      label: ride.startLocation.name || "Start",
+      kind: "start",
+    });
+  }
+  legs.forEach((l, i) => {
+    if (l.location?.kind !== "gps") return;
+    // Loop rides: skip an end marker that lands on the start pin.
+    const loopsHome =
+      i === legs.length - 1 &&
+      ride.startLocation?.kind === "gps" &&
+      Math.abs(l.location.lat - ride.startLocation.lat) < 0.001 &&
+      Math.abs(l.location.lng - ride.startLocation.lng) < 0.001;
+    if (loopsHome) return;
+    mapStops.push({
+      lat: l.location.lat,
+      lng: l.location.lng,
+      label: l.location.name || "",
+      kind: i === legs.length - 1 ? "end" : "stop",
+    });
+  });
+
+  const mapCaption =
+    hasKm && legs.length > 0
+      ? `~${formatDistance(totalKm)} · ${totalDays} day${totalDays === 1 ? "" : "s"}`
+      : "";
+
   return (
     <div class="ride-detail-container">
       {/* Top bar: back + actions */}
@@ -281,9 +323,16 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
 
         {/* Cumulative Squiggle route map */}
         <section class="ride-map-hero">
-          {cumulativePath.length >= 2 ? (
+          {segments.length > 0 || mapStops.length > 0 ? (
             <div class="map-interactive-trigger" onClick={openMapModal}>
-              <SquiggleMap path={cumulativePath} width={430} height={200} />
+              <SquiggleMap
+                segments={segments}
+                stops={mapStops}
+                width={430}
+                height={200}
+                compass
+                caption={mapCaption}
+              />
             </div>
           ) : (
             <div class="squiggle-map-empty">
@@ -349,6 +398,10 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
                   <div class="day-group" key={date}>
                     <div class="day-group-header">
                       <div class="day-group-title">
+                        <span
+                          class="day-color-swatch"
+                          style={{ background: DAY_COLORS[Math.max(0, dayNum - 1) % DAY_COLORS.length] }}
+                        />
                         <span class="day-group-label">Day {dayNum}</span>
                         <span class="day-group-weekday">{weekdayFor(date)}</span>
                       </div>
@@ -413,6 +466,10 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
       <MapModal
         isOpen={showMapModal}
         path={cumulativePath}
+        segments={segments}
+        stops={mapStops}
+        compass
+        caption={mapCaption}
         onClose={closeMapModal}
       />
 

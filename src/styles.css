@@ -6,6 +6,9 @@
   --color-ink-muted: #6e6a61;
   --color-green: #4a5d4e;
   --color-green-light: #6b8270;
+  --color-tint-1: #8a7355;
+  --color-tint-2: #4e4436;
+  --color-tint-3: #a39478;
   --color-shadow: rgba(0, 0, 0, 0.08);
   --color-error: #d9534f;
 
@@ -31,6 +34,9 @@
     --color-ink-muted: #908878;
     --color-green: #5e7563;
     --color-green-light: #7a9480;
+    --color-tint-1: #a08a63;
+    --color-tint-2: #6f5f4a;
+    --color-tint-3: #b6a88d;
     --color-shadow: rgba(0, 0, 0, 0.12);
     --color-error: #d9534f;
   }
@@ -42,6 +48,9 @@ html[data-theme="daylight"] {
   --color-ink-muted: #6e6a61;
   --color-green: #4a5d4e;
   --color-green-light: #6b8270;
+  --color-tint-1: #8a7355;
+  --color-tint-2: #4e4436;
+  --color-tint-3: #a39478;
   --color-shadow: rgba(0, 0, 0, 0.08);
   --color-error: #d9534f;
 }
@@ -54,6 +63,9 @@ html[data-theme="nightfall"] {
   --color-ink-muted: #908878;
   --color-green: #5e7563;
   --color-green-light: #7a9480;
+  --color-tint-1: #a08a63;
+  --color-tint-2: #6f5f4a;
+  --color-tint-3: #b6a88d;
   --color-shadow: rgba(0, 0, 0, 0.12);
   --color-error: #d9534f;
 }
@@ -66,6 +78,9 @@ html[data-theme="monotone"] {
   --color-ink-muted: #666666;
   --color-green: #555555;
   --color-green-light: #777777;
+  --color-tint-1: #8f8f8f;
+  --color-tint-2: #3a3a3a;
+  --color-tint-3: #b5b5b5;
   --color-shadow: rgba(0, 0, 0, 0.10);
   --color-error: #c0392b;
 }
@@ -78,6 +93,9 @@ html[data-theme="sepia"] {
   --color-ink-muted: #7a6652;
   --color-green: #6b5b3e;
   --color-green-light: #8a7a5e;
+  --color-tint-1: #9a8360;
+  --color-tint-2: #57452f;
+  --color-tint-3: #c0a87e;
   --color-shadow: rgba(60, 40, 20, 0.10);
   --color-error: #c0392b;
 }
@@ -90,6 +108,9 @@ html[data-theme="midnight"] {
   --color-ink-muted: #7a8090;
   --color-green: #5a7a8a;
   --color-green-light: #7a9aaa;
+  --color-tint-1: #8d92a0;
+  --color-tint-2: #5a5f6b;
+  --color-tint-3: #adb2bf;
   --color-shadow: rgba(0, 0, 0, 0.20);
   --color-error: #e05545;
 }
@@ -102,6 +123,9 @@ html[data-theme="slate"] {
   --color-ink-muted: #6b6b6b;
   --color-green: #5a6b5e;
   --color-green-light: #7a8b7e;
+  --color-tint-1: #8a8a88;
+  --color-tint-2: #41484a;
+  --color-tint-3: #b0aca2;
   --color-shadow: rgba(0, 0, 0, 0.08);
   --color-error: #c0392b;
 }
@@ -114,6 +138,9 @@ html[data-theme="cyberpunk"] {
   --color-ink-muted: #8888bb;
   --color-green: #00ffcc;
   --color-green-light: #33ffdd;
+  --color-tint-1: #a8a8cc;
+  --color-tint-2: #5a5a8a;
+  --color-tint-3: #c8c8e6;
   --color-shadow: rgba(0, 255, 204, 0.15);
   --color-error: #ff2255;
 }
@@ -1363,8 +1390,8 @@ input[type=number] {
   border: 1px solid var(--color-ink);
   border-radius: var(--border-radius);
   background-color: var(--color-paper);
-  padding: var(--spacing-sm);
-  height: 160px;
+  padding: var(--spacing-md);
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1405,6 +1432,54 @@ input[type=number] {
   to {
     stroke-dashoffset: 0;
   }
+}
+
+/* Approximate (un-snapped) route segments read as a sketch, not a route */
+.sqg-fallback {
+  stroke-dasharray: 3 4;
+}
+
+/* Squiggle map typographic annotations */
+.sqg-stop-label {
+  font-family: var(--font-mechanical);
+  font-size: 8.5px;
+  letter-spacing: 0.4px;
+  fill: var(--color-ink-muted);
+  text-transform: uppercase;
+  paint-order: stroke;
+  stroke: var(--color-paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.sqg-compass-label {
+  font-family: var(--font-mechanical);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  fill: var(--color-ink-muted);
+  paint-order: stroke;
+  stroke: var(--color-paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.sqg-caption {
+  font-family: var(--font-mechanical);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  fill: var(--color-ink-muted);
+  text-transform: uppercase;
+}
+
+/* Day-color swatch that ties a timeline day-group to its map segment */
+.day-color-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  border: 1px solid var(--color-ink);
+  display: inline-block;
+  flex-shrink: 0;
+  align-self: center;
 }
 
 /* ==========================================================================
@@ -1508,8 +1583,10 @@ input[type=number] {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--color-ink);
+  border: 2px solid var(--color-ink);
+  background-color: var(--color-paper);
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .trail-stop.is-start .trail-dot {
@@ -1521,6 +1598,7 @@ input[type=number] {
 
 .trail-stop.is-end .trail-dot {
   background-color: var(--color-green);
+  border-color: var(--color-green);
 }
 
 .trail-line {
@@ -1565,8 +1643,12 @@ input[type=number] {
   opacity: 0.95;
 }
 
-.ride-map-hero .squiggle-map-wrapper {
-  height: 200px;
+.ride-map-hero .squiggle-map-svg {
+  /* Height derives from the 430:200 aspect ratio so the SVG fills the card
+     edge-to-edge instead of being letterboxed vertically. */
+  width: 100%;
+  height: auto;
+  aspect-ratio: 430 / 200;
 }
 
 .ride-map-hero .squiggle-map-empty {

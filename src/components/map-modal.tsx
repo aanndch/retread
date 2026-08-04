@@ -1,13 +1,18 @@
 import { useState, useRef, useEffect, useCallback } from 'preact/hooks';
 import { SquiggleMap } from '../ui/squiggle';
+import type { SquiggleSegment, SquiggleStop } from '../ui/squiggle';
 
 interface MapModalProps {
   isOpen: boolean;
-  path: { lat: number; lng: number }[];
+  path?: { lat: number; lng: number }[];
+  segments?: SquiggleSegment[];
+  stops?: SquiggleStop[];
+  compass?: boolean;
+  caption?: string;
   onClose: () => void;
 }
 
-export function MapModal({ isOpen, path, onClose }: MapModalProps) {
+export function MapModal({ isOpen, path, segments, stops, compass, caption, onClose }: MapModalProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -162,7 +167,18 @@ export function MapModal({ isOpen, path, onClose }: MapModalProps) {
           }}
           onDblClick={toggleMapZoom}
         >
-          <SquiggleMap path={path} width={400} height={400} hideWrapper hideGrid skipFilter={isDragging || isZoomed} />
+          <SquiggleMap
+            path={path}
+            segments={segments}
+            stops={stops}
+            width={400}
+            height={400}
+            hideWrapper
+            hideGrid
+            skipFilter={isDragging || isZoomed}
+            compass={compass}
+            caption={caption}
+          />
         </div>
       </div>
     </div>
