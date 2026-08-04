@@ -1,6 +1,6 @@
 import { useReducer, useEffect, useRef, useCallback, useState } from 'preact/hooks';
 import { db } from '../../db';
-import { compressImage } from '../../images';
+import { compressImage, createThumbnail } from '../../images';
 import { Toast, useToast } from '../../components/toast';
 import { MetricsStep } from './metrics-step';
 import { PhotosStep } from './photos-step';
@@ -9,6 +9,7 @@ import { Button } from '../../components/button';
 import { PageHeader } from '../../components/page-header';
 import { MapPicker } from '../../components/map-picker';
 import { saveEditorDetails } from './save-helper';
+import { snapLeg, haversineDistance } from '../../road';
 import type { LocationUnion } from '../../types';
 
 // ==========================================
@@ -35,6 +36,7 @@ interface EditorState {
   mapPickerTarget: 'start' | 'location';
   fallbackCenter: [number, number] | null;
   photos: Blob[];
+  photoThumbs: Blob[];
   photoPreviews: string[];
   compressing: boolean;
   loading: boolean;
@@ -60,6 +62,7 @@ const initialEditorState: EditorState = {
   mapPickerTarget: 'location',
   fallbackCenter: null,
   photos: [],
+  photoThumbs: [],
   photoPreviews: [],
   compressing: false,
   loading: false,
@@ -126,10 +129,13 @@ export function Editor({ onNavigate }: EditorProps) {
     compressing,
     loading,
     photos,
+    photoThumbs,
   } = state;
 
   const photosRef = useRef<Blob[]>([]);
   photosRef.current = photos;
+  const photoThumbsRef = useRef<Blob[]>([]);
+  photoThumbsRef.current = photoThumbs;
   const photoPreviewsRef = useRef<string[]>([]);
   photoPreviewsRef.current = photoPreviews;
 
@@ -172,6 +178,7 @@ export function Editor({ onNavigate }: EditorProps) {
             location: leg.location ?? null,
             legTitle: leg.title || '',
             photos: leg.photos || [],
+            photoThumbs: leg.photoThumbs || [],
             photoPreviews: urls,
             loading: false
           });
@@ -335,7 +342,6 @@ export function Editor({ onNavigate }: EditorProps) {
       const fromGps = { lat: fallbackCenter[0], lng: fallbackCenter[1] };
       const toGps = { lat: location.lat, lng: location.lng };
       
-      const { snapLeg, haversineDistance } = await import('../../road');
       const snappedPath = await snapLeg(fromGps, toGps);
       
       let totalKm = 0;
@@ -351,7 +357,6 @@ export function Editor({ onNavigate }: EditorProps) {
       try {
         const fromGps = { lat: fallbackCenter[0], lng: fallbackCenter[1] };
         const toGps = { lat: location.lat, lng: location.lng };
-        const { haversineDistance } = await import('../../road');
         const directDist = Math.round(haversineDistance(fromGps, toGps) * 10) / 10;
         
         dispatch({ km: directDist });
@@ -377,12 +382,14 @@ export function Editor({ onNavigate }: EditorProps) {
 
     dispatch({ compressing: true });
     const newBlobs: Blob[] = [];
+    const newThumbs: Blob[] = [];
     const newPreviews: string[] = [];
 
     for (let i = 0; i < files.length; i++) {
       try {
         const compressedBlob = await compressImage(files[i]);
         newBlobs.push(compressedBlob);
+        newThumbs.push(await createThumbnail(compressedBlob));
         newPreviews.push(URL.createObjectURL(compressedBlob));
       } catch (err) {
         console.error('Image compression failed:', err);
@@ -392,6 +399,7 @@ export function Editor({ onNavigate }: EditorProps) {
 
     dispatch({
       photos: [...photosRef.current, ...newBlobs],
+      photoThumbs: [...photoThumbsRef.current, ...newThumbs],
       photoPreviews: [...photoPreviewsRef.current, ...newPreviews],
       compressing: false
     });
@@ -402,6 +410,7 @@ export function Editor({ onNavigate }: EditorProps) {
     URL.revokeObjectURL(photoPreviews[index]);
     dispatch({
       photos: photos.filter((_, i) => i !== index),
+      photoThumbs: photoThumbs.filter((_, i) => i !== index),
       photoPreviews: photoPreviews.filter((_, i) => i !== index)
     });
   };

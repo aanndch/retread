@@ -17,6 +17,14 @@ export class RetreadDatabase extends Dexie {
       rides: '++id, createdAt',
       legs: '++id, rideId, date' // Indexes for fast lookups
     });
+    // v3: no index changes. Non-indexed additions (e.g. Leg.photoThumbs,
+    // Leg.title, Leg.time) don't need a store migration; this bump exists so
+    // future index changes have a clean upgrade anchor and any .upgrade()
+    // data backfill can slot in here.
+    this.version(3).stores({
+      rides: '++id, createdAt',
+      legs: '++id, rideId, date'
+    });
   }
 }
 

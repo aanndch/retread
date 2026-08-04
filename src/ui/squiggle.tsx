@@ -50,7 +50,7 @@ function truncateLabel(label: string, max = 14): string {
 
 // Horizontal label placement for side-anchored markers (start ring / end dot).
 // Picks the side with more open space so text never runs past the map edge.
-function sideAnchor(ptX: number, width: number): { x: number; anchor: 'start' | 'end' } {
+export function sideAnchor(ptX: number, width: number): { x: number; anchor: 'start' | 'end' } {
   const margin = 7;
   const roomLeft = ptX - margin - 3;
   const roomRight = width - 3 - (ptX + margin);
@@ -60,7 +60,7 @@ function sideAnchor(ptX: number, width: number): { x: number; anchor: 'start' | 
 
 // Label placement for centered intermediate stops: keep the label on the
 // inner half of the map vertically, and nudge it sideways when hugging an edge.
-function centerLabel(pt: { x: number; y: number }, width: number, height: number) {
+export function centerLabel(pt: { x: number; y: number }, width: number, height: number) {
   const above = pt.y >= height / 2;
   let x = pt.x;
   let anchor: 'start' | 'middle' | 'end' = 'middle';

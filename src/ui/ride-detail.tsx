@@ -358,6 +358,14 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
                 <circle cx="21" cy="10" r="1.6" fill="currentColor" />
               </svg>
               <p>Log 2+ legs with GPS pins to draw your ride route map.</p>
+              <Button
+                variant="secondary"
+                size="sm"
+                style={{ marginTop: 'var(--spacing-sm)' }}
+                onClick={() => onNavigate(`#/edit?mode=new-leg&rideId=${rideId}`)}
+              >
+                ＋ Add a leg with GPS
+              </Button>
             </div>
           )}
         </section>

@@ -21,6 +21,7 @@ export interface Leg {
   time?: string;              // HH:MM (24-hour)
   note: string;               // Freeform textarea content
   photos: Blob[];             // Compressed photo blobs
+  photoThumbs?: Blob[];       // Small JPEGs (~320px) for ride-card covers
   km?: number | null;         // Direct distance entry
   odo?: number | null;        // Odometer entry
   location?: LocationUnion | null;

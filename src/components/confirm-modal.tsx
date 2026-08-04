@@ -23,6 +23,10 @@ export function ConfirmModal({ title, message, confirmLabel = 'Confirm', onConfi
     previousFocus.current = document.activeElement as HTMLElement;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose(onCancel);
+        return;
+      }
       if (e.key === 'Tab') {
         const modal = document.querySelector('.modal-content');
         if (!modal) return;
@@ -47,7 +51,7 @@ export function ConfirmModal({ title, message, confirmLabel = 'Confirm', onConfi
   }, []);
 
   return (
-    <div class={`modal-backdrop${closing ? ' closing' : ''}`} onClick={() => handleClose(onCancel)}>
+    <div class={`modal-backdrop${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label={title} onClick={() => handleClose(onCancel)}>
       <div class={`modal-content${closing ? ' closing' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div class="modal-header">
           <h3>{title}</h3>

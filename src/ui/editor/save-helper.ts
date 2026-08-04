@@ -16,6 +16,7 @@ interface SaveData {
   location: LocationUnion | null;
   startLocation: LocationUnion | null;
   photos: Blob[];
+  photoThumbs: Blob[];
 }
 
 export async function saveEditorDetails(
@@ -100,6 +101,7 @@ export async function saveEditorDetails(
     time: data.time,
     note: data.note.trim(),
     photos: data.photos,
+    photoThumbs: data.photoThumbs,
     km: data.km !== null && !isNaN(data.km) ? data.km : null,
     odo: data.odo !== null && !isNaN(data.odo) ? data.odo : null,
     location: locationPayload,

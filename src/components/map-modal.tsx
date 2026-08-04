@@ -37,6 +37,22 @@ export function MapModal({ isOpen, path, segments, stops, compass, caption, onCl
     return () => window.removeEventListener("popstate", handlePopState);
   }, [onClose]);
 
+  // Dialog semantics: Escape closes, and focus moves to the close button so
+  // keyboard users land inside the dialog instead of losing focus to the page.
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        handleClose(onClose);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    closeBtnRef.current?.focus();
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const updateTransform = useCallback(() => {
     if (!zoomInnerRef.current) return;
     const el = zoomInnerRef.current;
@@ -138,9 +154,10 @@ export function MapModal({ isOpen, path, segments, stops, compass, caption, onCl
   if (!isOpen) return null;
 
   return (
-    <div class={`modal-backdrop map-overlay-backdrop${closing ? ' closing' : ''}`} onClick={() => handleClose(onClose)}>
+    <div class={`modal-backdrop map-overlay-backdrop${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Route map" onClick={() => handleClose(onClose)}>
       <button 
         type="button" 
+        ref={closeBtnRef}
         class="btn-close-overlay" 
         aria-label="Close map" 
         onClick={(e) => { e.stopPropagation(); handleClose(onClose); }}

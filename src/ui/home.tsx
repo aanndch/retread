@@ -107,7 +107,12 @@ export function Home({ onNavigate, onReady }: HomeProps) {
         return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
       });
       const legWithPhoto = sortedLegs.find(l => l.photos && l.photos.length > 0);
-      const firstPhotoBlob = legWithPhoto ? legWithPhoto.photos[0] : null;
+      // Prefer the small cover thumbnail when available; fall back to full-res
+      const firstPhotoBlob = legWithPhoto
+        ? (legWithPhoto.photoThumbs && legWithPhoto.photoThumbs.length > 0
+            ? legWithPhoto.photoThumbs[0]
+            : legWithPhoto.photos[0])
+        : null;
 
       // Compute date range for display
       let dateRange = '';

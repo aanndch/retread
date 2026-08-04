@@ -9,6 +9,7 @@ import {
   GDRIVE_LOCAL_STORAGE_KEY_AUTOSYNC,
 } from './constants';
 import { gzipString, gunzipBlob, isGzipped } from './backup-compress';
+import { createThumbnail } from './images';
 import { db } from './db';
 import type { Ride, LocationUnion } from './types';
 
@@ -16,12 +17,16 @@ import type { Ride, LocationUnion } from './types';
 // Types
 // ---------------------------------------------------------------------------
 
+// v3 adds per-leg title/time (previously lost on export/restore).
+// v2 backups are still accepted on import for backwards compatibility.
 interface BackupPayload {
-  version: 2;
+  version: 2 | 3;
   rides: Ride[];
   legs: {
     rideId: number;
+    title?: string;
     date: string;
+    time?: string;
     note: string;
     km: number | null;
     odo: number | null;
@@ -145,7 +150,9 @@ export async function buildBackupPayload(): Promise<BackupPayload> {
     }
     serializedLegs.push({
       rideId: leg.rideId,
+      title: leg.title || '',
       date: leg.date,
+      time: leg.time || '',
       note: leg.note,
       km: leg.km ?? null,
       odo: leg.odo ?? null,
@@ -155,7 +162,7 @@ export async function buildBackupPayload(): Promise<BackupPayload> {
     });
   }
 
-  return { version: 2, rides, legs: serializedLegs };
+  return { version: 3, rides, legs: serializedLegs };
 }
 
 // ---------------------------------------------------------------------------
@@ -278,7 +285,7 @@ export async function performRestore(
   const jsonStr = await (gzipped ? gunzipBlob(blob) : blob.text());
   const payload: BackupPayload = JSON.parse(jsonStr);
 
-  if (payload.version !== 2 || !Array.isArray(payload.rides) || !Array.isArray(payload.legs)) {
+  if ((payload.version !== 2 && payload.version !== 3) || !Array.isArray(payload.rides) || !Array.isArray(payload.legs)) {
     throw new Error('Unsupported or corrupted backup schema.');
   }
 
@@ -303,17 +310,27 @@ export async function performRestore(
       if (mappedRideId === undefined) continue;
 
       const photoBlobs: Blob[] = [];
+      const photoThumbs: Blob[] = [];
       if (leg.photos) {
         for (const base64 of leg.photos) {
-          photoBlobs.push(await base64ToBlob(base64));
+          const blob = await base64ToBlob(base64);
+          photoBlobs.push(blob);
+          try {
+            photoThumbs.push(await createThumbnail(blob));
+          } catch {
+            photoThumbs.push(blob); // keep arrays aligned even if thumb fails
+          }
         }
       }
 
       await db.legs.add({
         rideId: mappedRideId,
+        title: leg.title || '',
         date: leg.date,
+        time: leg.time || '',
         note: leg.note,
         photos: photoBlobs,
+        photoThumbs,
         km: leg.km,
         odo: leg.odo,
         location: leg.location,

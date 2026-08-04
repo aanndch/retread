@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'preact/hooks';
 import { db } from '../db';
+import { createThumbnail } from '../images';
 import { Button } from '../components/button';
 import { ConfirmModal } from '../components/confirm-modal';
 import { Toast, useToast } from '../components/toast';
@@ -29,11 +30,13 @@ interface BackupProps {
 }
 
 interface BackupPayload {
-  version: 2;
+  version: 2 | 3;
   rides: Ride[];
   legs: {
     rideId: number;
+    title?: string;
     date: string;
+    time?: string;
     note: string;
     km: number | null;
     odo: number | null;
@@ -123,7 +126,9 @@ export function Backup({ onNavigate }: BackupProps) {
         
         serializedLegs.push({
           rideId: leg.rideId,
+          title: leg.title || '',
           date: leg.date,
+          time: leg.time || '',
           note: leg.note,
           km: leg.km ?? null,
           odo: leg.odo ?? null,
@@ -190,7 +195,7 @@ export function Backup({ onNavigate }: BackupProps) {
         reader.readAsText(file);
       });
       
-      if (parsedData.version !== 2 || !Array.isArray(parsedData.rides) || !Array.isArray(parsedData.legs)) {
+      if ((parsedData.version !== 2 && parsedData.version !== 3) || !Array.isArray(parsedData.rides) || !Array.isArray(parsedData.legs)) {
         throw new Error('Unsupported or corrupted backup schema.');
       }
       
@@ -244,18 +249,27 @@ export function Backup({ onNavigate }: BackupProps) {
           }
           
           const photoBlobs = [];
+          const photoThumbs = [];
           if (leg.photos) {
             for (const base64 of leg.photos) {
               const blob = await base64ToBlob(base64);
               photoBlobs.push(blob);
+              try {
+                photoThumbs.push(await createThumbnail(blob));
+              } catch {
+                photoThumbs.push(blob); // keep arrays aligned even if thumb fails
+              }
             }
           }
-          
+
           await db.legs.add({
             rideId: mappedRideId,
+            title: leg.title || '',
             date: leg.date,
+            time: leg.time || '',
             note: leg.note,
             photos: photoBlobs,
+            photoThumbs,
             km: leg.km,
             odo: leg.odo,
             location: leg.location,

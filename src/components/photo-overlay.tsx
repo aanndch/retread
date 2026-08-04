@@ -44,6 +44,21 @@ export function PhotoOverlay({
     return () => window.removeEventListener("popstate", handlePopState);
   }, [onClose]);
 
+  // Dialog semantics: Escape closes, and focus moves to the close button.
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    closeBtnRef.current?.focus();
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || photoUrls.length === 0) return null;
 
   const togglePhotoZoom = (e: MouseEvent) => {
@@ -141,9 +156,10 @@ export function PhotoOverlay({
   };
 
   return (
-    <div class="modal-backdrop photo-overlay-backdrop" onClick={onClose}>
+    <div class="modal-backdrop photo-overlay-backdrop" role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={onClose}>
       <button
         type="button"
+        ref={closeBtnRef}
         class="btn-close-overlay"
         aria-label="Close photo"
         onClick={(e) => {
