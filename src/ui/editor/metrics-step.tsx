@@ -228,11 +228,15 @@ export function MetricsStep({
             <label class="input-label">Leg Title</label>
             <input 
               type="text" 
-              class="form-input" 
+              class={`form-input ${titleError ? 'input-error' : ''}`}
               placeholder="e.g. Manali to Jispa" 
               value={legTitle} 
-              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setLegTitle((e.target as HTMLInputElement).value)}
+              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
+                setLegTitle((e.target as HTMLInputElement).value);
+                if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
+              }}
             />
+            {titleError && <span class="error-text">{titleError}</span>}
           </div>
 
           {/* Row 2: Date/Time and Odometer */}

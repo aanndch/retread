@@ -82,6 +82,10 @@ export async function saveEditorDetails(
   }
 
   // Saving leg entries (mode === 'new-leg' or mode === 'edit')
+  if (!data.legTitle.trim()) {
+    throw new Error('Leg Title is required to save.');
+  }
+
   const activeRideId = rideId;
   if (activeRideId === null && mode !== 'edit') {
     throw new Error('Ride ID context is missing.');

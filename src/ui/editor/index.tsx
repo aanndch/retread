@@ -411,6 +411,10 @@ export function Editor({ onNavigate }: EditorProps) {
       dispatch({ titleError: 'Ride Title is required to start a new ride.' });
       return;
     }
+    if ((mode === 'new-leg' || mode === 'edit') && !legTitle.trim() && targetStep > 1) {
+      dispatch({ titleError: 'Leg Title is required to continue.' });
+      return;
+    }
     dispatch({ titleError: '', step: targetStep });
   };
 
@@ -446,6 +450,9 @@ export function Editor({ onNavigate }: EditorProps) {
         dispatch({ titleError: mode === 'edit-ride' ? 'Ride Title is required.' : 'Ride Title is required to start a new ride.' });
         return;
       }
+    } else if ((mode === 'new-leg' || mode === 'edit') && !legTitle.trim()) {
+      dispatch({ titleError: 'Leg Title is required to save.' });
+      return;
     } else if (step < 3) {
       dispatch({ step: (step + 1) as 1 | 2 | 3 });
       return;
