@@ -313,7 +313,7 @@ export function LegDetail({ legId, onNavigate, onReady }: LegDetailProps) {
                 caption={mapCaption}
                 compass
                 width={430}
-                height={200}
+                height={300}
               />
             </div>
           ) : (

@@ -24,6 +24,9 @@ interface SquiggleMapProps {
   skipFilter?: boolean;
   compass?: boolean;
   caption?: string;
+  // Hides intermediate stop labels until the map is hovered. Used on crowded
+  // ride heroes so the route stays readable; labels always show in the overlay.
+  revealIntermediateLabels?: boolean;
 }
 
 // Day palette shared by the squiggle map and the ride timeline so a ride's
@@ -123,7 +126,8 @@ export function SquiggleMap({
   hideGrid = false,
   skipFilter = false,
   compass = false,
-  caption
+  caption,
+  revealIntermediateLabels = false
 }: SquiggleMapProps) {
   const segmentsNorm = useMemo(() => {
     if (segments && segments.length > 0) return segments;
@@ -339,7 +343,7 @@ export function SquiggleMap({
                 x={x}
                 y={y}
                 text-anchor={anchor}
-                class="sqg-stop-label"
+                class={revealIntermediateLabels ? 'sqg-stop-label sqg-label-hidden' : 'sqg-stop-label'}
               >
                 {truncateLabel(st.label)}
               </text>

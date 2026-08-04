@@ -1644,11 +1644,24 @@ input[type=number] {
 }
 
 .ride-map-hero .squiggle-map-svg {
-  /* Height derives from the 430:200 aspect ratio so the SVG fills the card
-     edge-to-edge instead of being letterboxed vertically. */
+  /* Height derives from the 430:300 aspect ratio so the SVG fills the card
+     edge-to-edge instead of being letterboxed vertically. Taller than the
+     original 430:200 so the route dominates the page above the leg list. */
   width: 100%;
   height: auto;
-  aspect-ratio: 430 / 200;
+  aspect-ratio: 430 / 300;
+}
+
+/* Crowded ride heroes hide intermediate stop labels until the map is hovered;
+   the fullscreen overlay always shows them. */
+.sqg-label-hidden {
+  opacity: 0;
+  transition: opacity 0.12s ease-in-out;
+}
+
+.squiggle-map-wrapper:hover .sqg-label-hidden,
+.map-interactive-trigger:hover .sqg-label-hidden {
+  opacity: 1;
 }
 
 .ride-map-hero .squiggle-map-empty {
@@ -1656,7 +1669,7 @@ input[type=number] {
   border-radius: var(--border-radius);
   background-color: var(--color-paper);
   padding: var(--spacing-lg);
-  min-height: 160px;
+  min-height: 240px;
   box-sizing: border-box;
   box-shadow: 2px 2px 0px var(--color-shadow);
 }

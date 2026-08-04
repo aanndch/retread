@@ -279,9 +279,15 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
     });
   });
 
+  // When a long ride crowds the hero, hide intermediate labels until hover
+  // (they always show in the fullscreen overlay) and note the count in the
+  // caption so the hidden detail stays discoverable.
+  const intermediateCount = mapStops.filter((s) => s.kind === "stop").length;
+  const crowded = intermediateCount > 4;
+
   const mapCaption =
     hasKm && legs.length > 0
-      ? `~${formatDistance(totalKm)} · ${totalDays} day${totalDays === 1 ? "" : "s"}`
+      ? `~${formatDistance(totalKm)} · ${totalDays} day${totalDays === 1 ? "" : "s"}${crowded ? ` · +${intermediateCount} stops` : ""}`
       : "";
 
   return (
@@ -329,9 +335,10 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
                 segments={segments}
                 stops={mapStops}
                 width={430}
-                height={200}
+                height={300}
                 compass
                 caption={mapCaption}
+                revealIntermediateLabels={crowded}
               />
             </div>
           ) : (
