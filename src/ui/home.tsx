@@ -72,6 +72,7 @@ export function Home({ onNavigate, onReady }: HomeProps) {
   const [themeMode, setThemeMode] = useState<'system' | Theme>('system');
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [seedingDemo, setSeedingDemo] = useState(false);
+  const [revealRideId, setRevealRideId] = useState<number | null>(null);
   const { toasts, showToast, removeToast } = useToast();
 
   // Load saved theme preference on mount
@@ -181,10 +182,13 @@ export function Home({ onNavigate, onReady }: HomeProps) {
     if (seedingDemo) return;
     setSeedingDemo(true);
     try {
-      await seedDemoRide();
+      const newRideId = await seedDemoRide();
       // Sequence the reveal: the settings sheet animates out first, letting
       // the freshly added ride card fade in beneath it before the toast lands.
-      closeSettings(() => showToast("Demo ride added.", "success"));
+      closeSettings(() => {
+        setRevealRideId(newRideId);
+        showToast("Demo ride added.", "success");
+      });
     } catch (err) {
       console.error("Failed to seed demo data:", err);
       showToast("Error seeding demo data.");
@@ -338,6 +342,10 @@ export function Home({ onNavigate, onReady }: HomeProps) {
                   coverKey={coverKey}
                   dateRange={dateRange}
                   stopTrail={stopTrail}
+                  reveal={ride.id === revealRideId}
+                  onRevealEnd={() => {
+                    if (revealRideId === ride.id) setRevealRideId(null);
+                  }}
                 />
               ))}
             </div>
@@ -377,9 +385,11 @@ interface RideCardProps {
   coverKey: string;
   dateRange: string;
   stopTrail: string;
+  reveal?: boolean;
+  onRevealEnd?: () => void;
 }
 
-function RideCard({ ride, totalKm, firstPhotoBlob, coverKey, dateRange, stopTrail }: RideCardProps) {
+function RideCard({ ride, totalKm, firstPhotoBlob, coverKey, dateRange, stopTrail, reveal, onRevealEnd }: RideCardProps) {
   const [imgUrl, setImgUrl] = useState('');
 
   // Reuse the cached object URL for the same cover slot; only create a new one
@@ -397,7 +407,13 @@ function RideCard({ ride, totalKm, firstPhotoBlob, coverKey, dateRange, stopTrai
   }, [firstPhotoBlob, coverKey]);
 
   return (
-    <a href={`#/ride/${ride.id}`} class="ride-card-link">
+    <a
+      href={`#/ride/${ride.id}`}
+      class={`ride-card-link${reveal ? ' ride-card-reveal' : ''}`}
+      onAnimationEnd={(e) => {
+        if (reveal && e.animationName === 'fade-in') onRevealEnd?.();
+      }}
+    >
       <div class="ride-card">
         <div class="ride-cover-container">
           {imgUrl ? (

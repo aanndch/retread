@@ -613,6 +613,11 @@ button:focus,
   cursor: pointer;
 }
 
+/* Newly seeded demo card fades in like the page transitions */
+.ride-card-link.ride-card-reveal .ride-card {
+  animation: fade-in 0.2s ease-out;
+}
+
 .ride-card {
   display: flex;
   border: 1px solid var(--color-ink);
