@@ -77,7 +77,7 @@ function RouteTrail({ stops }: { stops: string[] }) {
   const nodes: { name: string; more?: number; last?: boolean }[] = [];
 
   if (stops.length <= MAX_SHOWN) {
-    nodes.push(...stops.map((name) => ({ name })));
+    nodes.push(...stops.map((name, i) => ({ name, last: i === stops.length - 1 })));
   } else {
     nodes.push(...stops.slice(0, 3).map((name) => ({ name })));
     nodes.push({ name: "", more: stops.length - 4 });
@@ -223,7 +223,7 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
   // Format date range
   let dateRange = "No days logged yet.";
   if (legs.length > 0) {
-    if (legs.length === 1) {
+    if (totalDays === 1) {
       dateRange = formatIsoDateToDMY(legs[0].date);
     } else {
       dateRange = `${formatIsoDateToDMY(legs[0].date)} — ${formatIsoDateToDMY(legs[legs.length - 1].date)}`;
@@ -280,7 +280,7 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
 
   const mapCaption =
     hasKm && legs.length > 0
-      ? `~${formatDistance(totalKm)} · ${totalDays} day${totalDays === 1 ? "" : "s"}${crowded ? ` · +${intermediateCount} stops` : ""}`
+      ? `~${formatDistance(totalKm)}${totalDays > 1 ? ` · ${totalDays} day${totalDays === 1 ? "" : "s"}` : ""}${crowded ? ` · +${intermediateCount} stops` : ""}`
       : "";
 
   return (
@@ -384,25 +384,27 @@ export function RideDetail({ rideId, onNavigate, onReady }: RideDetailProps) {
 
                 return (
                   <div class="day-group" key={date}>
-                    <div class="day-group-header">
-                      <div class="day-group-title">
-                        <span
-                          class="day-color-swatch"
-                          style={{ background: DAY_COLORS[Math.max(0, dayNum - 1) % DAY_COLORS.length] }}
-                        />
-                        <span class="day-group-label">Day {dayNum}</span>
-                        <span class="day-group-weekday">{weekdayFor(date)}</span>
+                    {totalDays > 1 && (
+                      <div class="day-group-header">
+                        <div class="day-group-title">
+                          <span
+                            class="day-color-swatch"
+                            style={{ background: DAY_COLORS[Math.max(0, dayNum - 1) % DAY_COLORS.length] }}
+                          />
+                          <span class="day-group-label">Day {dayNum}</span>
+                          <span class="day-group-weekday">{weekdayFor(date)}</span>
+                        </div>
+                        <div class="day-group-meta">
+                          <span class="day-group-date">{formatIsoDateToDMY(date)}</span>
+                          {dayKm > 0 && (
+                            <>
+                              <span class="day-group-sep">·</span>
+                              <span class="day-group-km">{formatDistance(dayKm)}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div class="day-group-meta">
-                        <span class="day-group-date">{formatIsoDateToDMY(date)}</span>
-                        {dayKm > 0 && (
-                          <>
-                            <span class="day-group-sep">·</span>
-                            <span class="day-group-km">{formatDistance(dayKm)}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                    )}
                     <div class="day-group-body">
                       {dayLegs.map((leg) => (
                         <LegCard
