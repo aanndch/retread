@@ -313,7 +313,8 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     dispatch({ gpsLoading: true });
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        dispatch({ gpsLoading: false, location: { kind: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude, name: '' } });
+        // Keep any name the user already typed; GPS auto-detect only moves the pin.
+        dispatch({ gpsLoading: false, location: { kind: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude, name: location?.name || '' } });
       },
       (err) => {
         console.warn('Geolocation failed:', err);
@@ -321,7 +322,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
-  }, []);
+  }, [location]);
 
   const handleClearLocation = useCallback(() => {
     dispatch({ location: location && location.name ? { kind: 'named', name: location.name } : null });
@@ -339,7 +340,8 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     dispatch({ startGpsLoading: true });
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        dispatch({ startGpsLoading: false, startLocation: { kind: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude, name: '' } });
+        // Keep any name the user already typed; GPS auto-detect only moves the pin.
+        dispatch({ startGpsLoading: false, startLocation: { kind: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude, name: startLocation?.name || '' } });
       },
       () => {
         dispatch({ startGpsLoading: false });
