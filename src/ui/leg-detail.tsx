@@ -62,6 +62,12 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
   };
 
   const closePhotoModal = () => {
+    // Pop the modal's own pushState entry so the browser history stays free of
+    // phantom entries (see closeMapModal below).
+    if (history.state && history.state.modalOpen) {
+      history.back();
+      return;
+    }
     setShowPhotoModal(false);
   };
 
@@ -74,6 +80,13 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
   };
 
   const closeMapModal = () => {
+    // Pop the modal's own pushState entry so the browser history stays free of
+    // phantom entries; otherwise the next in-app back would silently consume it
+    // and look like a dead press.
+    if (history.state && history.state.modalOpen) {
+      history.back();
+      return;
+    }
     setShowMapModal(false);
   };
 

@@ -119,6 +119,13 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
   };
 
   const closeMapModal = () => {
+    // Popping the modal's own pushState entry keeps the browser history free of
+    // phantom entries; otherwise the next in-app back would silently consume it
+    // and look like a dead press.
+    if (history.state && history.state.modalOpen) {
+      history.back();
+      return;
+    }
     setShowMapModal(false);
   };
 

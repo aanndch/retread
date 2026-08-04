@@ -26,7 +26,6 @@ export function App() {
   const activePrompt = dismissedPrompt ? null : appPrompt;
   const prevHashRef = useRef(window.location.hash || HASH_HOME);
   const scrollCacheRef = useRef(new Map<string, number>());
-  const isPopRef = useRef(false);
   const revealTimerRef = useRef<number | null>(null);
   const swapTimerRef = useRef<number | null>(null);
   // Depth of in-app entries pushed above the initial load. The in-app back
@@ -36,6 +35,11 @@ export function App() {
   // resulting hashchange isn't counted as a fresh forward push.
   const navDepthRef = useRef(0);
   const skipDepthRef = useRef(false);
+  // history.length is the reliable back/forward signal: a forward push
+  // increments it, while a back/forward traversal keeps it constant. Chrome
+  // fires popstate on plain fragment navigation too (anchor clicks, hash
+  // assignment), so popstate cannot be used to tell forward from back.
+  const prevHistoryLenRef = useRef(window.history.length);
 
   // Reveal the new route once its content is ready to render (fade-in gate).
   const finishTransition = useCallback(() => {
@@ -99,10 +103,12 @@ export function App() {
       scrollCacheRef.current.set(prevHash, window.scrollY);
       prevHashRef.current = nextHash;
 
-      // Back/forward (popstate) vs fresh navigation — only if the hash actually
-      // changed, so modal popstate handlers don't corrupt the flag.
-      const isPop = isPopRef.current && nextHash !== prevHash;
-      isPopRef.current = false;
+      // Back/forward (popstate) vs fresh navigation. Chrome fires popstate on
+      // plain fragment navigation too, so instead compare history.length: a
+      // forward push grows it, a back/forward traversal leaves it unchanged.
+      const historyLen = window.history.length;
+      const isPop = historyLen === prevHistoryLenRef.current;
+      prevHistoryLenRef.current = historyLen;
 
       // Keep the in-app depth counter in sync so navigateBack knows whether a
       // history.back() is safe. Pops subtract, forward pushes add; a
@@ -146,18 +152,12 @@ export function App() {
       }, 120);
     };
 
-    const handlePop = () => {
-      isPopRef.current = true;
-    };
-
     const handleSWUpdate = () => setHasSWUpdate(true);
 
     window.addEventListener('hashchange', handleHashChange);
-    window.addEventListener('popstate', handlePop);
     window.addEventListener('sw-update', handleSWUpdate);
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
-      window.removeEventListener('popstate', handlePop);
       window.removeEventListener('sw-update', handleSWUpdate);
       if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
       if (swapTimerRef.current !== null) clearTimeout(swapTimerRef.current);
