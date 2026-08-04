@@ -31,7 +31,11 @@ export const MAX_IMAGE_EDGE = 1600; // Max edge length for compressed images
 export const IMAGE_COMPRESSION_QUALITY = 0.8; // Quality level for compressed JPEGs
 
 // Google Drive Backup Settings
-export const GDRIVE_CLIENT_ID = import.meta.env.VITE_GDRIVE_CLIENT_ID || '';
+// OAuth client IDs for web apps are public by design (they ship in the JS bundle),
+// so the ID is embedded as a fallback. VITE_GDRIVE_CLIENT_ID overrides it for forks.
+export const GDRIVE_CLIENT_ID =
+  import.meta.env.VITE_GDRIVE_CLIENT_ID ||
+  '57414145364-eaieajpbfk0t6vjvfpav0fv4ocre84kq.apps.googleusercontent.com';
 export const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
 export const GDRIVE_APP_PROPERTY_KEY = 'isRetreadBackup';
 export const GDRIVE_APP_PROPERTY_VALUE = 'true';

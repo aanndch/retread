@@ -90,10 +90,22 @@ export function isConnected(): boolean {
 // OAuth2 — request access token via popup
 // ---------------------------------------------------------------------------
 
+function describeOAuthError(raw: unknown): string {
+  const message = raw instanceof Error ? raw.message : String(raw ?? '');
+  const lowered = message.toLowerCase();
+  if (lowered.includes('invalid_client') || lowered.includes('origin') || lowered.includes('mismatch')) {
+    return "Google rejected this client. Check that the client ID is valid and this site's origin is listed under Authorized JavaScript origins in Google Cloud.";
+  }
+  if (lowered.includes('access_denied') || lowered.includes('popup') || lowered.includes('user_cancelled')) {
+    return 'Authorization cancelled — the window was closed.';
+  }
+  return message || 'Authorization failed.';
+}
+
 export function requestAccessToken(): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!GDRIVE_CLIENT_ID) {
-      return reject(new Error('Google Drive client ID not configured. Set VITE_GDRIVE_CLIENT_ID in your .env file.'));
+      return reject(new Error('Google Drive client ID not configured.'));
     }
 
     const tokenClient = google.accounts.oauth2.initTokenClient({
@@ -101,7 +113,7 @@ export function requestAccessToken(): Promise<string> {
       scope: GDRIVE_SCOPES,
       callback: (tokenResponse) => {
         if (tokenResponse.error) {
-          return reject(new Error(tokenResponse.error));
+          return reject(new Error(describeOAuthError(tokenResponse.error)));
         }
         const token = tokenResponse.access_token;
         if (!token) {
@@ -112,7 +124,11 @@ export function requestAccessToken(): Promise<string> {
       },
     });
 
-    tokenClient.requestAccessToken({ prompt: '' });
+    try {
+      tokenClient.requestAccessToken({ prompt: '' });
+    } catch (err) {
+      reject(new Error(describeOAuthError(err)));
+    }
   });
 }
 
