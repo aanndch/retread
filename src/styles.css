@@ -588,6 +588,9 @@ button:focus,
 /* Rides List & Cards */
 .rides-section {
   flex-grow: 1;
+  /* The home FAB floats over the bottom of the ride list, so keep the last
+     card clear of it, matching the FAB's safe-area inset. */
+  padding-bottom: calc(90px + env(safe-area-inset-bottom));
 }
 
 .rides-grid {
@@ -1502,6 +1505,13 @@ input[type=number] {
   display: flex;
   flex-direction: column;
   margin-top: calc(var(--sticky-topbar-inset) - var(--spacing-lg));
+}
+
+/* The ride page's FAB floats over the bottom of the timeline, so keep the last
+   card clear of it: FAB offset (32px) + FAB height (50px) + a gap, plus the
+   same safe-area inset the FAB itself respects. */
+.ride-detail-content {
+  padding-bottom: calc(90px + env(safe-area-inset-bottom));
 }
 
 /* Ride hero (chapter cover) */
