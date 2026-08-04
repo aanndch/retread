@@ -113,12 +113,6 @@ export function Home({ onNavigate, onReady }: HomeProps) {
       // chronological leg that has a photo.
       const legWithPhoto = sortedLegs.find(l => l.photos && l.photos.length > 0);
       const customCover = ride.coverBlob ? ride.coverBlob : null;
-      // Stable key for the cover slot (leg + photo index, or the custom cover)
-      // so a live-query re-emit — which returns fresh Blob references for the
-      // same bytes — doesn't recreate the object URL and flicker the cover.
-      const coverKey = customCover
-        ? `${ride.id}:cover`
-        : legWithPhoto ? `${legWithPhoto.id}:0` : '';
       // Prefer the small cover thumbnail when available; fall back to full-res
       const firstPhotoBlob = customCover
         ? customCover
@@ -127,6 +121,16 @@ export function Home({ onNavigate, onReady }: HomeProps) {
               ? legWithPhoto.photoThumbs[0]
               : legWithPhoto.photos[0])
           : null;
+      // Cache key for the cover slot. The blob's content hash is included so a
+      // changed cover or changed first photo busts the cached object URL (and
+      // the home card updates immediately), while identical bytes on a
+      // live-query re-emit still hit the cache and don't flicker.
+      const coverFingerprint = firstPhotoBlob ? await blobFingerprint(firstPhotoBlob) : '';
+      const coverKey = firstPhotoBlob
+        ? customCover
+          ? `${ride.id}:cover:${coverFingerprint}`
+          : `${legWithPhoto!.id}:0:${coverFingerprint}`
+        : '';
 
       // Compute date range for display
       let dateRange = '';
@@ -384,6 +388,21 @@ export function Home({ onNavigate, onReady }: HomeProps) {
 // index). Live-query re-emits hand back fresh Blob references for identical
 // bytes, so without this the cover would re-decode and flicker on every emit.
 const coverUrlCache = new Map<string, { blob: Blob; url: string }>();
+
+// Content fingerprint of the displayed cover blob, used in the cache key so a
+// changed cover (or changed first photo) busts the cached object URL while
+// identical bytes keep hitting the cache and don't flicker.
+async function blobFingerprint(blob: Blob): Promise<string> {
+  try {
+    if (crypto.subtle) {
+      const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+      return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch {
+    // fall through to size/type below
+  }
+  return `${blob.size}:${blob.type}`;
+}
 
 interface RideCardProps {
   ride: Ride;

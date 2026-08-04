@@ -192,19 +192,16 @@ export function PhotoOverlay({
         />
       </div>
 
-      {photoUrls.length > 1 && (
-        <div class="photo-overlay-dots">
-          {photoUrls.map((_, idx) => (
-            <span key={idx} class={`carousel-dot${idx === activeIdx ? ' active' : ''}`} />
-          ))}
-        </div>
-      )}
-
-      {onSetCover && (
-        <button type="button" class="btn-overlay-cover" onClick={() => onSetCover(activeIdx)}>
-          ★ Set as ride cover
-        </button>
-      )}
+      <div class="photo-overlay-bar" onClick={(e) => e.stopPropagation()}>
+        <span class="photo-overlay-counter">
+          PHOTO {String(activeIdx + 1).padStart(2, "0")} / {String(photoUrls.length).padStart(2, "0")}
+        </span>
+        {onSetCover && (
+          <button type="button" class="btn-overlay-cover" onClick={() => onSetCover(activeIdx)}>
+            ★ Set as ride cover
+          </button>
+        )}
+      </div>
     </div>
   );
 }

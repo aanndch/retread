@@ -1106,15 +1106,17 @@ button:focus,
   cursor: not-allowed;
 }
 
-.photo-move-btns {
-  position: absolute;
-  bottom: 0;
-  right: 0;
+/* Editor photos step: Arrange button row */
+.photo-arrange-row {
   display: flex;
-  gap: 2px;
-  background-color: var(--color-paper);
-  border: 1px solid var(--color-ink);
-  padding: 2px;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+
+.photo-arrange-row .btn-arrange {
+  border-left: none;
+  padding: 0;
 }
 
 /* Form Actions */
@@ -2032,19 +2034,6 @@ input[type=number] {
   border-color: var(--color-ink);
 }
 
-/* Shared dot indicator (photo overlay) */
-.carousel-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.4);
-  transition: background-color 0.2s;
-}
-
-.carousel-dot.active {
-  background-color: rgba(255, 255, 255, 0.9);
-}
-
 .carousel-caption-right {
   display: flex;
   align-items: center;
@@ -2148,12 +2137,8 @@ input[type=number] {
   margin-top: var(--spacing-md);
 }
 
-/* 'Set as ride cover' in the fullscreen photo overlay */
+/* 'Set as ride cover' in the fullscreen photo overlay (lives in the bar) */
 .btn-overlay-cover {
-  position: fixed;
-  bottom: calc(var(--spacing-xl) + env(safe-area-inset-bottom));
-  left: 50%;
-  transform: translateX(-50%);
   font-family: var(--font-mechanical);
   font-size: 11px;
   letter-spacing: 0.5px;
@@ -2162,10 +2147,8 @@ input[type=number] {
   background-color: var(--color-ink);
   border: 1px solid var(--color-ink);
   border-radius: var(--border-radius);
-  padding: 8px 14px;
+  padding: 6px 12px;
   cursor: pointer;
-  z-index: 1010;
-  box-shadow: 2px 2px 0px var(--color-shadow);
 }
 
 .btn-overlay-cover:hover {
@@ -2584,19 +2567,31 @@ input[type=number] {
   cursor: grabbing;
 }
 
-/* Photo overlay dot indicators */
-.photo-overlay-dots {
+/* Photo overlay bottom control bar: typewriter counter + cover action */
+.photo-overlay-bar {
   position: fixed;
   bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.15);
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: 6px 14px;
+  background-color: var(--color-paper);
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  box-shadow: 2px 2px 0px var(--color-ink);
   z-index: 1010;
+}
+
+.photo-overlay-counter {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
 }
 
 /* ─── Info Modal Internals ────────────────────────────────────────────────── */
