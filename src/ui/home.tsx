@@ -10,6 +10,14 @@ import { getSavedTheme, saveTheme, Theme } from '../theme';
 import { seedDemoRide } from './seed-demo';
 import type { Ride } from '../types';
 
+// "2026-07" -> "JULY 2026"
+function monthLabel(monthKey: string): string {
+  const [year, month] = monthKey.split('-');
+  const name = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1)
+    .toLocaleDateString(undefined, { month: 'long' });
+  return `${name.toUpperCase()} ${year}`;
+}
+
 export function TypewriterKey({ size = 40 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" style={{ display: 'block', flexShrink: 0 }}>
@@ -144,13 +152,19 @@ export function Home({ onNavigate, onReady }: HomeProps) {
       // Compile deduped trail of distinct stops
       const stopTrail = buildStopTrail(ride.startLocation, sortedLegs);
 
+      // Month bucket for the ride book: trip start (first leg date), falling
+      // back to the log date when the ride has no legs.
+      const startDate = sortedLegs.length > 0 ? sortedLegs[0].date : ride.createdAt.slice(0, 10);
+      const monthKey = startDate.slice(0, 7); // YYYY-MM
+
       list.push({
         ride,
         totalKm: computeTotalDistance(legs, ride.startOdo),
         firstPhotoBlob,
         coverKey,
         dateRange,
-        stopTrail
+        stopTrail,
+        monthKey
       });
     }
     
@@ -212,21 +226,41 @@ export function Home({ onNavigate, onReady }: HomeProps) {
   const totalRides = ridesData?.length ?? 0;
   const totalKm = (ridesData ?? []).reduce((sum, t) => sum + t.totalKm, 0);
 
+  // Group rides into months of the trip start, newest month first.
+  interface MonthGroup {
+    monthKey: string;
+    label: string;
+    rides: NonNullable<typeof ridesData>[number][];
+    rideCount: number;
+    monthKm: number;
+  }
+  const monthGroups = (ridesData ?? []).reduce<MonthGroup[]>((groups, entry) => {
+    const last = groups[groups.length - 1];
+    if (last && last.monthKey === entry.monthKey) {
+      last.rides.push(entry);
+      last.rideCount += 1;
+      last.monthKm += entry.totalKm;
+    } else {
+      groups.push({
+        monthKey: entry.monthKey,
+        label: monthLabel(entry.monthKey),
+        rides: [entry],
+        rideCount: 1,
+        monthKm: entry.totalKm,
+      });
+    }
+    return groups;
+  }, []);
+
   return (
     <div class="home-container">
-      {/* Top Header Bar */}
+      {/* Top Header Bar — pinned like every page top bar */}
       <header class="home-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <TypewriterKey size={42} />
-          <div>
-            <h1 class="logo" style={{ margin: 0, lineHeight: 1 }}>retread</h1>
-            {ridesData && ridesData.length === 0 ? (
-              <p class="tagline home-tagline" style={{ margin: 0, marginTop: 'var(--spacing-xs)' }}>For well-tread rides.</p>
-            ) : ridesData !== undefined ? (
-              <p class="home-stats" style={{ margin: 0, marginTop: 'var(--spacing-xs)' }}>
-                {totalRides} {totalRides === 1 ? 'ride' : 'rides'} · {formatDistance(totalKm)}
-              </p>
-            ) : null}
+        <div class="home-brand">
+          <TypewriterKey size={24} />
+          <div class="home-brand-text">
+            <h1 class="logo home-logo">retread</h1>
+            <p class="tagline home-tagline">For well-tread rides.</p>
           </div>
         </div>
         <Button 
@@ -237,6 +271,16 @@ export function Home({ onNavigate, onReady }: HomeProps) {
           <GearIcon size={20} />
         </Button>
       </header>
+
+      {/* Book-level stats row, shown once there are rides */}
+      {ridesData && ridesData.length > 0 && (
+        <div class="book-summary">
+          <span class="book-summary-label">Ride Book</span>
+          <span class="book-summary-meta">
+            {totalRides} {totalRides === 1 ? 'ride' : 'rides'} · {formatDistance(totalKm)}
+          </span>
+        </div>
+      )}
 
       {/* Settings Panel Overlay */}
       {showSettings && (
@@ -341,26 +385,36 @@ export function Home({ onNavigate, onReady }: HomeProps) {
             </div>
           </div>
         ) : (
-          <>
-            <p class="ride-book-label">Ride Book</p>
-            <div class="rides-grid">
-              {ridesData.map(({ ride, totalKm, firstPhotoBlob, coverKey, dateRange, stopTrail }) => (
-                <RideCard 
-                  key={ride.id} 
-                  ride={ride} 
-                  totalKm={totalKm} 
-                  firstPhotoBlob={firstPhotoBlob} 
-                  coverKey={coverKey}
-                  dateRange={dateRange}
-                  stopTrail={stopTrail}
-                  reveal={ride.id === revealRideId}
-                  onRevealEnd={() => {
-                    if (revealRideId === ride.id) setRevealRideId(null);
-                  }}
-                />
-              ))}
-            </div>
-          </>
+          <div class="ride-book">
+            {monthGroups.map((group) => (
+              <section class="month-group" key={group.monthKey}>
+                <header class="month-group-header">
+                  <span class="month-group-label">{group.label}</span>
+                  <span class="month-group-meta">
+                    {group.rideCount} {group.rideCount === 1 ? 'ride' : 'rides'}
+                    {group.monthKm > 0 ? ` · ${formatDistance(group.monthKm)}` : ''}
+                  </span>
+                </header>
+                <div class="rides-grid">
+                  {group.rides.map(({ ride, totalKm, firstPhotoBlob, coverKey, dateRange, stopTrail }) => (
+                    <RideCard 
+                      key={ride.id} 
+                      ride={ride} 
+                      totalKm={totalKm} 
+                      firstPhotoBlob={firstPhotoBlob} 
+                      coverKey={coverKey}
+                      dateRange={dateRange}
+                      stopTrail={stopTrail}
+                      reveal={ride.id === revealRideId}
+                      onRevealEnd={() => {
+                        if (revealRideId === ride.id) setRevealRideId(null);
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
         )}
       </main>
 

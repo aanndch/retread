@@ -388,13 +388,23 @@ button:focus,
   box-shadow: 0px 0px 0px var(--color-ink);
 }
 
-/* Home Header */
+/* Home Header — pinned like every page top bar: paper fills the strip above
+   and a 2px overhang prevents card-shadow bleed. The month-group headers stick
+   just below it via the same sticky-topbar offset used by day-group headers. */
 .home-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 0;
-  margin-bottom: var(--spacing-lg);
+  gap: var(--spacing-sm);
+  margin: 0 -2px var(--spacing-md) -2px;
+  border-bottom: 1px dashed var(--color-paper-dim);
+  padding: 0 2px 6px 2px;
+  height: var(--sticky-topbar-offset);
+  position: sticky;
+  top: var(--sticky-topbar-inset);
+  z-index: 10;
+  background-color: var(--color-paper);
+  box-shadow: 0 calc(-1 * var(--sticky-topbar-inset)) 0 0 var(--color-paper);
 }
 
 .home-header .btn-icon {
@@ -402,9 +412,30 @@ button:focus,
   height: 36px;
 }
 
+.home-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.home-brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1;
+}
+
+.home-logo {
+  font-size: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .home-tagline {
-  margin: 0;
-  margin-top: var(--spacing-xs);
+  font-size: 10px;
+  margin: 4px 0 0;
 }
 
 /* Setup View */
@@ -824,12 +855,75 @@ button:focus,
   margin: 0 0 var(--spacing-sm);
 }
 
-/* Home header aggregate stats */
-.home-stats {
+/* Month-grouped ride book: sticky month headers pin to the top inset */
+.ride-book {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.month-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.month-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-ink);
+  padding: var(--spacing-xs) 2px;
+  margin: 0 -2px var(--spacing-xs) -2px;
+  position: sticky;
+  top: calc(var(--sticky-topbar-inset) + var(--sticky-topbar-offset) - 1px);
+  z-index: 5;
+  background-color: var(--color-paper);
+}
+
+.month-group-label {
   font-family: var(--font-mechanical);
   font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.month-group-meta {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
   color: var(--color-ink-muted);
   letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* Book-level summary row above the ride book: mirrors the month-group header
+   anatomy (label left, meta right) one level up, but with a dashed hairline so
+   it doesn't stack a second solid rule against the first month header. */
+.book-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  border-bottom: 1px dashed var(--color-paper-dim);
+  padding: var(--spacing-xs) 2px;
+  margin: 0 -2px var(--spacing-md) -2px;
+}
+
+.book-summary-label {
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.book-summary-meta {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 /* Placeholders & Test Views */
