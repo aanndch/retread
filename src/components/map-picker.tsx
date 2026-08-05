@@ -7,7 +7,7 @@ interface MapPickerProps {
   isOpen: boolean;
   initialLocation: LocationUnion | null;
   fallbackCenter: [number, number] | null;
-  onConfirm: (lat: number, lng: number) => void;
+  onConfirm: (lat: number, lng: number, name?: string) => void;
   onClose: () => void;
   showToast: (msg: string) => void;
 }
@@ -41,6 +41,11 @@ export function MapPicker({
   const [showResults, setShowResults] = useState(false);
   const debounceRef = useRef<number | null>(null);
   const lastSearchedRef = useRef('');
+  const selectedNameRef = useRef('');
+  const initialLocationRef = useRef(initialLocation);
+  const fallbackCenterRef = useRef(fallbackCenter);
+  initialLocationRef.current = initialLocation;
+  fallbackCenterRef.current = fallbackCenter;
 
   const handleClose = (action: () => void) => {
     setClosing(true);
@@ -75,15 +80,17 @@ export function MapPicker({
   // Stable ref callback — only creates the map once
   const mapContainerRef = useCallback((el: HTMLDivElement | null) => {
     if (!el) return;
-    if (mapRef.current) return; // already initialized
+    if (mapRef.current) return;
     if (!(window as any).L) return;
     const L = (window as any).L;
 
+    const initLoc = initialLocationRef.current;
+    const fbCenter = fallbackCenterRef.current;
     let center: [number, number] = [31.1048, 77.1734];
-    if (initialLocation?.kind === 'gps') {
-      center = [initialLocation.lat, initialLocation.lng];
-    } else if (fallbackCenter) {
-      center = fallbackCenter;
+    if (initLoc?.kind === 'gps') {
+      center = [initLoc.lat, initLoc.lng];
+    } else if (fbCenter) {
+      center = fbCenter;
     }
 
     const map = L.map(el, { zoomControl: false }).setView(center, 13);
@@ -102,7 +109,7 @@ export function MapPicker({
     map.on('dragstart', () => setShowResults(false));
 
     mapRef.current = map;
-  }, [initialLocation, fallbackCenter]);
+  }, []);
 
   // Geocode search via Nominatim
   const geocode = async (q: string) => {
@@ -162,6 +169,7 @@ export function MapPicker({
     if (map) {
       map.setView([r.lat, r.lng], 14);
     }
+    selectedNameRef.current = r.name;
     setQuery(r.name);
     setShowResults(false);
     setResults([]);
@@ -178,7 +186,7 @@ export function MapPicker({
       if (!center || typeof center.lat !== 'number' || typeof center.lng !== 'number') {
         throw new Error('Invalid center coordinates');
       }
-      onConfirm(center.lat, center.lng);
+      onConfirm(center.lat, center.lng, selectedNameRef.current);
       handleClose(onClose);
     } catch (err) {
       console.error('Failed to confirm map picker pin:', err);

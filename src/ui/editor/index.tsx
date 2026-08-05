@@ -536,12 +536,11 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     dispatch({ mapPickerTarget: target, showMapPicker: true });
   };
 
-  const handleConfirmPickerLocation = (lat: number, lng: number) => {
+  const handleConfirmPickerLocation = (lat: number, lng: number, name?: string) => {
     if (mapPickerTarget === 'start') {
-      // Keep any name the user already typed; the map picker only moves the pin.
-      dispatch({ mapNote: false, startLocation: { kind: 'gps', lat, lng, name: startLocation?.name || '' } });
+      dispatch({ mapNote: false, startLocation: { kind: 'gps', lat, lng, name: name || startLocation?.name || '' } });
     } else {
-      dispatch({ mapNote: false, location: { kind: 'gps', lat, lng, name: location?.name || '' } });
+      dispatch({ mapNote: false, location: { kind: 'gps', lat, lng, name: name || location?.name || '' } });
     }
   };
 
