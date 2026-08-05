@@ -1477,7 +1477,7 @@ button:focus,
   font-family: var(--font-typewriter);
   font-size: 11px;
   color: var(--color-ink-muted);
-  margin-top: calc(-1 * var(--spacing-xs));
+  margin-top: var(--spacing-sm);
   display: block;
 }
 
@@ -2066,21 +2066,13 @@ button:focus,
   color: var(--color-ink-muted);
 }
 
-/* Ride creation/editing is a focused prompt: center its few cards in the
-   available viewport so a sparse screen reads as intentional, not empty. */
+/* The Start step flows from the top of the screen like every other step. */
 .ride-create-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: var(--spacing-md);
   min-height: 0;
-}
-
-.ride-create-kicker {
-  text-align: center;
-  margin: 0;
-  font-size: 12px;
 }
 
 /* Compact step dots for the leg wizard (replaces the text progress bar) */

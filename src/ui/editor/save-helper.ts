@@ -66,7 +66,7 @@ export async function saveEditorDetails(
 
   if (mode === 'new-ride') {
     // One "log a ride" save creates the ride and its first leg together.
-    const finalTitle = data.rideTitle.trim() || deriveRideTitle(data.startLocation, data.date);
+    const finalTitle = data.rideTitle.trim() || deriveRideTitle(data.date);
     let startLocPayload: LocationUnion | null = null;
     if (data.startLocation) {
       if (data.startLocation.kind === 'named' && !data.startLocation.name.trim()) {

@@ -685,7 +685,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
             <StartStep
               rideTitle={rideTitle}
               setRideTitle={(val) => dispatch({ rideTitle: val })}
-              autoRideTitle={deriveRideTitle(startLocation, date)}
+              autoRideTitle={deriveRideTitle(date)}
               startLocation={startLocation}
               startGpsLoading={startGpsLoading}
               onClearStartLocation={onClearStartLocation}
