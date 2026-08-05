@@ -163,33 +163,6 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   const photoPreviewsRef = useRef<string[]>([]);
   photoPreviewsRef.current = photoPreviews;
 
-  // Auto-capture departure GPS on mount for new rides
-  useEffect(() => {
-    if (mode === 'new-ride' && navigator.geolocation) {
-      let active = true;
-      dispatch({ startGpsLoading: true });
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          if (active) {
-            dispatch({
-              startGpsLoading: false,
-              startLocation: { kind: 'gps', lat: position.coords.latitude, lng: position.coords.longitude, name: '' }
-            });
-            showToast('Location captured.');
-          }
-        },
-        () => {
-          if (active) {
-            dispatch({ startGpsLoading: false });
-            showToast('GPS auto-detect failed.');
-          }
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-      return () => { active = false; };
-    }
-  }, [mode]);
-
   // Load existing leg data when editing a leg
   useEffect(() => {
     if (mode === 'edit' && legId !== null) {

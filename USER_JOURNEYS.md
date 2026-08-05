@@ -43,22 +43,20 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 
 2. **Tap "Log Your First Ride"**
    - Route: `#/edit?mode=new-ride`
-   - Editor opens. GPS auto-capture fires on mount (`enableHighAccuracy: true, timeout: 10000`).
-   - "Detecting your location..." shown while GPS resolves.
-   - GPS succeeds → `startLocation` populated, `GpsBadge` appears with coordinates.
+   - Editor opens. No GPS request yet — the browser asks for location only when the user taps "Use my location".
+   - Start pin is empty until the user chooses: "Use my location" (prompts) or "Pick on Map".
 
 3. **Fill ride title**
    - User types e.g. "Ladakh 2026".
    - Title is required — save blocked without it.
 
 4. **Starting From section**
-   - GPS pin already set (auto-captured). Name field is optional.
+   - Start pin empty until the user taps "Use my location". Name field is optional.
    - User can optionally type a departure name (e.g. "Delhi").
 
 5. **Distance Method**
-   - Default: GPS route. User can switch to Manual or Odometer.
+   - Default: GPS route. User can switch to Manual.
    - If GPS route: tip says "We measure each leg between your GPS pins, along real roads."
-   - If Odometer: additional "Starting Odometer (km)" field appears.
 
 6. **Tap "Create Ride"**
    - Save validates title. If valid, ride is written to Dexie.
@@ -110,7 +108,7 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 - **Completed:** Ride + 1 leg saved. User on ride detail.
 - **Abandoned at step 1:** User taps back → `#/` (home). Ride is saved (from step 6), leg is not.
 - **Abandoned at step 2/3:** User taps back → returns to previous step. Data preserved within session.
-- **GPS failure:** Toast "GPS auto-detect failed." Form shows empty pin buttons. User can manually retry or skip the pin.
+- **GPS failure:** User taps "Use my location" and GPS fails → toast "GPS auto-detect failed." Form shows empty pin buttons. User can retry or skip the pin.
 
 ---
 
@@ -125,9 +123,9 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
    - User taps FAB "+".
    - Route: `#/edit?mode=new-ride`.
 
-2. **GPS auto-capture fires**
-   - May succeed (user is at home, not on the road) or fail.
-   - If fails: toast, empty pin buttons shown.
+2. **No GPS request on mount**
+   - The location prompt is deferred until the user taps "Use my location".
+   - Start pin empty, pin buttons shown.
 
 3. **Fill ride title**
    - User types e.g. "Spiti Loop 2025".
@@ -437,30 +435,19 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 
 ### Edge case: Changing distance mode mid-ride
 - Switching from GPS route to Manual: no effect on existing legs (they keep their stored km).
-- Switching to Odometer: `startOdo` field appears. If ride already has legs, the starting odo is retroactive.
-- Switching from Odometer to GPS: existing odo readings preserved on legs, but new legs use GPS auto-calc.
 
 ---
 
-## Journey 11: GPS Auto-Capture Failure (New Ride)
+## Journey 11: Start Pin Skipped (New Ride)
 
-**Edge case:** Browser denies geolocation or times out.
+**Edge case:** User creates a ride without setting a start pin.
 
 ### Steps
 
-1. **Mount → GPS request fires.**
-   - `navigator.geolocation.getCurrentPosition` with `timeout: 10000`.
+1. **Editor opens with no GPS request.**
+   - The location prompt is deferred to the "Use my location" tap.
 
-2. **GPS fails.**
-   - Error callback fires.
-   - Toast: "GPS auto-detect failed."
-   - `startGpsLoading: false`, `startLocation` remains `null`.
-
-3. **Form shows empty pin buttons.**
-   - "Use my location" (retry) and "Pick on Map" buttons visible.
-   - User can retry GPS or use map.
-
-4. **Ride saves without start pin.**
+2. **User creates the ride without a pin.**
    - `startLocation` is `null`.
    - `mapNote` shown: "No start pin — your route will begin at the first pinned stop."
    - Ride saves. First leg's GPS pin becomes the effective start of the route map.
@@ -480,7 +467,7 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 2. **GPS fails.**
    - Error callback: `dispatch({ gpsLoading: false, location: null })`.
    - Pin remains unset.
-   - No toast (silent failure for manual triggers — only auto-capture shows toast).
+   - No toast (manual triggers fail silently).
 
 3. **User sees empty pin buttons again.**
    - Can retry "Use my location" or switch to "Pick on Map".
@@ -638,39 +625,9 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
    - `autoCalcKeyRef` detects the key hasn't changed (pins didn't move), but mode change resets the ref.
    - Auto-distance recalculated.
 
-4. **Switches to Odometer.**
-   - Odometer input shown with delta preview.
-   - Previous leg's odo loaded from `prevOdo`.
-
 ---
 
-## Journey 20: Odometer Mode — First Leg
-
-**Edge case:** Ride created with odometer mode, first leg entry.
-
-### Steps
-
-1. **Ride created with `distanceMode: 'odo'` and `startOdo: 5240`.**
-
-2. **First leg editor opens.**
-   - `prevOdo` set to ride's `startOdo` (5240).
-   - Odometer input shown. Placeholder: "e.g. 5420".
-
-3. **User enters odo reading: 5420.**
-   - Delta preview: "≈ 180 km since last reading (5240)".
-
-4. **Save.**
-   - `leg.odo = 5420`.
-   - Distance computed as `5420 - 5240 = 180`.
-
-### Second leg
-- `prevOdo` set to first leg's `odo` (5420).
-- User enters 5600.
-- Delta: "≈ 180 km since last reading (5420)".
-
----
-
-## Journey 21: Backfill After Pin Addition
+## Journey 20: Backfill After Pin Addition
 
 **Edge case:** Adding a GPS pin to a name-only leg retroactively fixes the route.
 

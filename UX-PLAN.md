@@ -78,7 +78,7 @@ Foundational: everything downstream depends on how unnamed stops are labeled.
 
 **`src/ui/editor/index.tsx`**
 - No new state flags needed — the form saves naturally whether or not a pin is set. The phantom-point rendering (Phase 3) handles the visual.
-- Keep the existing auto-GPS-on-mount for new rides — it now feeds the start pin directly (User A).
+- No GPS request on mount — the browser asks for location only when the user taps "Use my location" (explicit consent, consistent with the destination pin; User A taps once at the trip start).
 - **Ride start pin (required-but-sketchable):** ride creation asks for a start pin (GPS or map); if skipped, the first pinned leg anchors the map (the existing `cumulativePath` logic already tolerates this).
 
 **`src/ui/editor/save-helper.ts`**
