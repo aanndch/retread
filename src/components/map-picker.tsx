@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { Button } from './button';
 import { loadLeaflet } from '../ui/editor/utils';
 import type { LocationUnion } from '../types';
@@ -32,7 +32,8 @@ export function MapPicker({
 }: MapPickerProps) {
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [closing, setClosing] = useState(false);
-  const pickerMapRef = useRef<any>(null);
+  const mapRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Search state
   const [query, setQuery] = useState('');
@@ -54,9 +55,7 @@ export function MapPicker({
   useEffect(() => {
     let active = true;
     loadLeaflet()
-      .then(() => {
-        if (active) setLeafletLoaded(true);
-      })
+      .then(() => { if (active) setLeafletLoaded(true); })
       .catch((err) => {
         console.error('Failed to load Leaflet library:', err);
         showToast('Failed to load map libraries.');
@@ -64,12 +63,46 @@ export function MapPicker({
     return () => { active = false; };
   }, []);
 
+  // Initialize map once Leaflet is loaded and container is ready
+  useEffect(() => {
+    if (!leafletLoaded || !containerRef.current || mapRef.current) return;
+
+    const L = (window as any).L;
+    if (!L) return;
+
+    let center: [number, number] = [31.1048, 77.1734];
+    if (initialLocation?.kind === 'gps') {
+      center = [initialLocation.lat, initialLocation.lng];
+    } else if (fallbackCenter) {
+      center = fallbackCenter;
+    }
+
+    const map = L.map(containerRef.current, {
+      zoomControl: false,
+    }).setView(center, 13);
+
+    // Place zoom control on the right to avoid overlapping the search bar
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 20
+    }).addTo(map);
+
+    // Dismiss search results on map interaction
+    map.on('click', () => setShowResults(false));
+    map.on('dragstart', () => setShowResults(false));
+
+    mapRef.current = map;
+  }, [leafletLoaded]);
+
   // Clean up map instance when modal unmounts
   useEffect(() => {
     return () => {
-      if (pickerMapRef.current) {
-        try { pickerMapRef.current.remove(); } catch (_) {}
-        pickerMapRef.current = null;
+      if (mapRef.current) {
+        try { mapRef.current.remove(); } catch (_) {}
+        mapRef.current = null;
       }
     };
   }, []);
@@ -82,8 +115,6 @@ export function MapPicker({
       setShowResults(false);
       return;
     }
-
-    // Skip if same query was already searched
     if (trimmed === lastSearchedRef.current) return;
     lastSearchedRef.current = trimmed;
 
@@ -129,55 +160,26 @@ export function MapPicker({
   };
 
   // Pan map to a geocoded result
-  const handleSelectResult = (r: GeocodeResult) => {
-    const map = pickerMapRef.current;
+  const handleSelectResult = useCallback((r: GeocodeResult) => {
+    const map = mapRef.current;
     if (map) {
       map.setView([r.lat, r.lng], 14);
+    } else {
+      console.warn('Map reference not available for setView');
     }
     setQuery(r.name);
     setShowResults(false);
     setResults([]);
     lastSearchedRef.current = '';
-  };
+  }, []);
 
   if (!isOpen) return null;
-
-  const initializeMap = (el: HTMLDivElement | null) => {
-    if (!el) return;
-    if (!(window as any).L) return;
-    const L = (window as any).L;
-
-    let initialCenter: [number, number] = [31.1048, 77.1734];
-    if (initialLocation?.kind === 'gps') {
-      initialCenter = [initialLocation.lat, initialLocation.lng];
-    } else if (fallbackCenter) {
-      initialCenter = fallbackCenter;
-    }
-
-    try {
-      if (pickerMapRef.current) pickerMapRef.current.remove();
-    } catch (_) {}
-
-    const map = L.map(el, { zoomControl: true }).setView(initialCenter, 13);
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-      subdomains: 'abcd',
-      maxZoom: 20
-    }).addTo(map);
-
-    // Dismiss search results on map interaction
-    map.on('click', () => setShowResults(false));
-    map.on('dragstart', () => setShowResults(false));
-
-    pickerMapRef.current = map;
-  };
 
   const handleConfirm = (e: MouseEvent) => {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     try {
-      if (!pickerMapRef.current) return;
-      const center = pickerMapRef.current.getCenter();
+      if (!mapRef.current) return;
+      const center = mapRef.current.getCenter();
       if (!center || typeof center.lat !== 'number' || typeof center.lng !== 'number') {
         throw new Error('Invalid center coordinates');
       }
@@ -221,21 +223,22 @@ export function MapPicker({
 
         {/* Map container — search floats on top */}
         <div style={{ position: 'relative', width: '100%', height: '400px' }}>
-          {/* Map */}
-          {!leafletLoaded ? (
+          {/* Map mount point — stable ref, never re-created */}
+          <div
+            ref={containerRef}
+            style={{ width: '100%', height: '100%', background: 'var(--color-paper-dim)' }}
+          />
+
+          {/* Loading state */}
+          {!leafletLoaded && (
             <div style={{
-              width: '100%', height: '100%',
+              position: 'absolute', inset: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: 'var(--color-paper-dim)',
               fontFamily: 'var(--font-typewriter)', fontSize: '13px',
             }}>
               Loading map...
             </div>
-          ) : (
-            <div
-              ref={initializeMap}
-              style={{ width: '100%', height: '100%', background: 'var(--color-paper-dim)' }}
-            />
           )}
 
           {/* Crosshair */}
@@ -257,7 +260,7 @@ export function MapPicker({
 
           {/* Search bar — floats on top of the map */}
           {leafletLoaded && (
-            <div style={{ position: 'absolute', top: '12px', left: '12px', right: '12px', zIndex: 2200 }}>
+            <div style={{ position: 'absolute', top: '12px', left: '12px', right: '60px', zIndex: 2200 }}>
               <div style={{ position: 'relative' }}>
                 <input
                   type="text"
