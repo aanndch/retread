@@ -1,6 +1,7 @@
 import { db } from '../../db';
 import { backfillRideRoutes } from '../../road';
 import { scheduleAutoSync } from '../../gdrive';
+import { deriveRideTitle } from '../../lib';
 import type { LocationUnion, Leg } from '../../types';
 
 interface SaveData {
@@ -55,10 +56,7 @@ export async function saveEditorDetails(
   }
 
   if (mode === 'new-ride') {
-    if (!data.rideTitle.trim()) {
-      throw new Error('Ride Title is required to start a new ride.');
-    }
-    const finalTitle = data.rideTitle.trim();
+    const finalTitle = data.rideTitle.trim() || deriveRideTitle(data.startLocation);
     let startLocPayload: LocationUnion | null = null;
     if (data.startLocation) {
       if (data.startLocation.kind === 'named' && !data.startLocation.name.trim()) {

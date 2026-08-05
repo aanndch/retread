@@ -46,29 +46,23 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
    - Editor opens. No GPS request yet — the browser asks for location only when the user taps "Use my location".
    - Start pin is empty until the user chooses: "Use my location" (prompts) or the place row (opens the picker).
 
-3. **Fill ride title**
-   - User types e.g. "Ladakh 2026".
-   - Title is required — save blocked without it.
+3. **Ride title (optional)**
+   - Auto-derives from the start label + today ("Manali · 12 Aug 2026", else "Ride · 12 Aug 2026"). The collapsed Title row shows it; expand to override. Nothing required.
 
 4. **Starting From section**
    - A single tappable place row ("Choose start →"). Tapping it opens the place picker (India-biased search + map), where the stop name is edited on the placed pin; "Use my location" sits beside the row for the live case.
 
-5. **Distance Method**
-   - Default: GPS route. User can switch to Manual.
-   - If GPS route: tip says "We measure each leg between your GPS pins, along real roads."
+5. **Tap "Create Ride"**
+   - Ride is written to Dexie with the auto/typed title; distance method defaults to GPS route (the leg form holds the Manual toggle).
+   - **Redirect:** `#/edit?mode=new-leg&rideId={newRideId}` — continues straight into leg 1. `[save-helper.ts]`
 
-6. **Tap "Create Ride"**
-   - Save validates title. If valid, ride is written to Dexie.
-   - **Redirect:** `#/edit?mode=new-leg&rideId={newRideId}` — continues straight into leg 1. `[save-helper.ts:83-84]`
-
-7. **Leg editor opens (step 1 — Metrics)**
-   - Mode: `new-leg`. Wizard shows: "1. METRICS → 2. PHOTOS → 3. STORY".
+6. **Leg editor opens (step 1 — Metrics)**
+   - Mode: `new-leg`. Wizard shows dots: Details · Photos · Note.
    - Date defaults to today, time auto-set to current time.
    - `fallbackCenter` loaded from ride's start pin — this is the "from" point for auto-distance.
 
-8. **Fill leg title**
-   - User types e.g. "Delhi to Manali".
-   - Required — blocks advance to step 2.
+7. **Leg title (optional)**
+   - Auto-fills from the destination label; expand the Title row to override.
 
 9. **Set destination pin**
    - User taps "Use my location" (currently at destination).
@@ -126,27 +120,20 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
    - The location prompt is deferred until the user taps "Use my location".
    - Start pin empty, pin buttons shown.
 
-3. **Fill ride title**
-   - User types e.g. "Spiti Loop 2025".
+3. **Ride title (optional)**
+   - Auto-derived; expand the collapsed Title row to set a custom name (e.g. "Spiti Loop 2025").
 
 4. **Starting From**
-   - Name field shown first. User types "Manali".
-   - GPS pin not set yet. User taps "Pick on Map".
-   - Map picker opens. User pans to Manali, taps "Confirm Location".
-   - `startLocation` set to GPS coordinates + name.
+   - Place row ("Choose start →") → opens the place picker. User searches "Manali" (India-biased) and taps the result — pin drops, name kept. Or taps the map. `startLocation` set to GPS coordinates + name.
 
-5. **Distance Method**
-   - User switches to Manual (catch-up users often don't have GPS pins for every leg).
-   - Or keeps GPS route if they plan to pin every stop.
+5. **Tap "Create Ride"**
+   - Ride saved (distance defaults to GPS route; Manual is chosen per leg in the leg form). Redirect to leg editor.
 
-6. **Tap "Create Ride"**
-   - Ride saved. Redirect to leg editor.
+6. **Leg editor opens**
+   - Same as Journey 1, step 6.
 
-7. **Leg editor opens**
-   - Same as Journey 1, step 7.
-
-8. **Fill leg title**
-   - User types "Manali to Spiti via Rohtang".
+7. **Leg title (optional)**
+   - Auto-fills from the destination label; expand to override (e.g. "Manali to Spiti via Rohtang").
 
 9. **Set destination**
    - Name field first: user types "Kaza".
@@ -410,10 +397,10 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 
 ---
 
-## Journey 10: Edit Ride — Modify Title/Start/Distance Method
+## Journey 10: Edit Ride — Modify Title / Start
 
 **Persona:** Any user — correcting ride metadata.
-**Goal:** Update ride title, starting location, or distance method.
+**Goal:** Update ride title or starting location.
 
 ### Steps
 
@@ -423,17 +410,17 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 
 2. **Editor loads existing ride data**
    - `loading: true` while Dexie query runs.
-   - Ride title, start location, distance mode populated.
+   - Ride title (visible, required) and start location (place row) populated.
 
 3. **Modify fields**
-   - Change title, start pin (GPS or name), or distance method.
+   - Change the title or move the start pin (place row → picker / "Use my location"). Distance method is not a ride-level setting — the leg form's Distance row holds the GPS route / Manual toggle per leg.
 
 4. **Tap "Save Changes"**
    - Ride updated in Dexie.
    - Route: `#/ride/{rideId}` — returns to ride detail.
 
 ### Edge case: Changing distance mode mid-ride
-- Switching from GPS route to Manual: no effect on existing legs (they keep their stored km).
+- Switching a leg from GPS route to Manual: no effect on other legs (they keep their stored km); it's a per-leg choice in the leg form.
 
 ---
 
@@ -493,48 +480,39 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 
 ---
 
-## Journey 14: Validation Error — Missing Title
+## Journey 14: Titles Are Optional (New Ride / New Leg)
 
-**Edge case:** User tries to advance or save without a title.
+**Edge case:** User creates a ride or leg without typing a title.
 
 ### Steps
 
-1. **User fills destination, skips title.**
+1. **Ride title skipped.**
+   - The collapsed Title row shows an auto value (start label + date, else "Ride · <date>"). Nothing is required — save derives it via `deriveRideTitle`.
 
-2. **Taps "Next: Photos →"** (step 1).
-   - `handleStepJump(2)` fires.
-   - `legTitle.trim()` is empty.
-   - `dispatch({ titleError: 'Leg Title is required to continue.' })`.
-   - Input highlighted with `.input-error` class (red border).
-   - Error text shown below input.
+2. **Leg title skipped.**
+   - Auto-fills from the destination label ("Manali") when set; otherwise derives "Stop N" at save.
 
-3. **User types a title.**
-   - `titleError` cleared on input.
-
-4. **Retry advance.**
-   - Now succeeds.
-
-### Same for ride creation
-- "Ride Title is required to start a new ride." on save attempt.
+3. **Save proceeds.**
+   - No validation blocks it — titles are derived when empty.
 
 ---
 
-## Journey 15: Validation Error — Missing Ride Title on Save
+## Journey 15: Validation — Missing Ride Title (Edit Ride)
 
-**Edge case:** User taps "Create Ride" without a title.
+**Edge case:** User edits a ride and clears the title.
 
 ### Steps
 
-1. **User fills start pin, distance method. Skips title.**
+1. **Edit Ride form opens** (`mode=edit-ride`). Title is a visible required field.
 
-2. **Taps "Create Ride".**
+2. **User clears the title and taps "Save Changes".**
    - `handleSave` fires.
    - `rideTitle.trim()` is empty.
-   - `dispatch({ titleError: 'Ride Title is required to start a new ride.' })`.
-   - Input highlighted. Error text shown.
-   - Save blocked.
+   - `dispatch({ titleError: 'Ride Title is required.' })`.
+   - Input highlighted with `.input-error` (red border). Error text shown.
+   - Save blocked until a title is entered.
 
-3. **User types title, retries save.**
+3. **User types a title, retries save.**
    - Now succeeds.
 
 ---

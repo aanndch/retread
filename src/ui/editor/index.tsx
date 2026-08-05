@@ -11,6 +11,7 @@ import { MapPicker } from '../../components/map-picker';
 import { CoordinatePasteModal } from '../../components/coordinate-paste-modal';
 import { saveEditorDetails } from './save-helper';
 import { snapLeg, haversineDistance } from '../../road';
+import { deriveRideTitle } from '../../lib';
 import { reverseGeocode } from './utils';
 import type { LocationUnion } from '../../types';
 // ==========================================
@@ -503,10 +504,6 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   };
 
   const handleStepJump = (targetStep: 1 | 2 | 3) => {
-    if (mode === 'new-ride' && !rideTitle.trim() && targetStep > 1) {
-      dispatch({ titleError: 'Ride Title is required to start a new ride.' });
-      return;
-    }
     // Advancing without a pin is the implicit "save without a map" bypass; flag
     // it so the form shows the consequence instead of hiding it.
     if (mode === 'new-ride' && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
@@ -564,9 +561,9 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     e.preventDefault();
     if (saving) return;
 
-    if (mode === 'new-ride' || mode === 'edit-ride') {
+    if (mode === 'edit-ride') {
       if (!rideTitle.trim()) {
-        dispatch({ titleError: mode === 'edit-ride' ? 'Ride Title is required.' : 'Ride Title is required to start a new ride.' });
+        dispatch({ titleError: 'Ride Title is required.' });
         return;
       }
     } else if (step < 3) {
@@ -603,13 +600,6 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   return (
     <div class="editor-container">
       <PageHeader onBack={handleCancel} />
-
-      {/* Mode title — ride modes keep a heading; leg modes stay lean (no chrome) */}
-      {mode !== 'new-leg' && mode !== 'edit' && (
-        <h2 class="page-heading">
-          {mode === 'new-ride' ? 'New Ride' : 'Edit Ride Details'}
-        </h2>
-      )}
 
       {/* Compact step dots for leg modes */}
       {mode !== 'new-ride' && mode !== 'edit-ride' && (
@@ -655,6 +645,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               mode={mode}
               rideTitle={rideTitle}
               setRideTitle={(val) => dispatch({ rideTitle: val })}
+              autoRideTitle={deriveRideTitle(startLocation)}
               date={date}
               setDate={(val) => dispatch({ date: val })}
               time={time}

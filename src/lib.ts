@@ -155,6 +155,19 @@ export function stopLabel(loc: LocationUnion | null | undefined, n: number): str
   return `Stop ${n}`;
 }
 
+const RIDE_TITLE_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * Default title for a new ride: the start label plus today's date when a start
+ * is set, otherwise "Ride · <date>". Lets ride creation happen with zero typing
+ * (the field is optional and derived on save).
+ */
+export function deriveRideTitle(startLocation?: LocationUnion | null, now: Date = new Date()): string {
+  const label = startLocation?.name?.trim();
+  const date = `${now.getDate()} ${RIDE_TITLE_MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+  return label ? `${label} · ${date}` : `Ride · ${date}`;
+}
+
 /**
  * Computes the per-day cumulative distance for a ride from its legs,
  * summing each leg's direct `km` into its date bucket.

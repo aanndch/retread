@@ -71,6 +71,8 @@ interface MetricsStepProps {
   mode: 'new-ride' | 'edit-ride' | 'new-leg' | 'edit';
   rideTitle: string;
   setRideTitle: (t: string) => void;
+  // Preview of the auto-derived new-ride title (start label + date, else "Ride · date").
+  autoRideTitle: string;
   date: string;
   setDate: (d: string) => void;
   time: string;
@@ -110,6 +112,7 @@ export function MetricsStep({
   mode,
   rideTitle,
   setRideTitle,
+  autoRideTitle,
   date,
   setDate,
   time,
@@ -153,13 +156,14 @@ export function MetricsStep({
 
   return (
     <div class="wizard-step-content">
-      {/* Ride Title (New Ride Only) */}
-      {(mode === 'new-ride' || mode === 'edit-ride') && (
+      {/* Ride Title — Edit Ride: visible required field; New Ride: collapsed
+          auto-derived row */}
+      {mode === 'edit-ride' && (
         <FieldCard label="Ride Title">
-          <input 
-            type="text" 
+          <input
+            type="text"
             class={`form-input ${titleError ? 'input-error' : ''}`}
-            placeholder="e.g. Spiti Valley Odyssey" 
+            placeholder="e.g. Spiti Valley Odyssey"
             value={rideTitle}
             onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
               setRideTitle((e.target as HTMLInputElement).value);
@@ -170,11 +174,32 @@ export function MetricsStep({
         </FieldCard>
       )}
 
+      {mode === 'new-ride' && (
+        <DetailRow
+          label="Title"
+          value={rideTitle || autoRideTitle}
+          open={openRow === 'title'}
+          onToggle={() => setOpenRow(openRow === 'title' ? null : 'title')}
+        >
+          <div class="form-group">
+            <input
+              type="text"
+              class={`form-input ${titleError ? 'input-error' : ''}`}
+              placeholder="e.g. Spiti Valley Odyssey"
+              value={rideTitle}
+              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
+                setRideTitle((e.target as HTMLInputElement).value);
+                if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
+              }}
+            />
+            {titleError && <span class="error-text">{titleError}</span>}
+          </div>
+        </DetailRow>
+      )}
+
       {/* Starting From - Departure Pin (New Ride / Edit Ride) */}
       {(mode === 'new-ride' || mode === 'edit-ride') && (
         <FieldCard label="Starting From">
-          <span class="field-tip">Choose the start — name it inside the picker.</span>
-
           <PlaceRow
             emptyLabel="Choose start →"
             location={startLocation}
@@ -186,38 +211,6 @@ export function MetricsStep({
 
           {mapNote && startLocation?.kind !== 'gps' && (
             <span class="field-tip">No start pin — your route will begin at the first pinned stop.</span>
-          )}
-        </FieldCard>
-      )}
-
-      {/* Distance Tracking Preference (New Ride / Edit Ride) */}
-      {(mode === 'new-ride' || mode === 'edit-ride') && (
-        <FieldCard label="Distance Method">
-          <div style={{ display: 'flex', gap: '8px', flexDirection: 'column', marginBottom: '8px' }}>
-            <Button
-              type="button"
-              variant={distanceMode === 'auto' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setDistanceMode('auto')}
-            >
-              GPS route
-            </Button>
-            <Button
-              type="button"
-              variant={distanceMode === 'manual' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setDistanceMode('manual')}
-            >
-              Manual
-            </Button>
-          </div>
-
-          {distanceMode === 'auto' && (
-            <span class="field-tip">We measure each leg between your GPS pins, along real roads.</span>
-          )}
-
-          {distanceMode === 'manual' && (
-            <span class="field-tip">You type the distance for each leg.</span>
           )}
         </FieldCard>
       )}
@@ -251,11 +244,11 @@ export function MetricsStep({
             onToggle={() => setOpenRow(openRow === 'title' ? null : 'title')}
           >
             <div class="form-group">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 class={`form-input ${titleError ? 'input-error' : ''}`}
-                placeholder="e.g. Manali to Jispa" 
-                value={legTitle} 
+                placeholder="e.g. Manali to Jispa"
+                value={legTitle}
                 onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
                   setLegTitle((e.target as HTMLInputElement).value);
                   if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
@@ -275,20 +268,20 @@ export function MetricsStep({
             <div class="form-row">
               <div class="form-group flex-1">
                 <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
-                  <input 
-                    type="date" 
-                    class="form-input" 
-                    required 
+                  <input
+                    type="date"
+                    class="form-input"
+                    required
                     style={{ flex: 1.8 }}
-                    value={date} 
+                    value={date}
                     onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setDate((e.target as HTMLInputElement).value)}
                   />
-                  <input 
-                    type="time" 
-                    class="form-input" 
-                    required 
+                  <input
+                    type="time"
+                    class="form-input"
+                    required
                     style={{ flex: 1.2 }}
-                    value={time || ''} 
+                    value={time || ''}
                     onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setTime((e.target as HTMLInputElement).value)}
                   />
                 </div>
@@ -339,9 +332,9 @@ export function MetricsStep({
                   <span class="field-tip">Just type how far this leg was.</span>
                 )}
                 <label class="input-label">Distance (km)</label>
-                <input 
-                  type="number" 
-                  class="form-input" 
+                <input
+                  type="number"
+                  class="form-input"
                   placeholder="e.g. 118"
                   value={km === null ? '' : km}
                   onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => onKmChange((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
