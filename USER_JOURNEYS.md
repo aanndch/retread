@@ -43,58 +43,27 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 
 2. **Tap "Log Your First Ride"**
    - Route: `#/edit?mode=new-ride`
-   - Editor opens. No GPS request yet — the browser asks for location only when the user taps "Use my location".
-   - Start pin is empty until the user chooses: "Use my location" (prompts) or the place row (opens the picker).
+   - A 4-step wizard opens: **Start · Stop · Photos · Story**. No GPS request yet — the browser asks only when the user taps "Use my location".
 
-3. **Ride title (optional)**
-   - Auto-derives from the start label + today ("Manali · 12 Aug 2026", else "Ride · 12 Aug 2026"). The collapsed Title row shows it; expand to override. Nothing required.
+3. **Step 1 — Start**
+   - Kicker: "Where does this ride begin?" A single tappable place row ("Choose start →"). Tapping opens the place picker (India-biased search + map); "Use my location" sits beside it.
+   - Ride title (optional): collapsed auto row, derives from the start label + leg date ("Manali · 12 Aug 2026", else "Ride · 12 Aug 2026").
 
-4. **Starting From section**
-   - A single tappable place row ("Choose start →"). Tapping it opens the place picker (India-biased search + map), where the stop name is edited on the placed pin; "Use my location" sits beside the row for the live case.
+4. **Next: Stop →**
+   - Step 2 — the first leg's destination. Same place row ("Choose destination →").
+   - Leg title auto-fills from the destination label; date/time and distance are collapsed auto rows. Auto-distance fires: OSRM snaps from the start pin to the destination.
 
-5. **Tap "Create Ride"**
-   - Ride is written to Dexie with the auto/typed title; distance method defaults to GPS route (the leg form holds the Manual toggle).
-   - **Redirect:** `#/edit?mode=new-leg&rideId={newRideId}` — continues straight into leg 1. `[save-helper.ts]`
+5. **Next: Photos →** — optional media for leg 1 (cover/arrange as before).
 
-6. **Leg editor opens (step 1 — Metrics)**
-   - Mode: `new-leg`. Wizard shows dots: Details · Photos · Note.
-   - Date defaults to today, time auto-set to current time.
-   - `fallbackCenter` loaded from ride's start pin — this is the "from" point for auto-distance.
+6. **Next: Story →** — optional note.
 
-7. **Leg title (optional)**
-   - Auto-fills from the destination label; expand the Title row to override.
+7. **Tap "Log This Ride"**
+   - One transaction creates the ride **and** leg 1 together (title auto, distance defaults to GPS route). `backfillRideRoutes` snaps the route; cover snapshot applied.
+   - Route: `#/ride/{newRideId}` — straight to ride detail. No intermediate hop.
 
-9. **Set destination pin**
-   - User taps "Use my location" (currently at destination).
-   - GPS resolves → `GpsBadge` appears with coordinates.
-   - Auto-distance fires: OSRM snaps route from start pin to destination pin. Result: "≈ 540 km · Delhi → Manali".
-
-10. **Advance to Photos (step 2)**
-    - User taps "Next: Photos →".
-    - Title validated (must be non-empty). If valid, step advances.
-
-11. **Add photos (optional)**
-    - User taps "+ Add Photos", selects images from device.
-    - Images compressed client-side. Preview grid appears.
-    - User can tap ☆ to set cover photo.
-    - Can tap "Arrange Photos" to reorder.
-
-12. **Advance to Story (step 3)**
-    - User taps "Next: Story →".
-
-13. **Write note (optional)**
-    - Textarea auto-focuses. Placeholder: "Write a whisper about this leg..."
-    - User types e.g. "Smooth highway until Kullu, then ghat section with heavy trucks."
-
-14. **Tap "Save Details"**
-    - Form submits. Leg saved to Dexie with photos, note, GPS pin, auto-measured distance.
-    - `backfillRideRoutes` snaps road path for this leg.
-    - If cover photo selected, snapshot applied to ride's `coverBlob`.
-    - Route: `#/ride/{rideId}` — returns to ride detail.
-
-15. **Ride detail page**
-    - Ride shows in timeline with 1 leg.
-    - Map shows start pin → destination pin connected by OSRM road.
+8. **Ride detail page**
+   - Ride shows in timeline with 1 leg.
+   - Map shows start pin → destination pin connected by OSRM road.
     - FAB "+" visible for adding more legs.
 
 ### Exit states
@@ -116,39 +85,22 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
    - User taps FAB "+".
    - Route: `#/edit?mode=new-ride`.
 
-2. **No GPS request on mount**
-   - The location prompt is deferred until the user taps "Use my location".
-   - Start pin empty, pin buttons shown.
+2. **Step 1 — Start**
+   - No GPS request on mount; the prompt is deferred to "Use my location".
+   - Place row ("Choose start →") → opens the place picker. User searches "Manali" (India-biased) and taps the result — pin drops, name kept. Ride title auto-derives ("Manali · 12 Aug 2026") unless overridden in the collapsed row.
 
-3. **Ride title (optional)**
-   - Auto-derived; expand the collapsed Title row to set a custom name (e.g. "Spiti Loop 2025").
+3. **Next: Stop →**
+   - Destination place row. User searches "Kaza", taps the result → pin drops, name kept.
+   - Auto-distance fires from the start pin.
 
-4. **Starting From**
-   - Place row ("Choose start →") → opens the place picker. User searches "Manali" (India-biased) and taps the result — pin drops, name kept. Or taps the map. `startLocation` set to GPS coordinates + name.
+4. **Photos / Story** — optional (same as Journey 1).
 
-5. **Tap "Create Ride"**
-   - Ride saved (distance defaults to GPS route; Manual is chosen per leg in the leg form). Redirect to leg editor.
-
-6. **Leg editor opens**
-   - Same as Journey 1, step 6.
-
-7. **Leg title (optional)**
-   - Auto-fills from the destination label; expand to override (e.g. "Manali to Spiti via Rohtang").
-
-9. **Set destination**
-   - Name field first: user types "Kaza".
-   - Then taps "Pick on Map".
-   - Map picker opens centered on `fallbackCenter` (Manali, the ride start).
-   - User pans to Kaza, confirms.
-   - Auto-distance calculates if GPS route mode.
-
-10. **Steps 2-3:** Same as Journey 1 (photos, note — optional).
-
-11. **Save → ride detail.**
+5. **Tap "Log This Ride"**
+   - Ride + leg 1 saved together in one transaction. `#/ride/{newRideId}`.
 
 ### Exit states
 - Same as Journey 1.
-- **Map picker offline:** Toast "You are offline. Please paste coordinates from Google Maps instead." Map picker doesn't open. User can type coordinates manually or skip the pin.
+- **Map picker offline:** Toast "You are offline. Please paste coordinates from Google Maps instead." Map picker doesn't open. User can paste coordinates or skip the pin.
 
 ---
 

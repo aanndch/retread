@@ -25,6 +25,15 @@ export async function saveEditorDetails(
   legId: number | null,
   data: SaveData
 ): Promise<string> {
+  // The staged cover photo lives on the first leg; snapshot its thumbnail onto
+  // the ride so the home card uses it (immune to later reorder/delete).
+  const applyCover = async (rideIdToUpdate: number) => {
+    if (data.coverPhotoIndex === null) return;
+    const thumb = data.photoThumbs[data.coverPhotoIndex] ?? data.photos[data.coverPhotoIndex];
+    if (!thumb) return;
+    await db.rides.update(rideIdToUpdate, { coverBlob: thumb });
+  };
+
   if (mode === 'edit-ride') {
     if (!data.rideTitle.trim()) {
       throw new Error('Ride Title is required.');
@@ -56,7 +65,8 @@ export async function saveEditorDetails(
   }
 
   if (mode === 'new-ride') {
-    const finalTitle = data.rideTitle.trim() || deriveRideTitle(data.startLocation);
+    // One "log a ride" save creates the ride and its first leg together.
+    const finalTitle = data.rideTitle.trim() || deriveRideTitle(data.startLocation, data.date);
     let startLocPayload: LocationUnion | null = null;
     if (data.startLocation) {
       if (data.startLocation.kind === 'named' && !data.startLocation.name.trim()) {
@@ -65,21 +75,39 @@ export async function saveEditorDetails(
         startLocPayload = data.startLocation;
       }
     }
+    const legTitle = data.legTitle.trim() || data.location?.name?.trim() || 'Stop 1';
+    const locationPayload = (data.location && (data.location.kind === 'named' ? data.location.name.trim() !== '' : true))
+      ? data.location
+      : null;
+    const legData: Partial<Leg> = {
+      date: data.date,
+      time: data.time,
+      note: data.note.trim(),
+      photos: data.photos,
+      photoThumbs: data.photoThumbs,
+      km: data.km !== null && !isNaN(data.km) ? data.km : null,
+      location: locationPayload,
+      title: legTitle,
+    };
 
-    const newRideId = await db.rides.add({
-      title: finalTitle,
-      createdAt: new Date().toISOString(),
-      startLocation: startLocPayload,
-      distanceMode: data.distanceMode,
-    }) as number;
+    const newRideId = await db.transaction('rw', db.rides, db.legs, async () => {
+      const rideId = await db.rides.add({
+        title: finalTitle,
+        createdAt: new Date().toISOString(),
+        startLocation: startLocPayload,
+        distanceMode: 'auto',
+      }) as number;
+      await db.legs.add({ rideId, ...legData } as Leg);
+      return rideId;
+    });
 
+    await applyCover(newRideId);
     scheduleAutoSync();
+    localStorage.setItem('retread-has-saved', 'true');
     backfillRideRoutes(newRideId).catch((snapErr) => {
       console.warn('Snapping routes failed during new ride save:', snapErr);
     });
-    // Continue straight into logging the first leg so the user isn't stranded
-    // on an empty ride page; carry the chosen start date through to leg 1.
-    return `#/edit?mode=new-leg&rideId=${newRideId}&date=${data.date}`;
+    return `#/ride/${newRideId}`;
   }
 
   // Saving leg entries (mode === 'new-leg' or mode === 'edit')
@@ -121,15 +149,6 @@ export async function saveEditorDetails(
       n = sorted.length + 1;
     }
     return `Stop ${n}`;
-  };
-
-  // The staged cover photo lives on this leg; snapshot its thumbnail onto the
-  // ride so the home card uses it (immune to later reorder/delete of this leg).
-  const applyCover = async (rideIdToUpdate: number) => {
-    if (data.coverPhotoIndex === null) return;
-    const thumb = data.photoThumbs[data.coverPhotoIndex] ?? data.photos[data.coverPhotoIndex];
-    if (!thumb) return;
-    await db.rides.update(rideIdToUpdate, { coverBlob: thumb });
   };
 
   if (mode === 'edit' && legId !== null) {

@@ -2,7 +2,9 @@ import { useReducer, useEffect, useRef, useCallback, useState } from 'preact/hoo
 import { db } from '../../db';
 import { compressImage, createThumbnail } from '../../images';
 import { Toast, useToast } from '../../components/toast';
-import { MetricsStep } from './metrics-step';
+import { StartStep } from './start-step';
+import { LegStep } from './leg-step';
+import { EditRideStep } from './edit-ride-step';
 import { PhotosStep } from './photos-step';
 import { StoryStep } from './story-step';
 import { Button } from '../../components/button';
@@ -18,8 +20,10 @@ import type { LocationUnion } from '../../types';
 // REDUCER STATE & MERGER TYPE DEFINITION
 // ==========================================
 
+export type WizardStep = 1 | 2 | 3 | 4;
+
 interface EditorState {
-  step: 1 | 2 | 3;
+  step: WizardStep;
   titleError: string;
   rideTitle: string;
   legTitle: string;
@@ -111,9 +115,6 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   const legIdParam = params.get('legId');
   const rideId = rideIdParam ? parseInt(rideIdParam, 10) : null;
   const legId = legIdParam ? parseInt(legIdParam, 10) : null;
-  // A ride's start date is carried into the first-leg form via the URL so the
-  // backdated trip date survives the ride → leg navigation.
-  const dateParam = params.get('date');
 
   const [isClosing, setIsClosing] = useState(false);
   const [showArrange, setShowArrange] = useState(false);
@@ -125,10 +126,16 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   // still re-measures because the auto-fill key changes.
   const skipAutoOnMountRef = useRef(false);
 
+  // Wizard length depends on mode: a new ride runs Start → Stop → Photos →
+  // Story (4 steps); a new leg / leg edit runs Stop → Photos → Story (3).
+  const lastStep: WizardStep = mode === 'new-ride' ? 4 : 3;
+  const stepNames = mode === 'new-ride'
+    ? ['Start', 'Stop', 'Photos', 'Story']
+    : ['Details', 'Photos', 'Note'];
+
   // Initialize unified merging state tree
   const [state, dispatch] = useReducer(formReducer, {
     ...initialEditorState,
-    date: dateParam || initialEditorState.date,
     loading: mode === 'edit' || mode === 'edit-ride'
   });
 
@@ -331,7 +338,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   // Auto-fill the leg title from the destination label whenever one exists and
   // the user hasn't typed a custom title yet.
   useEffect(() => {
-    if ((mode === 'new-leg' || mode === 'edit') && !legTitle.trim() && location?.name) {
+    if ((mode === 'new-leg' || mode === 'edit' || mode === 'new-ride') && !legTitle.trim() && location?.name) {
       dispatch({ legTitle: location.name });
     }
   }, [location?.name, legTitle, mode]);
@@ -389,14 +396,22 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     );
   };
 
+  // The "from" point for measuring a leg's distance. On a new ride the ride
+  // doesn't exist in the DB yet, so fall back to the in-form start pin instead
+  // of the loaded fallbackCenter (which only resolves for existing rides/legs).
+  const legFromCenter: [number, number] | null =
+    fallbackCenter ?? (startLocation?.kind === 'gps' ? [startLocation.lat, startLocation.lng] : null);
+  const legFromLabel =
+    distanceFromLabel ?? (startLocation?.kind === 'gps' && startLocation.name ? startLocation.name : null);
+
   // Auto-measure a leg's distance along roads between the previous stop (or
   // ride start) and the destination pin. Uses a tight OSRM budget so the form
   // never stalls: one attempt per host, short timeout, straight-line fallback.
   const handleAutoFillDistance = async () => {
-    if (!fallbackCenter || location?.kind !== 'gps') return;
+    if (!legFromCenter || location?.kind !== 'gps') return;
     dispatch({ gpsLoading: true });
     try {
-      const fromGps = { lat: fallbackCenter[0], lng: fallbackCenter[1] };
+      const fromGps = { lat: legFromCenter[0], lng: legFromCenter[1] };
       const toGps = { lat: location.lat, lng: location.lng };
 
       const snappedPath = await snapLeg(fromGps, toGps, { timeoutMs: 8000, maxAttempts: 0 });
@@ -412,7 +427,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     } catch (err) {
       console.error('Failed to calculate road distance:', err);
       try {
-        const fromGps = { lat: fallbackCenter[0], lng: fallbackCenter[1] };
+        const fromGps = { lat: legFromCenter[0], lng: legFromCenter[1] };
         const toGps = { lat: location.lat, lng: location.lng };
         const directDist = Math.round(haversineDistance(fromGps, toGps) * 10) / 10;
 
@@ -437,8 +452,8 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       autoCalcKeyRef.current = null;
       return;
     }
-    if (location?.kind !== 'gps' || !fallbackCenter || gpsLoading) return;
-    const key = `${fallbackCenter[0]},${fallbackCenter[1]}|${location.lat},${location.lng}`;
+    if (location?.kind !== 'gps' || !legFromCenter || gpsLoading) return;
+    const key = `${legFromCenter[0]},${legFromCenter[1]}|${location.lat},${location.lng}`;
     if (autoCalcKeyRef.current !== key) {
       autoCalcKeyRef.current = key;
       if (skipAutoOnMountRef.current) {
@@ -507,11 +522,13 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     dispatch({ coverPhotoIndex: coverPhotoIndex === index ? null : index });
   };
 
-  const handleStepJump = (targetStep: 1 | 2 | 3) => {
+  const handleStepJump = (targetStep: WizardStep) => {
     // Advancing without a pin is the implicit "save without a map" bypass; flag
-    // it so the form shows the consequence instead of hiding it.
-    if (mode === 'new-ride' && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
-    if ((mode === 'new-leg' || mode === 'edit') && location?.kind !== 'gps') dispatch({ mapNote: true });
+    // it so the form shows the consequence instead of hiding it. The pin that
+    // matters depends on which step is being left.
+    if (mode === 'new-ride' && step === 1 && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
+    if (mode === 'new-ride' && step === 2 && location?.kind !== 'gps') dispatch({ mapNote: true });
+    if ((mode === 'new-leg' || mode === 'edit') && step === 1 && location?.kind !== 'gps') dispatch({ mapNote: true });
     dispatch({ titleError: '', step: targetStep });
   };
 
@@ -570,14 +587,20 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
         dispatch({ titleError: 'Ride Title is required.' });
         return;
       }
-    } else if ((mode === 'new-leg' || mode === 'edit') && step < 3) {
-      if (location?.kind !== 'gps') dispatch({ mapNote: true });
-      dispatch({ step: (step + 1) as 1 | 2 | 3 });
+    } else if (mode !== 'new-ride' && mode !== 'new-leg' && mode !== 'edit') {
+      return;
+    } else if (step < lastStep) {
+      // Advance the wizard; flag the pin note for the step being left.
+      if (mode === 'new-ride' && step === 1 && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
+      if (mode === 'new-ride' && step === 2 && location?.kind !== 'gps') dispatch({ mapNote: true });
+      if ((mode === 'new-leg' || mode === 'edit') && step === 1 && location?.kind !== 'gps') dispatch({ mapNote: true });
+      dispatch({ step: (step + 1) as WizardStep });
       return;
     }
 
     // Final save without a pin is the implicit bypass; flag it for the note.
-    if (mode === 'new-ride' && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
+    if (mode === 'new-ride' && step === 1 && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
+    if (mode === 'new-ride' && step === 2 && location?.kind !== 'gps') dispatch({ mapNote: true });
     if ((mode === 'new-leg' || mode === 'edit') && location?.kind !== 'gps') dispatch({ mapNote: true });
 
     setSaving(true);
@@ -605,27 +628,26 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     <div class="editor-container">
       <PageHeader onBack={handleCancel} />
 
-      {/* Compact step dots for leg modes */}
-      {mode !== 'new-ride' && mode !== 'edit-ride' && (
+      {/* Compact step dots for the wizards */}
+      {mode !== 'edit-ride' && (
         <div class="wizard-dots" aria-label="Steps">
           <span class="wizard-dots-label">
-            {(['Details', 'Photos', 'Note'] as const)[step - 1]}
+            {stepNames[step - 1]}
           </span>
           <span class="wizard-dots-group">
-            {([
-              [1, 'Details'],
-              [2, 'Photos'],
-              [3, 'Note'],
-            ] as const).map(([n, label]) => (
-              <button
-                key={n}
-                type="button"
-                class={`wizard-dot${step === n ? ' active' : ''}`}
-                aria-label={`${label} step`}
-                aria-current={step === n ? 'step' : undefined}
-                onClick={() => handleStepJump(n)}
-              />
-            ))}
+            {stepNames.map((name, i) => {
+              const n = (i + 1) as WizardStep;
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  class={`wizard-dot${step === n ? ' active' : ''}`}
+                  aria-label={`${name} step`}
+                  aria-current={step === n ? 'step' : undefined}
+                  onClick={() => handleStepJump(n)}
+                />
+              );
+            })}
           </span>
         </div>
       )}
@@ -644,12 +666,40 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
         </div>
       ) : (
         <form onSubmit={handleSave} class="editor-form">
-          {step === 1 && (
-            <MetricsStep
-              mode={mode}
+          {mode === 'edit-ride' ? (
+            <EditRideStep
               rideTitle={rideTitle}
               setRideTitle={(val) => dispatch({ rideTitle: val })}
-              autoRideTitle={deriveRideTitle(startLocation)}
+              startLocation={startLocation}
+              startGpsLoading={startGpsLoading}
+              onClearStartLocation={onClearStartLocation}
+              onRetryStartGps={onRetryStartGps}
+              onOpenMapPicker={handleOpenMapPicker}
+              mapNote={mapNote}
+              titleError={titleError}
+              setTitleError={(val) => dispatch({ titleError: val })}
+              handleCancel={handleCancel}
+              saving={saving}
+            />
+          ) : mode === 'new-ride' && step === 1 ? (
+            <StartStep
+              rideTitle={rideTitle}
+              setRideTitle={(val) => dispatch({ rideTitle: val })}
+              autoRideTitle={deriveRideTitle(startLocation, date)}
+              startLocation={startLocation}
+              startGpsLoading={startGpsLoading}
+              onClearStartLocation={onClearStartLocation}
+              onRetryStartGps={onRetryStartGps}
+              onOpenMapPicker={handleOpenMapPicker}
+              mapNote={mapNote}
+              titleError={titleError}
+              setTitleError={(val) => dispatch({ titleError: val })}
+              handleCancel={handleCancel}
+              handleStepJump={handleStepJump}
+              saving={saving}
+            />
+          ) : step === lastStep - 2 ? (
+            <LegStep
               date={date}
               setDate={(val) => dispatch({ date: val })}
               time={time}
@@ -657,9 +707,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               km={km}
               onKmChange={(val) => dispatch({ km: val, kmSource: 'manual' })}
               kmSource={kmSource}
-              distanceFromLabel={distanceFromLabel}
-              distanceMode={distanceMode}
-              setDistanceMode={(val) => dispatch({ distanceMode: val })}
+              distanceFromLabel={legFromLabel}
               location={location}
               gpsLoading={gpsLoading}
               handleDropPin={handleDropPin}
@@ -668,22 +716,19 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               legTitle={legTitle}
               setLegTitle={(val) => dispatch({ legTitle: val })}
               autoTitle={location?.name || 'Auto'}
-              startLocation={startLocation}
-              startGpsLoading={startGpsLoading}
-              onClearStartLocation={onClearStartLocation}
-              onRetryStartGps={onRetryStartGps}
+              distanceMode={distanceMode}
+              setDistanceMode={(val) => dispatch({ distanceMode: val })}
               titleError={titleError}
               setTitleError={(val) => dispatch({ titleError: val })}
+              step={step}
               handleCancel={handleCancel}
               handleStepJump={handleStepJump}
               onOpenMapPicker={handleOpenMapPicker}
-              fallbackCenter={fallbackCenter}
+              fallbackCenter={legFromCenter}
               onAutoFillDistance={handleAutoFillDistance}
               saving={saving}
             />
-          )}
-
-          {step === 2 && (
+          ) : step === lastStep - 1 ? (
             <PhotosStep
               photoPreviews={photoPreviews}
               fileInputRef={fileInputRef}
@@ -695,15 +740,16 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               showArrange={showArrange}
               setShowArrange={setShowArrange}
               handleArrangeSave={handleArrangeSave}
+              step={step}
               handleStepJump={handleStepJump}
             />
-          )}
-
-          {step === 3 && (
+          ) : (
             <StoryStep
               note={note}
               setNote={(val) => dispatch({ note: val })}
+              step={step}
               handleStepJump={handleStepJump}
+              saveLabel={mode === 'new-ride' ? 'Log This Ride' : 'Save Details'}
               saving={saving}
             />
           )}

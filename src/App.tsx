@@ -369,9 +369,7 @@ export function App() {
     }
 
     if (hash.startsWith(HASH_EDIT)) {
-      // Key by the full route so ride→leg navigation remounts the editor with
-      // fresh state (and the date param) instead of reusing the old instance.
-      return <Editor key={hash} onNavigate={navigateTo} onNavigateBack={navigateBack} />;
+      return <Editor onNavigate={navigateTo} onNavigateBack={navigateBack} />;
     }
 
     if (hash === HASH_BACKUP) {

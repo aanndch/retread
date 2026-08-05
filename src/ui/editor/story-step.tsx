@@ -6,14 +6,18 @@ import { FieldCard } from '../../components/field-card';
 interface StoryStepProps {
   note: string;
   setNote: (n: string) => void;
-  handleStepJump: (s: 1 | 2 | 3) => void;
+  step: 1 | 2 | 3 | 4;
+  handleStepJump: (s: 1 | 2 | 3 | 4) => void;
+  saveLabel: string;
   saving: boolean;
 }
 
 export function StoryStep({
   note,
   setNote,
+  step,
   handleStepJump,
+  saveLabel,
   saving
 }: StoryStepProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -44,11 +48,11 @@ export function StoryStep({
 
       {/* Step 3 Actions */}
       <div class="form-actions">
-        <Button variant="secondary" onClick={() => handleStepJump(2)} disabled={saving}>
+        <Button variant="secondary" onClick={() => handleStepJump((step - 1) as 1 | 2 | 3 | 4)} disabled={saving}>
           ← Back
         </Button>
         <Button type="submit" variant="primary" disabled={saving}>
-          {saving ? 'Saving…' : 'Save Details'}
+          {saving ? 'Saving…' : saveLabel}
         </Button>
       </div>
     </div>

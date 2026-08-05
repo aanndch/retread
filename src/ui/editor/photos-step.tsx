@@ -15,7 +15,8 @@ interface PhotosStepProps {
   showArrange: boolean;
   setShowArrange: (open: boolean) => void;
   handleArrangeSave: (order: number[]) => void;
-  handleStepJump: (s: 1 | 2 | 3) => void;
+  step: 1 | 2 | 3 | 4;
+  handleStepJump: (s: 1 | 2 | 3 | 4) => void;
 }
 
 export function PhotosStep({
@@ -29,6 +30,7 @@ export function PhotosStep({
   showArrange,
   setShowArrange,
   handleArrangeSave,
+  step,
   handleStepJump
 }: PhotosStepProps) {
   return (
@@ -87,10 +89,10 @@ export function PhotosStep({
 
       {/* Step 2 Actions */}
       <div class="form-actions">
-        <Button variant="secondary" onClick={() => handleStepJump(1)} disabled={compressing}>
+        <Button variant="secondary" onClick={() => handleStepJump((step - 1) as 1 | 2 | 3 | 4)} disabled={compressing}>
           ← Back
         </Button>
-        <Button variant="primary" onClick={() => handleStepJump(3)} disabled={compressing}>
+        <Button variant="primary" onClick={() => handleStepJump((step + 1) as 1 | 2 | 3 | 4)} disabled={compressing}>
           Next: Story →
         </Button>
       </div>

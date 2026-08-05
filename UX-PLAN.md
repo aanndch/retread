@@ -49,7 +49,7 @@ A name-only stop is a silent trap that destroys the MVP with zero in-flow feedba
 - **Phantom points:** a pin-less leg appears on the ride map as a hollow dashed marker with dashed connectors to/from its real neighbors.
   - **Position rule:** **midpoint** between the previous and next real GPS pin — it reads as "somewhere in the middle of the uncertain stretch", and costs almost nothing because the forward scan for the next real pin is already required for the dashed connector. Trailing phantom (no next real pin): small fixed offset from the last real pin with a single dashed stub. Leading phantom with no anchor: skipped.
   - **Route across a phantom gap:** the solid road is **replaced** by the dashed connectors (reads "uncertain here").
-- **Ride + first leg:** ride creation (title + start pin) continues straight into leg 1.
+- **Ride + first leg (merged):** "Log a ride" is a single 4-step wizard — **Start · Stop · Photos · Story** — that creates the ride and leg 1 in one save (`#/ride/{id}`). No ride→leg navigation exists; `new-leg` stays for leg 2+ from the ride page. The ride's start date is leg 1's date (home groups by first-leg date).
 - **Editing existing name-only legs:** the edit flow (`#/edit?mode=edit&legId=X`) loads the leg into the same pin-first editor. If a name-only leg is opened for edit, the user can add a GPS pin. On save, the route backfill snaps retroactively and the phantom disappears from the ride map.
 
 ---

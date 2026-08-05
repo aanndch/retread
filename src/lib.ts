@@ -157,15 +157,22 @@ export function stopLabel(loc: LocationUnion | null | undefined, n: number): str
 
 const RIDE_TITLE_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// "YYYY-MM-DD" → local Date (avoids the UTC-midnight off-by-one of new Date(str)).
+function parseIsoDate(s: string): Date {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y || 0, (m || 1) - 1, d || 1);
+}
+
 /**
- * Default title for a new ride: the start label plus today's date when a start
- * is set, otherwise "Ride · <date>". Lets ride creation happen with zero typing
- * (the field is optional and derived on save).
+ * Default title for a new ride: the start label plus the trip's start date when
+ * a start is set, otherwise "Ride · <date>". Lets ride creation happen with
+ * zero typing (the field is optional and derived on save).
  */
-export function deriveRideTitle(startLocation?: LocationUnion | null, now: Date = new Date()): string {
+export function deriveRideTitle(startLocation?: LocationUnion | null, date?: string | Date): string {
+  const when = typeof date === 'string' ? parseIsoDate(date) : (date ?? new Date());
   const label = startLocation?.name?.trim();
-  const date = `${now.getDate()} ${RIDE_TITLE_MONTHS[now.getMonth()]} ${now.getFullYear()}`;
-  return label ? `${label} · ${date}` : `Ride · ${date}`;
+  const d = `${when.getDate()} ${RIDE_TITLE_MONTHS[when.getMonth()]} ${when.getFullYear()}`;
+  return label ? `${label} · ${d}` : `Ride · ${d}`;
 }
 
 /**
