@@ -47,14 +47,13 @@ export async function saveEditorDetails(
       startOdo: data.distanceMode === 'odo' ? (data.startOdo !== null && !isNaN(data.startOdo) ? data.startOdo : 0) : null
     });
 
-    try {
-      await backfillRideRoutes(rideId!);
-    } catch (snapErr) {
-      console.warn('Snapping routes failed during ride edit save:', snapErr);
-    }
-
+    // Routes re-snap in the background; the ride page fills the map in live as
+    // roadPaths land, so save returns immediately instead of blocking on OSRM.
     scheduleAutoSync();
     localStorage.setItem('retread-has-saved', 'true');
+    backfillRideRoutes(rideId!).catch((snapErr) => {
+      console.warn('Snapping routes failed during ride edit save:', snapErr);
+    });
     return `#/ride/${rideId}`;
   }
 
@@ -81,7 +80,9 @@ export async function saveEditorDetails(
     }) as number;
 
     scheduleAutoSync();
-    localStorage.setItem('retread-has-saved', 'true');
+    backfillRideRoutes(newRideId).catch((snapErr) => {
+      console.warn('Snapping routes failed during new ride save:', snapErr);
+    });
     // Continue straight into logging the first leg so the user isn't stranded
     // on an empty ride page; they can always back out of the leg form.
     return `#/edit?mode=new-leg&rideId=${newRideId}`;
@@ -127,30 +128,25 @@ export async function saveEditorDetails(
     if (!existingLeg) throw new Error('Leg to update was not found.');
     
     await db.legs.update(legId, legData);
-    try {
-      await backfillRideRoutes(existingLeg.rideId);
-    } catch (snapErr) {
-      console.warn('Snapping routes failed during edit save:', snapErr);
-      throw new Error(`Snapping failed: ${(snapErr as Error).message || snapErr}. Used straight-line fallback.`);
-    }
     await applyCover(existingLeg.rideId);
     scheduleAutoSync();
     localStorage.setItem('retread-has-saved', 'true');
+    // Background re-snap; the ride page draws the route in live as it lands.
+    backfillRideRoutes(existingLeg.rideId).catch((snapErr) => {
+      console.warn('Snapping routes failed during edit save:', snapErr);
+    });
     return `#/ride/${existingLeg.rideId}`;
   } else {
     await db.legs.add({
       rideId: activeRideId!,
       ...legData
     } as Leg);
-    try {
-      await backfillRideRoutes(activeRideId!);
-    } catch (snapErr) {
-      console.warn('Snapping routes failed during new save:', snapErr);
-      throw new Error(`Snapping failed: ${(snapErr as Error).message || snapErr}. Used straight-line fallback.`);
-    }
     await applyCover(activeRideId!);
     scheduleAutoSync();
     localStorage.setItem('retread-has-saved', 'true');
+    backfillRideRoutes(activeRideId!).catch((snapErr) => {
+      console.warn('Snapping routes failed during new save:', snapErr);
+    });
     return `#/ride/${activeRideId}`;
   }
 }

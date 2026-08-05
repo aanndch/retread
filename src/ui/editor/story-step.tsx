@@ -6,12 +6,14 @@ interface StoryStepProps {
   note: string;
   setNote: (n: string) => void;
   handleStepJump: (s: 1 | 2 | 3) => void;
+  saving: boolean;
 }
 
 export function StoryStep({
   note,
   setNote,
-  handleStepJump
+  handleStepJump,
+  saving
 }: StoryStepProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -42,11 +44,11 @@ export function StoryStep({
 
       {/* Step 3 Actions */}
       <div class="form-actions">
-        <Button variant="secondary" onClick={() => handleStepJump(2)}>
+        <Button variant="secondary" onClick={() => handleStepJump(2)} disabled={saving}>
           ← Back
         </Button>
-        <Button type="submit" variant="primary">
-          Save Details
+        <Button type="submit" variant="primary" disabled={saving}>
+          {saving ? 'Saving…' : 'Save Details'}
         </Button>
       </div>
     </div>

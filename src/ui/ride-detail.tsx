@@ -430,6 +430,18 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
   const intermediateCount = mapStops.filter((s) => s.kind === "stop").length;
   const crowded = intermediateCount > 4;
 
+  // A route is still being drawn when a pinned leg is missing its roadPath but
+  // has a real from-point (ride start pin or an earlier pinned leg) — backfill
+  // fills these in moments after a save. Recomputes on every live emit, so the
+  // spinner clears on its own once the last roadPath lands.
+  let realSeen = ride.startLocation?.kind === "gps";
+  const routesPending = legs.some((l) => {
+    const isGps = l.location?.kind === "gps";
+    const pending = isGps && realSeen && !l.roadPath;
+    if (isGps) realSeen = true;
+    return pending;
+  });
+
   const mapCaption =
     hasKm && legs.length > 0
       ? `~${formatDistance(totalKm)}${totalDays > 1 ? ` · ${totalDays} day${totalDays === 1 ? "" : "s"}` : ""}${crowded ? ` · +${intermediateCount} stops` : ""}`
@@ -455,7 +467,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
         {/* Cumulative Squiggle route map */}
         <section class="ride-map-hero">
           {segments.length > 0 || mapStops.length > 0 ? (
-            <div class="map-interactive-trigger" onClick={openMapModal}>
+            <div class="map-interactive-trigger" onClick={openMapModal} style={{ position: 'relative' }}>
               <SquiggleMap
                 segments={segments}
                 stops={mapStops}
@@ -465,6 +477,12 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
                 caption={mapCaption}
                 revealIntermediateLabels={crowded}
               />
+              {routesPending && (
+                <div class="map-loading-overlay" aria-live="polite">
+                  <span class="map-loading-spinner" aria-hidden="true" />
+                  <span>Drawing route…</span>
+                </div>
+              )}
             </div>
           ) : (
             <div class="squiggle-map-empty">

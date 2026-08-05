@@ -251,6 +251,15 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
   const dayColor = DAY_COLORS[Math.max(0, dayNum - 1) % DAY_COLORS.length];
   const hasRoute = !!leg.roadPath && leg.roadPath.length >= 2;
 
+  // A route is still being drawn when this pinned leg is missing its roadPath
+  // but has a from-point (ride start pin or an earlier pinned leg).
+  const routePending =
+    leg.location?.kind === "gps" &&
+    !hasRoute &&
+    (myIdx > 0
+      ? sorted.slice(0, myIdx).some((p) => p.location?.kind === "gps")
+      : liveData?.ride?.startLocation?.kind === "gps");
+
   const mapSegments: SquiggleSegment[] | undefined = hasRoute
     ? [{ path: leg.roadPath!, fallback: leg.roadPath!.length <= 2, color: dayColor }]
     : undefined;
@@ -315,7 +324,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
         {/* Segment route map */}
         <section class="ride-map-hero">
           {mapSegments || mapStops.length > 0 ? (
-            <div class="map-interactive-trigger" onClick={openMapModal}>
+            <div class="map-interactive-trigger" onClick={openMapModal} style={{ position: 'relative' }}>
               <SquiggleMap
                 segments={mapSegments}
                 stops={mapStops}
@@ -324,6 +333,12 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
                 width={430}
                 height={300}
               />
+              {routePending && (
+                <div class="map-loading-overlay" aria-live="polite">
+                  <span class="map-loading-spinner" aria-hidden="true" />
+                  <span>Drawing route…</span>
+                </div>
+              )}
             </div>
           ) : (
             <div class="squiggle-map-empty">

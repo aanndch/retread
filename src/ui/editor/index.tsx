@@ -8,6 +8,7 @@ import { StoryStep } from './story-step';
 import { Button } from '../../components/button';
 import { PageHeader } from '../../components/page-header';
 import { MapPicker } from '../../components/map-picker';
+import { CoordinatePasteModal } from '../../components/coordinate-paste-modal';
 import { saveEditorDetails } from './save-helper';
 import { snapLeg, haversineDistance } from '../../road';
 import type { LocationUnion } from '../../types';
@@ -45,6 +46,7 @@ interface EditorState {
   gpsLoading: boolean;
   startGpsLoading: boolean;
   showMapPicker: boolean;
+  showPasteModal: boolean;
   mapPickerTarget: 'start' | 'location';
   fallbackCenter: [number, number] | null;
   photos: Blob[];
@@ -77,6 +79,7 @@ const initialEditorState: EditorState = {
   gpsLoading: false,
   startGpsLoading: false,
   showMapPicker: false,
+  showPasteModal: false,
   mapPickerTarget: 'location',
   fallbackCenter: null,
   photos: [],
@@ -118,6 +121,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
 
   const [isClosing, setIsClosing] = useState(false);
   const [showArrange, setShowArrange] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   // When opening an existing leg that already has a distance, do not re-measure
@@ -152,6 +156,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     gpsLoading,
     startGpsLoading,
     showMapPicker,
+    showPasteModal,
     mapPickerTarget,
     fallbackCenter,
     photoPreviews,
@@ -529,11 +534,13 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   };
 
   const handleOpenMapPicker = (target: 'start' | 'location') => {
+    dispatch({ mapPickerTarget: target });
     if (!navigator.onLine) {
-      showToast('You are offline. Please paste coordinates from Google Maps instead.');
+      // The map needs a network; offer the paste-coordinates fallback instead.
+      dispatch({ showPasteModal: true });
       return;
     }
-    dispatch({ mapPickerTarget: target, showMapPicker: true });
+    dispatch({ showMapPicker: true });
   };
 
   const handleConfirmPickerLocation = (lat: number, lng: number, name?: string) => {
@@ -557,6 +564,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   // Compact Save routing delegator
   const handleSave = async (e: Event) => {
     e.preventDefault();
+    if (saving) return;
 
     if (mode === 'new-ride' || mode === 'edit-ride') {
       if (!rideTitle.trim()) {
@@ -576,11 +584,14 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     if (mode === 'new-ride' && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
     if ((mode === 'new-leg' || mode === 'edit') && location?.kind !== 'gps') dispatch({ mapNote: true });
 
+    setSaving(true);
     try {
       const redirectPath = await saveEditorDetails(mode, rideId, legId, state);
       triggerClose(onNavigate, redirectPath);
     } catch (err) {
       showToast((err as Error).message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -674,6 +685,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               onOpenMapPicker={handleOpenMapPicker}
               fallbackCenter={fallbackCenter}
               onAutoFillDistance={handleAutoFillDistance}
+              saving={saving}
             />
           )}
 
@@ -698,6 +710,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               note={note}
               setNote={(val) => dispatch({ note: val })}
               handleStepJump={handleStepJump}
+              saving={saving}
             />
           )}
         </form>
@@ -711,6 +724,14 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
         onConfirm={handleConfirmPickerLocation}
         onClose={() => dispatch({ showMapPicker: false })}
         showToast={showToast}
+      />
+
+      {/* Offline fallback: paste raw coordinates when the map can't load */}
+      <CoordinatePasteModal
+        isOpen={showPasteModal}
+        targetLabel={mapPickerTarget === 'start' ? 'Start point' : 'Destination'}
+        onConfirm={handleConfirmPickerLocation}
+        onClose={() => dispatch({ showPasteModal: false })}
       />
 
       <div class="toast-container">

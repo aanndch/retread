@@ -78,6 +78,7 @@ interface MetricsStepProps {
   onOpenMapPicker: (target: 'start' | 'location') => void;
   fallbackCenter: [number, number] | null;
   onAutoFillDistance: () => void;
+  saving: boolean;
 }
 
 export function MetricsStep({
@@ -118,7 +119,8 @@ export function MetricsStep({
   handleStepJump,
   onOpenMapPicker,
   fallbackCenter,
-  onAutoFillDistance
+  onAutoFillDistance,
+  saving
 }: MetricsStepProps) {
   return (
     <div class="wizard-step-content">
@@ -476,15 +478,15 @@ export function MetricsStep({
 
       {/* Step 1 Actions */}
       <div class="form-actions">
-        <Button variant="secondary" onClick={handleCancel}>
+        <Button variant="secondary" onClick={handleCancel} disabled={saving}>
           Cancel
         </Button>
         {mode === 'new-ride' || mode === 'edit-ride' ? (
-          <Button type="submit" variant="primary">
-            {mode === 'new-ride' ? 'Create Ride' : 'Save Changes'}
+          <Button type="submit" variant="primary" disabled={saving}>
+            {saving ? 'Saving…' : mode === 'new-ride' ? 'Create Ride' : 'Save Changes'}
           </Button>
         ) : (
-          <Button variant="primary" onClick={() => handleStepJump(2)}>
+          <Button variant="primary" onClick={() => handleStepJump(2)} disabled={saving}>
             Next: Photos →
           </Button>
         )}
