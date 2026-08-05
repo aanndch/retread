@@ -81,7 +81,6 @@ export function LegStep({
   return (
     <div class="wizard-step-content">
       <FieldCard label="Destination">
-        <span class="field-tip">Choose the stop — name it inside the picker.</span>
         <PlaceRow
           emptyLabel="Choose destination →"
           location={location}
@@ -91,7 +90,7 @@ export function LegStep({
           onClear={handleClearLocation}
         />
         {mapNote && location?.kind !== 'gps' && (
-          <span class="field-tip">No map pin — this leg won't appear on the route map.</span>
+          <span class="field-tip">No pin — this stop will show as an approximate stop on the map.</span>
         )}
       </FieldCard>
 
