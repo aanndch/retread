@@ -49,9 +49,6 @@ interface MetricsStepProps {
   onKmChange: (k: number | null) => void;
   kmSource: 'auto' | 'manual' | null;
   distanceFromLabel: string | null;
-  prevOdo: number | null;
-  odo: number | null;
-  setOdo: (o: number | null) => void;
   location: LocationUnion | null;
   setLocation: (l: LocationUnion | null) => void;
   gpsLoading: boolean;
@@ -62,10 +59,8 @@ interface MetricsStepProps {
   mapNote: boolean;
   legTitle: string;
   setLegTitle: (t: string) => void;
-  distanceMode: 'auto' | 'manual' | 'odo';
-  setDistanceMode: (m: 'auto' | 'manual' | 'odo') => void;
-  startOdo: number | null;
-  setStartOdo: (o: number | null) => void;
+  distanceMode: 'auto' | 'manual';
+  setDistanceMode: (m: 'auto' | 'manual') => void;
   startLocation: LocationUnion | null;
   setStartLocation: (l: LocationUnion | null) => void;
   startGpsLoading: boolean;
@@ -93,9 +88,6 @@ export function MetricsStep({
   onKmChange,
   kmSource,
   distanceFromLabel,
-  prevOdo,
-  odo,
-  setOdo,
   location,
   setLocation,
   gpsLoading,
@@ -106,8 +98,6 @@ export function MetricsStep({
   setLegTitle,
   distanceMode,
   setDistanceMode,
-  startOdo,
-  setStartOdo,
   startLocation,
   setStartLocation,
   startGpsLoading,
@@ -228,14 +218,6 @@ export function MetricsStep({
             >
               Manual
             </Button>
-            <Button
-              type="button"
-              variant={distanceMode === 'odo' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setDistanceMode('odo')}
-            >
-              Odometer
-            </Button>
           </div>
 
           {distanceMode === 'auto' && (
@@ -244,23 +226,6 @@ export function MetricsStep({
 
           {distanceMode === 'manual' && (
             <span class="field-tip">You type the distance for each leg.</span>
-          )}
-
-          {distanceMode === 'odo' && (
-            <div class="form-group animate-fade-in" style={{ marginTop: '8px' }}>
-              <label class="input-label" style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--color-ink-muted)' }}>Starting Odometer (km)</label>
-              <input
-                type="number"
-                class="form-input form-input-sm"
-                placeholder="e.g. 5240"
-                value={startOdo === null ? '' : startOdo}
-                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
-                  const val = (e.target as HTMLInputElement).value;
-                  setStartOdo(val ? parseFloat(val) : null);
-                }}
-              />
-              <span class="field-tip">Record your odometer at each stop. The starting reading anchors your first leg.</span>
-            </div>
           )}
         </div>
       )}
@@ -396,82 +361,63 @@ export function MetricsStep({
               </Button>
               <Button
                 type="button"
-                variant={distanceMode === 'odo' ? 'primary' : 'secondary'}
+                variant={distanceMode === 'manual' ? 'primary' : 'secondary'}
                 size="sm"
                 style={{ flex: 1 }}
-                onClick={() => setDistanceMode('odo')}
+                onClick={() => setDistanceMode('manual')}
               >
-                Odometer
+                Manual
               </Button>
             </div>
 
-            {distanceMode === 'odo' ? (
-              <div class="form-group animate-fade-in">
-                <span class="field-tip">Enter each stop's reading — we subtract stops for you.</span>
-                <label class="input-label">Odometer reading (km)</label>
-                <input 
-                  type="number" 
-                  class="form-input" 
-                  placeholder="e.g. 14320"
-                  value={odo === null ? '' : odo}
-                  onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => setOdo((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
-                />
-                {odo !== null && prevOdo !== null && odo >= prevOdo && (
-                  <span class="field-tip">
-                    ≈ {formatDistance(odo - prevOdo)} since last reading ({prevOdo})
-                  </span>
-                )}
-              </div>
-            ) : (
-              <div class="form-group animate-fade-in">
-                {distanceMode === 'auto' && (
-                  fallbackCenter && location?.kind === 'gps' ? (
-                    <span class="field-tip">Measured between this leg's pins along real roads.</span>
-                  ) : location?.kind === 'gps' ? (
-                    <span class="field-tip">There's no GPS start point before this leg — type it below, or switch to Manual.</span>
-                  ) : (
-                    <span class="field-tip">Set this leg's destination GPS pin to measure the route — or type it below.</span>
-                  )
-                )}
-                {distanceMode === 'manual' && (
-                  <span class="field-tip">Just type how far this leg was.</span>
-                )}
-                <label class="input-label">Distance (km)</label>
-                <input 
-                  type="number" 
-                  class="form-input" 
-                  placeholder="e.g. 118"
-                  value={km === null ? '' : km}
-                  onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => onKmChange((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
-                />
-                {distanceMode === 'auto' && fallbackCenter && location?.kind === 'gps' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-                    {km !== null && km !== undefined && !gpsLoading && (
-                      <span class="field-tip">
-                        ≈ {formatDistance(km)} · {distanceFromLabel ? `${distanceFromLabel} → ` : '→ '}{location.name || 'destination'}
-                      </span>
-                    )}
-                    {gpsLoading && <span class="field-tip">Calculating route…</span>}
-                    <button
-                      type="button"
-                      class="btn-calc-link"
-                      onClick={onAutoFillDistance}
-                      disabled={gpsLoading}
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style={{ display: 'inline-block', marginRight: '4px' }}>
-                        <circle cx="5" cy="19" r="2.5" />
-                        <path d="M7 17c6-8-2-10 11-11" />
-                        <path d="M14 2l8 8M22 2l-8 8" />
-                      </svg>
-                      <span>{gpsLoading ? 'Measuring…' : 'Recalculate'}</span>
-                    </button>
-                  </div>
-                )}
-                {distanceMode === 'auto' && kmSource === 'manual' && km !== null && km !== undefined && (
-                  <span class="field-tip">You entered this — tap Recalculate to re-measure.</span>
-                )}
-              </div>
-            )}
+            <div class="form-group animate-fade-in">
+              {distanceMode === 'auto' && (
+                fallbackCenter && location?.kind === 'gps' ? (
+                  <span class="field-tip">Measured between this leg's pins along real roads.</span>
+                ) : location?.kind === 'gps' ? (
+                  <span class="field-tip">There's no GPS start point before this leg — type it below, or switch to Manual.</span>
+                ) : (
+                  <span class="field-tip">Set this leg's destination GPS pin to measure the route — or type it below.</span>
+                )
+              )}
+              {distanceMode === 'manual' && (
+                <span class="field-tip">Just type how far this leg was.</span>
+              )}
+              <label class="input-label">Distance (km)</label>
+              <input 
+                type="number" 
+                class="form-input" 
+                placeholder="e.g. 118"
+                value={km === null ? '' : km}
+                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => onKmChange((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
+              />
+              {distanceMode === 'auto' && fallbackCenter && location?.kind === 'gps' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+                  {km !== null && km !== undefined && !gpsLoading && (
+                    <span class="field-tip">
+                      ≈ {formatDistance(km)} · {distanceFromLabel ? `${distanceFromLabel} → ` : '→ '}{location.name || 'destination'}
+                    </span>
+                  )}
+                  {gpsLoading && <span class="field-tip">Calculating route…</span>}
+                  <button
+                    type="button"
+                    class="btn-calc-link"
+                    onClick={onAutoFillDistance}
+                    disabled={gpsLoading}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style={{ display: 'inline-block', marginRight: '4px' }}>
+                      <circle cx="5" cy="19" r="2.5" />
+                      <path d="M7 17c6-8-2-10 11-11" />
+                      <path d="M14 2l8 8M22 2l-8 8" />
+                    </svg>
+                    <span>{gpsLoading ? 'Measuring…' : 'Recalculate'}</span>
+                  </button>
+                </div>
+              )}
+              {distanceMode === 'auto' && kmSource === 'manual' && km !== null && km !== undefined && (
+                <span class="field-tip">You entered this — tap Recalculate to re-measure.</span>
+              )}
+            </div>
           </div>
         </>
       )}

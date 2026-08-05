@@ -96,7 +96,7 @@ export function useRideBook(): HomeRideEntry[] | undefined {
 
       list.push({
         ride,
-        totalKm: computeTotalDistance(legs, ride.startOdo),
+        totalKm: computeTotalDistance(legs),
         firstPhotoBlob,
         coverKey,
         dateRange,

@@ -10,9 +10,7 @@ interface SaveData {
   time: string;
   note: string;
   km: number | null;
-  odo: number | null;
-  distanceMode: 'auto' | 'manual' | 'odo';
-  startOdo: number | null;
+  distanceMode: 'auto' | 'manual';
   location: LocationUnion | null;
   startLocation: LocationUnion | null;
   photos: Blob[];
@@ -44,7 +42,6 @@ export async function saveEditorDetails(
       title: finalTitle,
       startLocation: startLocPayload,
       distanceMode: data.distanceMode,
-      startOdo: data.distanceMode === 'odo' ? (data.startOdo !== null && !isNaN(data.startOdo) ? data.startOdo : 0) : null
     });
 
     // Routes re-snap in the background; the ride page fills the map in live as
@@ -76,7 +73,6 @@ export async function saveEditorDetails(
       createdAt: new Date().toISOString(),
       startLocation: startLocPayload,
       distanceMode: data.distanceMode,
-      startOdo: data.distanceMode === 'odo' ? (data.startOdo !== null && !isNaN(data.startOdo) ? data.startOdo : 0) : null
     }) as number;
 
     scheduleAutoSync();
@@ -109,7 +105,6 @@ export async function saveEditorDetails(
     photos: data.photos,
     photoThumbs: data.photoThumbs,
     km: data.km !== null && !isNaN(data.km) ? data.km : null,
-    odo: data.odo !== null && !isNaN(data.odo) ? data.odo : null,
     location: locationPayload,
     title: data.legTitle.trim()
   };

@@ -26,8 +26,7 @@ export async function seedDemoRide(): Promise<number> {
     title: "Western Ghats Loop",
     createdAt: new Date().toISOString(),
     startLocation: { kind: 'gps', lat: 12.2958, lng: 76.6394, name: "Mysore" },
-    distanceMode: 'odo',
-    startOdo: 21560,
+    distanceMode: 'auto',
     coverBlob: coverPhoto
   }) as number;
 
@@ -39,7 +38,6 @@ export async function seedDemoRide(): Promise<number> {
     roadPath: DEMO_ROUTE_PATHS[0],
     note: "Rolled out of Mysore before the city woke up. Coffee plantations start right after the last town. The climb into Madikeri is tight and green—hairpins through cardamom shade. Stopped for filter coffee and a view across the Brahmagiri hills. Checked into a homestay surrounded by coffee estates.",
     km: 118,
-    odo: 21678,
     location: { kind: 'gps', lat: 12.4244, lng: 75.7382, name: "Madikeri" },
     photos: [
       createMockPhoto("Day 1: Coffee estate ride", "#4a5d4e"),
@@ -55,7 +53,6 @@ export async function seedDemoRide(): Promise<number> {
     roadPath: DEMO_ROUTE_PATHS[1],
     note: "Took the little-known route via Virajpet, dropping down into the Wayanad plateau. The descent into Kalpetta is long and technical—road carved into the hillside. Mist rolled through the forest all morning. Crossed into Kerala at the border checkpoint and the tea shops changed from Kannada to Malayalam menus.",
     km: 122,
-    odo: 21800,
     location: { kind: 'gps', lat: 11.6107, lng: 76.0821, name: "Kalpetta" },
     photos: [
       createMockPhoto("Day 2: Virajpet descent", "#695e54"),
@@ -71,7 +68,6 @@ export async function seedDemoRide(): Promise<number> {
     roadPath: DEMO_ROUTE_PATHS[2],
     note: "The Thamarassery ghat road has the famous 9 hairpins—each one tighter than the last. Caught up behind a loaded truck and was stuck crawling for the middle section. At the bottom the landscape flattened into coconut palms. Rode into Kozhikode in the late afternoon and ate the town's legendary biryani.",
     km: 92,
-    odo: 21892,
     location: { kind: 'gps', lat: 11.2588, lng: 75.7804, name: "Kozhikode" },
     photos: [
       coverPhoto
@@ -86,7 +82,6 @@ export async function seedDemoRide(): Promise<number> {
     roadPath: DEMO_ROUTE_PATHS[3],
     note: "Coastal NH66 southbound. Dense traffic out of the city, but it thins out past Ponnani. Paddy fields on both sides. Short coffee stop at a roadside stall serving banana chips with chai.",
     km: 95,
-    odo: 21987,
     location: { kind: 'gps', lat: 10.5276, lng: 76.2144, name: "Thrissur" },
     photos: [
       createMockPhoto("Day 4a: Coastal NH66", "#6e6255")
@@ -101,7 +96,6 @@ export async function seedDemoRide(): Promise<number> {
     roadPath: DEMO_ROUTE_PATHS[4],
     note: "Away from the highway onto the backroad through Angamaly. Long straights past banana plantations. Hit the metro outskirts by evening—ferry across to Fort Kochi was the perfect end to the day.",
     km: 110,
-    odo: 22097,
     location: { kind: 'gps', lat: 9.9667, lng: 76.2422, name: "Fort Kochi" },
     photos: [
       createMockPhoto("Day 4b: Fort Kochi ferry", "#4b5b5c"),
@@ -117,7 +111,6 @@ export async function seedDemoRide(): Promise<number> {
     roadPath: DEMO_ROUTE_PATHS[5],
     note: "Short ride south down the peninsular coast. Turned off the highway for the backwater roads—narrow lanes running between canals and paddy. Spent the afternoon on a country boat. Flat light, green water, absolutely no rush.",
     km: 54,
-    odo: 22151,
     location: { kind: 'gps', lat: 9.4981, lng: 76.3388, name: "Alleppey" },
     photos: [
       createMockPhoto("Day 5: Backwater canal", "#4a5d4e"),
@@ -133,7 +126,6 @@ export async function seedDemoRide(): Promise<number> {
     roadPath: DEMO_ROUTE_PATHS[6],
     note: "The long haul home. Out before sunrise, through Kochi before traffic built up, then back over the ghats on the Palakkad gap. The Western Ghats felt different heading east—greener on the Kerala side, drier and brown by the time we crossed back into Karnataka. Rolled into Mysore in the dark, 385 km done.",
     km: 385,
-    odo: 22536,
     location: { kind: 'gps', lat: 12.2958, lng: 76.6394, name: "Mysore" },
     photos: [
       createMockPhoto("Day 6: Palakkad gap climb", "#6e6255")

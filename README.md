@@ -11,7 +11,7 @@
 
 ---
 
-Retread is a PWA for journaling motorcycle trips. You log daily entries with notes, photos, odometer readings, and GPS coordinates. It connects them into a timeline and draws route maps by snapping your waypoints to real roads.
+Retread is a PWA for journaling motorcycle trips. You log daily entries with notes, photos, distances, and GPS coordinates. It connects them into a timeline and draws route maps by snapping your waypoints to real roads.
 
 There's no server. Everything is stored in IndexedDB on your device — photos included. No accounts, no tracking. You own your data as a compressed JSON file you can export anytime, and cloud backups to Google Drive are entirely optional.
 
@@ -21,7 +21,7 @@ Most trip loggers want you to create an account, store your data on their server
 
 ## Features
 
-**Ride logging** — Create rides with daily "leg" entries. Each leg has a date, freeform notes, photos, distance or odometer readings, and a location (GPS pin or place name).
+**Ride logging** — Create rides with daily "leg" entries. Each leg has a date, freeform notes, photos, a distance (auto-measured from the GPS route or typed), and a location (GPS pin or place name).
 
 **Route maps** — GPS waypoints get snapped to actual roads using [OSRM](http://project-osrm.org/) and drawn as SVG paths with a hand-drawn, pen-on-paper look (using SVG turbulence displacement filters). Routes are simplified with Douglas-Peucker before rendering. The snapped path is stored in the database, so OSRM is only called once per leg — viewing the same ride again reads from IndexedDB.
 

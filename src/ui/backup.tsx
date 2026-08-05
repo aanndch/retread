@@ -40,7 +40,6 @@ interface BackupPayload {
     time?: string;
     note: string;
     km: number | null;
-    odo: number | null;
     location: LocationUnion | null;
     roadPath: { lat: number; lng: number }[] | null;
     photos: string[];
@@ -160,7 +159,6 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
           time: leg.time || '',
           note: leg.note,
           km: leg.km ?? null,
-          odo: leg.odo ?? null,
           location: leg.location ?? null,
           roadPath: leg.roadPath ?? null,
           photos: base64Photos
@@ -301,7 +299,6 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
             photos: photoBlobs,
             photoThumbs,
             km: leg.km,
-            odo: leg.odo,
             location: leg.location,
             roadPath: leg.roadPath
           });

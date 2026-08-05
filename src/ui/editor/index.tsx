@@ -33,14 +33,9 @@ interface EditorState {
   // (typed by the user). Used to keep auto-fill honest — typing stops it, and
   // a pin move re-measures even after a manual value exists.
   kmSource: 'auto' | 'manual' | null;
-  odo: number | null;
-  distanceMode: 'auto' | 'manual' | 'odo';
-  startOdo: number | null;
+  distanceMode: 'auto' | 'manual';
   // Human-readable name of the from-point an auto-measured distance is based on.
   distanceFromLabel: string | null;
-  // Last odometer reading before this leg (ride startOdo for the first leg),
-  // used for the odo delta preview in the leg form.
-  prevOdo: number | null;
   location: LocationUnion | null;
   startLocation: LocationUnion | null;
   gpsLoading: boolean;
@@ -69,11 +64,8 @@ const initialEditorState: EditorState = {
   note: '',
   km: null,
   kmSource: null,
-  odo: null,
   distanceMode: 'auto',
-  startOdo: null,
   distanceFromLabel: null,
-  prevOdo: null,
   location: null,
   startLocation: null,
   gpsLoading: false,
@@ -146,11 +138,8 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     note,
     km,
     kmSource,
-    odo,
     distanceMode,
-    startOdo,
     distanceFromLabel,
-    prevOdo,
     location,
     startLocation,
     gpsLoading,
@@ -215,7 +204,6 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
             note: leg.note,
             km: leg.km ?? null,
             kmSource: leg.km != null ? 'manual' : null,
-            odo: leg.odo ?? null,
             location: leg.location ?? null,
             legTitle: leg.title || '',
             photos: leg.photos || [],
@@ -235,7 +223,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     }
   }, [mode, legId]);
 
-  // Load distance configuration and starting odometer directly from the Ride record
+  // Load distance configuration directly from the Ride record
   useEffect(() => {
     let active = true;
 
@@ -251,8 +239,8 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
         const rideRecord = await db.rides.get(resolvedRideId);
         if (active && rideRecord) {
           const update: Partial<EditorState> = {
-            distanceMode: rideRecord.distanceMode === 'odo' ? 'odo' : rideRecord.distanceMode === 'auto' ? 'auto' : 'manual',
-            startOdo: rideRecord.startOdo ?? null,
+            // Legacy 'odo' rides fall back to manual.
+            distanceMode: rideRecord.distanceMode === 'manual' ? 'manual' : 'auto',
           };
           if (mode === 'edit-ride') {
             update.rideTitle = rideRecord.title;
@@ -294,13 +282,11 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
 
         let foundCenter: [number, number] | null = null;
         let fromLabel: string | null = null;
-        let prevOdoVal: number | null = null;
         if (mode === 'new-leg') {
           if (sorted.length > 0) {
             const lastLeg = sorted[sorted.length - 1];
             if (lastLeg.location?.kind === 'gps') foundCenter = [lastLeg.location.lat, lastLeg.location.lng];
             if (lastLeg.location?.name) fromLabel = lastLeg.location.name;
-            if (lastLeg.odo != null) prevOdoVal = lastLeg.odo;
           }
           if (!foundCenter && rideRecord?.startLocation?.kind === 'gps') {
             foundCenter = [rideRecord.startLocation.lat, rideRecord.startLocation.lng];
@@ -311,16 +297,14 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
             const prevLeg = sorted[myIdx - 1];
             if (prevLeg.location?.kind === 'gps') foundCenter = [prevLeg.location.lat, prevLeg.location.lng];
             if (prevLeg.location?.name) fromLabel = prevLeg.location.name;
-            if (prevLeg.odo != null) prevOdoVal = prevLeg.odo;
           }
           if (!foundCenter && rideRecord?.startLocation?.kind === 'gps') {
             foundCenter = [rideRecord.startLocation.lat, rideRecord.startLocation.lng];
           }
         }
         if (!fromLabel && rideRecord?.startLocation?.name) fromLabel = rideRecord.startLocation.name;
-        if (prevOdoVal === null && rideRecord?.startOdo != null) prevOdoVal = rideRecord.startOdo;
 
-        if (active) dispatch({ fallbackCenter: foundCenter, distanceFromLabel: fromLabel, prevOdo: prevOdoVal });
+        if (active) dispatch({ fallbackCenter: foundCenter, distanceFromLabel: fromLabel });
       } catch (err) {
         console.warn('Failed to load fallback map center:', err);
       }
@@ -658,13 +642,8 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               onKmChange={(val) => dispatch({ km: val, kmSource: 'manual' })}
               kmSource={kmSource}
               distanceFromLabel={distanceFromLabel}
-              prevOdo={prevOdo}
-              odo={odo}
-              setOdo={(val) => dispatch({ odo: val })}
               distanceMode={distanceMode}
               setDistanceMode={(val) => dispatch({ distanceMode: val })}
-              startOdo={startOdo}
-              setStartOdo={(val) => dispatch({ startOdo: val })}
               location={location}
               setLocation={(val) => dispatch({ location: val, ...(val?.kind === 'gps' ? { mapNote: false } : {}) })}
               gpsLoading={gpsLoading}

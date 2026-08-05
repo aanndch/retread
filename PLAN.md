@@ -11,7 +11,7 @@ This document details the architecture, file structures, core algorithms, and st
 *   **Palette:** Dual-mode warm colors (system preferred + manual override):
     *   *Light Mode (Cream Paper):* Background `#f4efe6`, text `#2b2926`, accent `#4a5d4e`.
     *   *Dark Mode (Dark Ink/Brown):* Background `#1c1b18`, text `#ebdcb9`, accent `#6b8270`.
-*   **Typography:** Space Mono or Courier Prime (Typewriter monospace) for journal notes and entry text; JetBrains Mono (clean mechanical monospace) for odometer numbers, dates, and labels.
+*   **Typography:** Space Mono or Courier Prime (Typewriter monospace) for journal notes and entry text; JetBrains Mono (clean mechanical monospace) for distance numbers, dates, and labels.
 *   **Motion:** Subtle page transitions and soft fades. Nothing flashy.
 
 ---
@@ -37,8 +37,7 @@ We will create `src/db.ts` utilizing Dexie to declare our local databases:
 *   `date: string` (Editable date, backdating supported)
 *   `note: string` (Freeform textarea text)
 *   `photos: Blob[]` (JPEG compressed, max 1600px edge)
-*   `km?: number | null` (Direct daily distance entry)
-*   `odo?: number | null` (Odometer readings)
+*   `km?: number | null` (Direct distance entry — auto-measured or typed)
 *   `location?: LocationUnion | null`
 *   `roadPath?: { lat: number; lng: number }[] | null`
 
@@ -61,22 +60,15 @@ Avoids IndexedDB bloating. High-resolution photos are compressed client-side on 
 5.  Saves as binary Blobs in Dexie.
 
 ### B. Derived Distance Calculator (`src/lib.ts`)
-Odometer and KM inputs are computed chronologically without manual overrides:
+KM distances are summed chronologically:
 ```typescript
 export function computeTotalDistance(legs: Leg[]): number {
   const sorted = [...legs].sort((a, b) => a.date.localeCompare(b.date));
   let total = 0;
-  let lastOdo: number | null = null;
 
   for (const leg of sorted) {
     if (leg.km != null) {
       total += leg.km;
-      if (leg.odo != null) lastOdo = leg.odo;
-    } else if (leg.odo != null) {
-      if (lastOdo != null && leg.odo > lastOdo) {
-        total += (leg.odo - lastOdo);
-      }
-      lastOdo = leg.odo;
     }
   }
   return total;
@@ -140,7 +132,7 @@ retread/
 - [x] Establish `src/types.ts` defining Ride, Leg, and discriminated location states.
 - [x] Set up `src/db.ts` containing the Dexie database schema for `rides` and `legs`.
 - [x] Build `src/images.ts` Canvas-based photo compressor (JPEG, 80% quality, max 1600px edge length).
-- [x] Implement `src/lib.ts` odometer distance aggregator logic with chronologically sorted traversal.
+- [x] Implement `src/lib.ts` distance aggregator logic with chronologically sorted traversal.
 - [x] Write integration test checks for DB read/writes and image compression constraints.
 
 ### **Phase 3: Design Tokens & Base UI**

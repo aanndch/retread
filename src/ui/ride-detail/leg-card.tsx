@@ -1,15 +1,13 @@
-import type { Leg, Ride } from '../../types';
+import type { Leg } from '../../types';
 import { formatDistance, stopLabel } from '../../lib';
 
 interface LegCardProps {
   leg: Leg;
   index: number;
-  legs: Leg[];
-  ride: Ride | null;
   label: string;
 }
 
-export function LegCard({ leg, index, legs, ride, label }: LegCardProps) {
+export function LegCard({ leg, index, label }: LegCardProps) {
   return (
     <a href={`#/leg/${leg.id}`} class="timeline-card-item">
       <div class="timeline-card-body">
@@ -46,30 +44,9 @@ export function LegCard({ leg, index, legs, ride, label }: LegCardProps) {
               gap: "var(--spacing-xs)",
             }}
           >
-            {(() => {
-              if (leg.km !== null && leg.km !== undefined) {
-                return (
-                  <span class="card-stat">{formatDistance(leg.km)}</span>
-                );
-              }
-              if (leg.odo !== null && leg.odo !== undefined) {
-                let prevOdo: number | null = null;
-                if (index > 0) {
-                  prevOdo = legs[index - 1].odo ?? null;
-                } else if (ride?.startOdo !== null && ride?.startOdo !== undefined) {
-                  prevOdo = ride.startOdo;
-                }
-                if (prevOdo !== null) {
-                  const delta = leg.odo - prevOdo;
-                  if (delta >= 0) {
-                    return (
-                      <span class="card-stat">{formatDistance(delta)}</span>
-                    );
-                  }
-                }
-              }
-              return null;
-            })()}
+            {leg.km !== null && leg.km !== undefined && (
+              <span class="card-stat">{formatDistance(leg.km)}</span>
+            )}
           </div>
         </div>
 

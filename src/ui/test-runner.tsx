@@ -32,40 +32,7 @@ export function TestRunner() {
       list.push({ name: 'Distance calculation (KM only)', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
-    // Test 2: Distance Calculator (ODO only)
-    try {
-      const distance = computeTotalDistance([
-        { rideId: 1, date: '2026-08-01', note: '', photos: [], odo: 1000 },
-        { rideId: 1, date: '2026-08-02', note: '', photos: [], odo: 1250 },
-        { rideId: 1, date: '2026-08-03', note: '', photos: [], odo: 1300 }
-      ]);
-      if (distance === 300) {
-        list.push({ name: 'Distance calculation (ODO only)', status: 'PASS' });
-      } else {
-        list.push({ name: 'Distance calculation (ODO only)', status: 'FAIL', message: `Expected 300, got ${distance}` });
-      }
-    } catch (e: unknown) {
-      list.push({ name: 'Distance calculation (ODO only)', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
-    }
-
-    // Test 3: Distance Calculator (Mixed KM and ODO)
-    try {
-      const distance = computeTotalDistance([
-        { rideId: 1, date: '2026-08-01', note: '', photos: [], odo: 1000 }, // anchor
-        { rideId: 1, date: '2026-08-02', note: '', photos: [], km: 50 },     // direct km: total = 50
-        { rideId: 1, date: '2026-08-03', note: '', photos: [], odo: 1120 },  // odo difference: 1120 - 1000 = 120. total = 170
-        { rideId: 1, date: '2026-08-04', note: '', photos: [], odo: 1150 }   // odo difference: 1150 - 1120 = 30. total = 200
-      ]);
-      if (distance === 200) {
-        list.push({ name: 'Distance calculation (Mixed KM & ODO)', status: 'PASS' });
-      } else {
-        list.push({ name: 'Distance calculation (Mixed KM & ODO)', status: 'FAIL', message: `Expected 200, got ${distance}` });
-      }
-    } catch (e: unknown) {
-      list.push({ name: 'Distance calculation (Mixed KM & ODO)', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
-    }
-
-    // Test 4: Dexie DB basic CRUD
+    // Test 2: Dexie DB basic CRUD
     try {
       const rideId = await db.rides.add({ title: 'Test Ride', createdAt: new Date().toISOString() });
       const legId = await db.legs.add({
@@ -93,7 +60,7 @@ export function TestRunner() {
       list.push({ name: 'IndexedDB CRUD write/read', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
-    // Test 5: Backup payload preserves leg title + time (schema v3)
+    // Test 3: Backup payload preserves leg title + time (schema v3)
     try {
       const rideId = await db.rides.add({ title: 'Backup Test Ride', createdAt: new Date().toISOString() });
       const legId = await db.legs.add({
@@ -124,7 +91,7 @@ export function TestRunner() {
       list.push({ name: 'Backup payload preserves leg title + time (v3)', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
-    // Test 6: OSRM snap success path parses GeoJSON route
+    // Test 4: OSRM snap success path parses GeoJSON route
     try {
       const realFetch = window.fetch;
       try {
@@ -148,7 +115,7 @@ export function TestRunner() {
       list.push({ name: 'OSRM snap success path', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
-    // Test 7: OSRM snap falls back to straight line when all hosts fail
+    // Test 5: OSRM snap falls back to straight line when all hosts fail
     try {
       const realFetch = window.fetch;
       try {
@@ -170,7 +137,7 @@ export function TestRunner() {
       list.push({ name: 'OSRM snap straight-line fallback on failure', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
-    // Test 8: OSRM snap tries fallback host after primary failure
+    // Test 6: OSRM snap tries fallback host after primary failure
     try {
       const realFetch = window.fetch;
       try {
@@ -199,7 +166,7 @@ export function TestRunner() {
       list.push({ name: 'OSRM snap fallback host recovery', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
-    // Test 9: OSRM snap splits very long legs into hops
+    // Test 7: OSRM snap splits very long legs into hops
     try {
       const realFetch = window.fetch;
       try {
@@ -224,7 +191,7 @@ export function TestRunner() {
       list.push({ name: 'OSRM snap long-leg midpoint splitting', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
-    // Test 10: Squiggle edge-label placement keeps text inside the map
+    // Test 8: Squiggle edge-label placement keeps text inside the map
     try {
       const rightSide = sideAnchor(14, 430);   // near left edge → label right
       const leftSide = sideAnchor(416, 430);   // near right edge → label left

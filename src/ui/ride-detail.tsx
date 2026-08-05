@@ -399,7 +399,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
 
   // Calculate cumulative stats
   const totalDays = new Set(legs.map(l => l.date)).size;
-  const totalKm = computeTotalDistance(legs, ride?.startOdo);
+  const totalKm = computeTotalDistance(legs);
   const hasKm = totalKm > 0;
 
   // Format date range
@@ -414,7 +414,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
 
   // Compile deduped trail of distinct stops + per-day distances
   const trailStops = buildTrailStops(ride.startLocation, legs);
-  const dayDistances = computeDayDistances(legs, ride?.startOdo);
+  const dayDistances = computeDayDistances(legs);
 
   const uniqueDates = Array.from(new Set(legs.map((l) => l.date))).sort();
 
@@ -581,8 +581,6 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
                           key={leg.id}
                           leg={leg}
                           index={legs.indexOf(leg)}
-                          legs={legs}
-                          ride={ride}
                           label={dayLegs.length > 1 ? `Leg ${dayLegs.indexOf(leg) + 1}` : ""}
                         />
                       ))}

@@ -2,30 +2,15 @@ import type { Leg, LocationUnion } from './types';
 
 /**
  * Computes the cumulative distance for a ride from its legs.
- * Rules:
- * - Legs are sorted chronologically by date.
- * - If a leg has `km`, that direct distance is added. If it also has `odo`, we update our `lastOdo` anchor.
- * - If a leg has `odo` (and no `km`), and we have a preceding `lastOdo` anchor, we add (odo - lastOdo) to the total.
- * - Otherwise, if a leg only has `odo` and no preceding anchor, we establish `lastOdo = odo` and add 0.
+ * Legs are sorted chronologically by date; each leg's direct `km` is summed.
  */
-export function computeTotalDistance(legs: Leg[], startOdo?: number | null): number {
+export function computeTotalDistance(legs: Leg[]): number {
   const sorted = [...legs].sort((a, b) => a.date.localeCompare(b.date));
   let total = 0;
-  let lastOdo: number | null = startOdo ?? null;
 
   for (const leg of sorted) {
     if (leg.km != null) {
       total += leg.km;
-      if (leg.odo != null) {
-        lastOdo = leg.odo;
-      }
-    } else if (leg.odo != null) {
-      if (lastOdo != null) {
-        if (leg.odo > lastOdo) {
-          total += (leg.odo - lastOdo);
-        }
-      }
-      lastOdo = leg.odo;
     }
   }
 
@@ -172,28 +157,17 @@ export function stopLabel(loc: LocationUnion | null | undefined, n: number): str
 
 /**
  * Computes the per-day cumulative distance for a ride from its legs,
- * using the same km/odo anchoring rules as computeTotalDistance.
+ * summing each leg's direct `km` into its date bucket.
  * Returns a map of date (YYYY-MM-DD) → km.
  */
-export function computeDayDistances(legs: Leg[], startOdo?: number | null): Map<string, number> {
+export function computeDayDistances(legs: Leg[]): Map<string, number> {
   const sorted = [...legs].sort((a, b) => a.date.localeCompare(b.date));
   const byDate = new Map<string, number>();
-  let lastOdo: number | null = startOdo ?? null;
 
   for (const leg of sorted) {
-    let delta = 0;
     if (leg.km != null) {
-      delta = leg.km;
-      if (leg.odo != null) {
-        lastOdo = leg.odo;
-      }
-    } else if (leg.odo != null) {
-      if (lastOdo != null && leg.odo > lastOdo) {
-        delta = leg.odo - lastOdo;
-      }
-      lastOdo = leg.odo;
+      byDate.set(leg.date, (byDate.get(leg.date) || 0) + leg.km);
     }
-    byDate.set(leg.date, (byDate.get(leg.date) || 0) + delta);
   }
 
   return byDate;

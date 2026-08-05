@@ -179,17 +179,6 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
   let legDistance: number | null = null;
   if (leg && leg.km !== null && leg.km !== undefined) {
     legDistance = leg.km;
-  } else if (leg && leg.odo !== null && leg.odo !== undefined) {
-    if (myIdx > 0) {
-      const prevLeg = sorted[myIdx - 1];
-      if (prevLeg.odo !== null && prevLeg.odo !== undefined) {
-        legDistance = leg.odo - prevLeg.odo;
-        if (legDistance < 0) legDistance = null;
-      }
-    } else if (liveData?.ride?.startOdo !== null && liveData?.ride?.startOdo !== undefined) {
-      legDistance = leg.odo - liveData.ride.startOdo;
-      if (legDistance < 0) legDistance = null;
-    }
   }
 
   const uniqueDates = [...new Set(sorted.map((l) => l.date))];
@@ -377,12 +366,6 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
               {legDistance !== null && legDistance !== undefined
                 ? formatDistance(legDistance)
                 : "—"}
-            </span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Odo</span>
-            <span class="stat-value">
-              {leg.odo !== null && leg.odo !== undefined ? leg.odo : "—"}
             </span>
           </div>
           <div class="stat-item">

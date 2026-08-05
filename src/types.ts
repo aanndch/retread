@@ -1,4 +1,4 @@
-export type DistanceMode = 'auto' | 'manual' | 'odo';
+export type DistanceMode = 'auto' | 'manual';
 export type EditorMode = 'new-ride' | 'edit-ride' | 'new-leg' | 'edit';
 
 export interface Ride {
@@ -7,7 +7,6 @@ export interface Ride {
   createdAt: string; // ISO String
   startLocation?: LocationUnion | null; // Departure pin
   distanceMode?: DistanceMode; // Preferred distance logging style
-  startOdo?: number | null; // Starting odometer reading (only for odo mode)
   coverBlob?: Blob | null; // Snapshot thumbnail chosen as the home-page cover
 }
 
@@ -24,7 +23,6 @@ export interface Leg {
   photos: Blob[];             // Compressed photo blobs
   photoThumbs?: Blob[];       // Small JPEGs (~320px) for ride-card covers
   km?: number | null;         // Direct distance entry
-  odo?: number | null;        // Odometer entry
   location?: LocationUnion | null;
   roadPath?: { lat: number; lng: number }[] | null; // OSRM shape coordinates
   title?: string;
