@@ -4,7 +4,7 @@ import type { JSX } from 'preact';
 import { Button } from '../../components/button';
 import { PinIcon } from '../../components/icons';
 import { FieldCard } from '../../components/field-card';
-import { formatDistance } from '../../lib';
+import { formatDistance, formatIsoDateToDMY } from '../../lib';
 
 // Compact collapsible field: a tappable label + summary row that expands the
 // real control inline. Keeps the leg form on one screen by hiding optional
@@ -148,6 +148,7 @@ export function MetricsStep({
 
   // Compact summaries for the collapsed detail rows.
   const dateSummary = `${date || '—'}${time ? ` · ${time}` : ''}`;
+  const rideDateLabel = formatIsoDateToDMY(date);
   const distanceSummary = distanceMode === 'manual'
     ? (km !== null && km !== undefined ? formatDistance(km) : 'Type distance')
     : (km !== null && km !== undefined
@@ -156,63 +157,88 @@ export function MetricsStep({
 
   return (
     <div class="wizard-step-content">
-      {/* Ride Title — Edit Ride: visible required field; New Ride: collapsed
-          auto-derived row */}
-      {mode === 'edit-ride' && (
-        <FieldCard label="Ride Title">
-          <input
-            type="text"
-            class={`form-input ${titleError ? 'input-error' : ''}`}
-            placeholder="e.g. Spiti Valley Odyssey"
-            value={rideTitle}
-            onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
-              setRideTitle((e.target as HTMLInputElement).value);
-              if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
-            }}
-          />
-          {titleError && <span class="error-text">{titleError}</span>}
-        </FieldCard>
-      )}
-
-      {mode === 'new-ride' && (
-        <DetailRow
-          label="Title"
-          value={rideTitle || autoRideTitle}
-          open={openRow === 'title'}
-          onToggle={() => setOpenRow(openRow === 'title' ? null : 'title')}
-        >
-          <div class="form-group">
-            <input
-              type="text"
-              class={`form-input ${titleError ? 'input-error' : ''}`}
-              placeholder="e.g. Spiti Valley Odyssey"
-              value={rideTitle}
-              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
-                setRideTitle((e.target as HTMLInputElement).value);
-                if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
-              }}
-            />
-            {titleError && <span class="error-text">{titleError}</span>}
-          </div>
-        </DetailRow>
-      )}
-
-      {/* Starting From - Departure Pin (New Ride / Edit Ride) */}
+      {/* Ride creation/editing — a focused, centered prompt */}
       {(mode === 'new-ride' || mode === 'edit-ride') && (
-        <FieldCard label="Starting From">
-          <PlaceRow
-            emptyLabel="Choose start →"
-            location={startLocation}
-            gpsLoading={startGpsLoading}
-            onOpen={() => onOpenMapPicker('start')}
-            onUseLocation={onRetryStartGps}
-            onClear={onClearStartLocation}
-          />
-
-          {mapNote && startLocation?.kind !== 'gps' && (
-            <span class="field-tip">No start pin — your route will begin at the first pinned stop.</span>
+        <div class="ride-create-body">
+          {mode === 'new-ride' && (
+            <p class="field-tip ride-create-kicker">Where does this ride begin?</p>
           )}
-        </FieldCard>
+
+          {/* Ride Title — Edit Ride: visible required field; New Ride: collapsed
+              auto-derived row */}
+          {mode === 'edit-ride' && (
+            <FieldCard label="Ride Title">
+              <input
+                type="text"
+                class={`form-input ${titleError ? 'input-error' : ''}`}
+                placeholder="e.g. Spiti Valley Odyssey"
+                value={rideTitle}
+                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
+                  setRideTitle((e.target as HTMLInputElement).value);
+                  if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
+                }}
+              />
+              {titleError && <span class="error-text">{titleError}</span>}
+            </FieldCard>
+          )}
+
+          {mode === 'new-ride' && (
+            <DetailRow
+              label="Title"
+              value={rideTitle || autoRideTitle}
+              open={openRow === 'title'}
+              onToggle={() => setOpenRow(openRow === 'title' ? null : 'title')}
+            >
+              <div class="form-group">
+                <input
+                  type="text"
+                  class={`form-input ${titleError ? 'input-error' : ''}`}
+                  placeholder="e.g. Spiti Valley Odyssey"
+                  value={rideTitle}
+                  onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
+                    setRideTitle((e.target as HTMLInputElement).value);
+                    if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
+                  }}
+                />
+                {titleError && <span class="error-text">{titleError}</span>}
+              </div>
+            </DetailRow>
+          )}
+
+          {mode === 'new-ride' && (
+            <DetailRow
+              label="Start date"
+              value={rideDateLabel}
+              open={openRow === 'date'}
+              onToggle={() => setOpenRow(openRow === 'date' ? null : 'date')}
+            >
+              <div class="form-group">
+                <input
+                  type="date"
+                  class="form-input"
+                  value={date}
+                  onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setDate((e.target as HTMLInputElement).value)}
+                />
+              </div>
+            </DetailRow>
+          )}
+
+          {/* Starting From - Departure Pin (New Ride / Edit Ride) */}
+          <FieldCard label="Starting From">
+            <PlaceRow
+              emptyLabel="Choose start →"
+              location={startLocation}
+              gpsLoading={startGpsLoading}
+              onOpen={() => onOpenMapPicker('start')}
+              onUseLocation={onRetryStartGps}
+              onClear={onClearStartLocation}
+            />
+
+            {mapNote && startLocation?.kind !== 'gps' && (
+              <span class="field-tip">No start pin — your route will begin at the first pinned stop.</span>
+            )}
+          </FieldCard>
+        </div>
       )}
 
       {/* Leg metrics (Only for Leg creation or Leg edit modes) */}

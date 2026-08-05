@@ -2066,6 +2066,23 @@ button:focus,
   color: var(--color-ink-muted);
 }
 
+/* Ride creation/editing is a focused prompt: center its few cards in the
+   available viewport so a sparse screen reads as intentional, not empty. */
+.ride-create-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--spacing-md);
+  min-height: 0;
+}
+
+.ride-create-kicker {
+  text-align: center;
+  margin: 0;
+  font-size: 12px;
+}
+
 /* Compact step dots for the leg wizard (replaces the text progress bar) */
 .wizard-dots {
   display: flex;

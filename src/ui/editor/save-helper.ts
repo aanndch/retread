@@ -78,8 +78,8 @@ export async function saveEditorDetails(
       console.warn('Snapping routes failed during new ride save:', snapErr);
     });
     // Continue straight into logging the first leg so the user isn't stranded
-    // on an empty ride page; they can always back out of the leg form.
-    return `#/edit?mode=new-leg&rideId=${newRideId}`;
+    // on an empty ride page; carry the chosen start date through to leg 1.
+    return `#/edit?mode=new-leg&rideId=${newRideId}&date=${data.date}`;
   }
 
   // Saving leg entries (mode === 'new-leg' or mode === 'edit')

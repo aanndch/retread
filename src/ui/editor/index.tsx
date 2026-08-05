@@ -111,6 +111,9 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   const legIdParam = params.get('legId');
   const rideId = rideIdParam ? parseInt(rideIdParam, 10) : null;
   const legId = legIdParam ? parseInt(legIdParam, 10) : null;
+  // A ride's start date is carried into the first-leg form via the URL so the
+  // backdated trip date survives the ride → leg navigation.
+  const dateParam = params.get('date');
 
   const [isClosing, setIsClosing] = useState(false);
   const [showArrange, setShowArrange] = useState(false);
@@ -125,6 +128,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   // Initialize unified merging state tree
   const [state, dispatch] = useReducer(formReducer, {
     ...initialEditorState,
+    date: dateParam || initialEditorState.date,
     loading: mode === 'edit' || mode === 'edit-ride'
   });
 
