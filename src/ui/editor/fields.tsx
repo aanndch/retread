@@ -22,7 +22,9 @@ export function DetailRow({ label, value, open, onToggle, children }: {
         <span class="detail-row-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
       </button>
       <div class={`detail-row-expand${open ? ' open' : ''}`}>
-        <div class="detail-row-body">{children}</div>
+        <div class="detail-row-expand-inner">
+          <div class="detail-row-body">{children}</div>
+        </div>
       </div>
     </div>
   );

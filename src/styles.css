@@ -1971,9 +1971,15 @@ button:focus,
   grid-template-rows: 1fr;
 }
 
-.detail-row-body {
+/* The grid item is a pure clip box: its min-content contribution is zero, so
+   the collapsed 0fr track fully hides the body (padding on the body itself
+   would keep the track open at half-height in some engines). */
+.detail-row-expand-inner {
   min-height: 0;
   overflow: hidden;
+}
+
+.detail-row-body {
   padding: 12px 12px;
   border-top: 1px dashed color-mix(in srgb, var(--color-ink-muted) 40%, transparent);
 }
