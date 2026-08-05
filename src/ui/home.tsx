@@ -5,7 +5,7 @@ import { Toast, useToast } from '../components/toast';
 import { CloseIcon, GearIcon, SearchIcon } from '../components/icons';
 import { formatDistance } from '../lib';
 import { getSavedTheme, saveTheme, Theme } from '../theme';
-import { seedDemoRide } from './seed-demo';
+import { seedDemoRide, seedPhantomDemoRide } from './seed-demo';
 import { coverUrlCache, DRAFT_MONTH_KEY, type HomeRideEntry } from './use-ride-book';
 import type { Ride } from '../types';
 
@@ -135,16 +135,16 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
     }, 250);
   };
 
-  const handleSeedDemoRide = async () => {
+  const seedRide = async (seedFn: () => Promise<number>, successMsg: string) => {
     if (seedingDemo) return;
     setSeedingDemo(true);
     try {
-      const newRideId = await seedDemoRide();
+      const newRideId = await seedFn();
       // Sequence the reveal: the settings sheet animates out first, letting
       // the freshly added ride card fade in beneath it before the toast lands.
       closeSettings(() => {
         setRevealRideId(newRideId);
-        showToast("Demo ride added.", "success");
+        showToast(successMsg, "success");
       });
     } catch (err) {
       console.error("Failed to seed demo data:", err);
@@ -153,6 +153,9 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
       setSeedingDemo(false);
     }
   };
+
+  const handleSeedDemoRide = () => seedRide(seedDemoRide, "Demo ride added.");
+  const handleSeedPhantomRide = () => seedRide(seedPhantomDemoRide, "Phantom demo ride added.");
 
   // Aggregate stats for the header (only when rides exist)
   const totalRides = ridesData?.length ?? 0;
@@ -305,13 +308,21 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
               <div class="setting-item">
                 <label>Demo Content</label>
                 <div class="settings-buttons">
-                  <Button 
-                    variant="primary" 
+                  <Button
+                    variant="primary"
                     size="sm"
                     onClick={handleSeedDemoRide}
                     disabled={seedingDemo}
                   >
                     {seedingDemo ? 'Seeding demo ride…' : 'Seed Western Ghats Demo Ride'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleSeedPhantomRide}
+                    disabled={seedingDemo}
+                  >
+                    {seedingDemo ? 'Seeding demo ride…' : 'Seed Spiti Phantom Demo'}
                   </Button>
                 </div>
               </div>
@@ -354,7 +365,7 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
         ) : ridesData.length === 0 ? (
           <div class="empty-state">
             <p class="empty-state-title">Your ride book is empty.</p>
-            <p class="empty-state-desc">Everything stays on this device. No account needed.</p>
+            <p class="empty-state-desc">A ride is a trip. A leg is one stretch of that trip — a segment between two stops. Log as many legs as you like.</p>
             <div class="empty-actions">
               <Button 
                 variant="primary" 

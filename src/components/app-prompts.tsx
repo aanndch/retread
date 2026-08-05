@@ -125,8 +125,8 @@ export function useAppPrompts(): AppPrompt {
     // Don't show prompts during first-run setup
     if (localStorage.getItem('retread-setup-complete') !== 'true') return;
 
-    // 1. PWA install prompt — show once if not installed and not previously dismissed
-    if (!isStandalone() && localStorage.getItem(LS_KEY_PWA_DISMISSED) !== 'true') {
+    // 1. PWA install prompt — show once after first save, if not installed and not previously dismissed
+    if (!isStandalone() && localStorage.getItem(LS_KEY_PWA_DISMISSED) !== 'true' && localStorage.getItem('retread-has-saved') === 'true') {
       setPrompt('pwa-install');
       return;
     }

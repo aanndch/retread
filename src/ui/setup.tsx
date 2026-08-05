@@ -1,6 +1,5 @@
 import { useState } from 'preact/hooks';
 import { Button } from '../components/button';
-import { Dropdown } from '../components/dropdown';
 import { ArrowRight } from '../components/icons';
 
 interface SetupProps {
@@ -33,17 +32,6 @@ export function Setup({ onComplete }: SetupProps) {
       <p class="setup-tagline">For well-tread rides.</p>
       
       <div class="setup-card">
-        <div class="input-group">
-          <label class="input-label">Where do you ride?</label>
-          <Dropdown
-            value="IN"
-            onChange={() => {}}
-            options={[{ value: 'IN', label: 'India (v1)' }]}
-            disabled
-          />
-          <span class="input-help">v1 supports snapping routes and odometer units for India.</span>
-        </div>
-
         <div class="privacy-warnings">
           <div class="warning-section">
             <span class="warning-bullet">✦</span>
@@ -56,8 +44,8 @@ export function Setup({ onComplete }: SetupProps) {
           <div class="warning-section">
             <span class="warning-bullet">✦</span>
             <div>
-              <strong>Back up regularly.</strong>
-              <p>Photos are stored locally in your browser's IndexedDB. To protect your memories from device loss or OS cleanup, export backups from the gear menu.</p>
+              <strong>Route snapping for Indian roads.</strong>
+              <p>Retread measures distances along real roads using OpenStreetMap data, optimized for Indian routes.</p>
             </div>
           </div>
         </div>
