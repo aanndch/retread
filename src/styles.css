@@ -506,11 +506,10 @@ button:focus,
 }
 
 .setup-card {
-  border: 1px solid var(--color-ink);
+  border: 1px solid var(--color-ink-muted);
   border-radius: var(--border-radius);
-  background-color: var(--color-paper);
+  background-color: var(--color-paper-dim);
   padding: var(--spacing-lg);
-  box-shadow: 4px 4px 0px var(--color-shadow);
 }
 
 .input-group {
@@ -645,19 +644,6 @@ button:focus,
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
-}
-
-.setting-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.setting-item label {
-  font-family: var(--font-mechanical);
-  font-size: 11px;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
 }
 
 .settings-buttons {
@@ -1674,32 +1660,6 @@ button:focus,
   gap: var(--spacing-lg);
 }
 
-.backup-card {
-  border: 1px solid var(--color-ink);
-  border-radius: var(--border-radius);
-  background-color: var(--color-paper);
-  padding: var(--spacing-lg);
-  box-shadow: 4px 4px 0px var(--color-shadow);
-  font-family: var(--font-typewriter);
-  min-width: 0;
-}
-
-.card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
-}
-
-.card-head h4 {
-  font-family: var(--font-typewriter);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-ink);
-  margin: 0;
-}
-
 .connected-badge-btn {
   display: inline-flex;
   align-items: center;
@@ -2081,21 +2041,29 @@ button:focus,
   padding: 0 14px;
 }
 
-/* Always-open content card for single-purpose wizard steps (Photos / Story).
-   Mirrors .detail-row so every step shares the same card rhythm. */
-.step-card {
+/* Canonical card: paper-dim frame + uppercase mechanical label. Used by the
+   editor steps, forms, settings, and modals so every surface matches. */
+.field-card {
   border: 1px solid var(--color-ink-muted);
   border-radius: var(--border-radius);
   background: var(--color-paper-dim);
   padding: 12px;
 }
 
-.step-card-label {
+.field-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.field-card-label {
+  font-family: var(--font-mechanical);
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 1px;
   color: var(--color-ink-muted);
-  margin-bottom: var(--spacing-sm);
 }
 
 /* Compact step dots for the leg wizard (replaces the text progress bar) */
@@ -2486,12 +2454,11 @@ input[type=number] {
   display: flex;
   justify-content: center;
   gap: 0;
-  border: 1px solid var(--color-ink);
+  border: 1px solid var(--color-ink-muted);
   border-radius: var(--border-radius);
-  background-color: var(--color-paper);
+  background-color: var(--color-paper-dim);
   padding: var(--spacing-md);
   margin-bottom: var(--spacing-lg);
-  box-shadow: 2px 2px 0px var(--color-shadow);
 }
 
 .stat-item {
@@ -2949,12 +2916,11 @@ input[type=number] {
   font-size: 14px;
   line-height: 1.5;
   color: var(--color-ink);
-  background-color: var(--color-paper);
+  background-color: var(--color-paper-dim);
   border: 1px solid var(--color-ink-muted);
   border-radius: var(--border-radius);
   padding: 10px 14px;
   margin: 0;
-  box-shadow: 3px 3px 0px var(--color-shadow);
   white-space: pre-wrap; /* Preserve rider paragraph breaks */
 }
 

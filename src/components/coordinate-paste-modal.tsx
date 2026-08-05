@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { Button } from './button';
+import { FieldCard } from './field-card';
 import { parseCoordinates } from '../ui/editor/utils';
 
 interface CoordinatePasteModalProps {
@@ -56,29 +57,31 @@ export function CoordinatePasteModal({ isOpen, targetLabel, onConfirm, onClose }
           </button>
         </div>
         <div style={{ padding: '0 var(--spacing-md) var(--spacing-md)' }}>
-          <p style={{ fontSize: '12px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-typewriter)', marginTop: 0 }}>
-            Offline you can still set the {targetLabel.toLowerCase()} — paste
-            coordinates like <strong>31.2245, 77.3456</strong> or a Google Maps share link.
-          </p>
-          <input
-            ref={inputRef}
-            type="text"
-            class="form-input"
-            aria-label="Coordinates"
-            placeholder="e.g. 31.2245, 77.3456"
-            value={value}
-            onInput={(e) => { setValue((e.target as HTMLInputElement).value); if (error) setError(''); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }}
-          />
-          {error && <span class="error-text">{error}</span>}
-          <div class="page-action-row page-action-modal" style={{ marginTop: 'var(--spacing-md)' }}>
-            <Button variant="secondary" size="sm" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button variant="primary" size="sm" onClick={submit}>
-              Use Coordinates
-            </Button>
-          </div>
+          <FieldCard label="Coordinates">
+            <p style={{ fontSize: '12px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-typewriter)', marginTop: 0 }}>
+              Offline you can still set the {targetLabel.toLowerCase()} — paste
+              coordinates like <strong>31.2245, 77.3456</strong> or a Google Maps share link.
+            </p>
+            <input
+              ref={inputRef}
+              type="text"
+              class="form-input"
+              aria-label="Coordinates"
+              placeholder="e.g. 31.2245, 77.3456"
+              value={value}
+              onInput={(e) => { setValue((e.target as HTMLInputElement).value); if (error) setError(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }}
+            />
+            {error && <span class="error-text">{error}</span>}
+            <div class="page-action-row page-action-modal" style={{ marginTop: 'var(--spacing-md)' }}>
+              <Button variant="secondary" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button variant="primary" size="sm" onClick={submit}>
+                Use Coordinates
+              </Button>
+            </div>
+          </FieldCard>
         </div>
       </div>
     </div>

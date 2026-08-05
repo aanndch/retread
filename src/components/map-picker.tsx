@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { Button } from './button';
+import { FieldCard } from './field-card';
 import { loadLeaflet, geocodePlace, reverseGeocode, type GeocodePlace } from '../ui/editor/utils';
 import type { LocationUnion } from '../types';
 
@@ -476,37 +477,36 @@ export function MapPicker({
             background: 'var(--color-paper-dim)',
             borderTop: '1px solid var(--color-ink-muted)',
             marginTop: 0,
-            flexDirection: 'column',
-            alignItems: 'stretch',
-            gap: 'var(--spacing-sm)',
           }}
         >
-          <input
-            type="text"
-            class="form-input form-input-sm"
-            aria-label="Stop name"
-            placeholder="Stop name (e.g. Jispa)"
-            value={nameValue}
-            onInput={(e) => setNameValue((e.target as HTMLInputElement).value)}
-          />
+          <FieldCard label="Stop name">
+            <input
+              type="text"
+              class="form-input form-input-sm"
+              aria-label="Stop name"
+              placeholder="Stop name (e.g. Jispa)"
+              value={nameValue}
+              onInput={(e) => setNameValue((e.target as HTMLInputElement).value)}
+            />
 
-          {!pinnedNow && nameValue.trim() && (
-            <span class="field-tip">Add without a pin to keep it as an approximate stop.</span>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
-            <Button variant="secondary" size="sm" onClick={() => handleClose(onClose)}>
-              Cancel
-            </Button>
             {!pinnedNow && nameValue.trim() && (
-              <Button variant="secondary" size="sm" onClick={handleKeepAsLabel}>
-                Add without a pin
-              </Button>
+              <span class="field-tip">Add without a pin to keep it as an approximate stop.</span>
             )}
-            <Button variant="primary" size="sm" onClick={handleConfirm} disabled={!leafletLoaded || leafletFailed || !pinnedNow}>
-              Confirm Location
-            </Button>
-          </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
+              <Button variant="secondary" size="sm" onClick={() => handleClose(onClose)}>
+                Cancel
+              </Button>
+              {!pinnedNow && nameValue.trim() && (
+                <Button variant="secondary" size="sm" onClick={handleKeepAsLabel}>
+                  Add without a pin
+                </Button>
+              )}
+              <Button variant="primary" size="sm" onClick={handleConfirm} disabled={!leafletLoaded || leafletFailed || !pinnedNow}>
+                Confirm Location
+              </Button>
+            </div>
+          </FieldCard>
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import type { LocationUnion } from '../../types';
 import type { JSX } from 'preact';
 import { Button } from '../../components/button';
 import { PinIcon } from '../../components/icons';
+import { FieldCard } from '../../components/field-card';
 import { formatDistance } from '../../lib';
 
 // Compact collapsible field: a tappable label + summary row that expands the
@@ -154,8 +155,7 @@ export function MetricsStep({
     <div class="wizard-step-content">
       {/* Ride Title (New Ride Only) */}
       {(mode === 'new-ride' || mode === 'edit-ride') && (
-        <div class="form-group">
-          <label class="input-label">Ride Title</label>
+        <FieldCard label="Ride Title">
           <input 
             type="text" 
             class={`form-input ${titleError ? 'input-error' : ''}`}
@@ -167,13 +167,12 @@ export function MetricsStep({
             }}
           />
           {titleError && <span class="error-text">{titleError}</span>}
-        </div>
+        </FieldCard>
       )}
 
       {/* Starting From - Departure Pin (New Ride / Edit Ride) */}
       {(mode === 'new-ride' || mode === 'edit-ride') && (
-        <div class="form-group">
-          <label class="input-label">Starting From</label>
+        <FieldCard label="Starting From">
           <span class="field-tip">Choose the start — name it inside the picker.</span>
 
           <PlaceRow
@@ -188,13 +187,12 @@ export function MetricsStep({
           {mapNote && startLocation?.kind !== 'gps' && (
             <span class="field-tip">No start pin — your route will begin at the first pinned stop.</span>
           )}
-        </div>
+        </FieldCard>
       )}
 
       {/* Distance Tracking Preference (New Ride / Edit Ride) */}
       {(mode === 'new-ride' || mode === 'edit-ride') && (
-        <div class="form-group animate-fade-in" style={{ marginTop: 'var(--spacing-md)' }}>
-          <label class="input-label">Distance Method</label>
+        <FieldCard label="Distance Method">
           <div style={{ display: 'flex', gap: '8px', flexDirection: 'column', marginBottom: '8px' }}>
             <Button
               type="button"
@@ -221,15 +219,14 @@ export function MetricsStep({
           {distanceMode === 'manual' && (
             <span class="field-tip">You type the distance for each leg.</span>
           )}
-        </div>
+        </FieldCard>
       )}
 
       {/* Leg metrics (Only for Leg creation or Leg edit modes) */}
       {(mode === 'new-leg' || mode === 'edit') && (
         <>
           {/* Destination — always open (the core of a leg) */}
-          <div class="form-group">
-            <label class="input-label">Destination</label>
+          <FieldCard label="Destination">
             <span class="field-tip">Choose the stop — name it inside the picker.</span>
 
             <PlaceRow
@@ -244,7 +241,7 @@ export function MetricsStep({
             {mapNote && location?.kind !== 'gps' && (
               <span class="field-tip">No map pin — this leg won't appear on the route map.</span>
             )}
-          </div>
+          </FieldCard>
 
           {/* Title — collapsible (auto-derived default shown) */}
           <DetailRow

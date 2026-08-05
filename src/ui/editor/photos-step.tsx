@@ -1,6 +1,7 @@
 import type { RefObject } from 'preact';
 import type { JSX } from 'preact';
 import { Button } from '../../components/button';
+import { FieldCard } from '../../components/field-card';
 import { PhotoArrangeSheet } from '../../components/photo-arrange-sheet';
 
 interface PhotosStepProps {
@@ -32,11 +33,7 @@ export function PhotosStep({
 }: PhotosStepProps) {
   return (
     <div class="wizard-step-content">
-      <div class="step-card">
-        <div class="step-card-label">
-          Photos{photoPreviews.length > 0 ? ` · ${photoPreviews.length}` : ''}
-        </div>
-
+      <FieldCard label={`Photos${photoPreviews.length > 0 ? ` · ${photoPreviews.length}` : ''}`}>
         <div class="photo-uploader">
           <input 
             type="file" 
@@ -79,7 +76,7 @@ export function PhotosStep({
             <span class="field-tip">Tap ☆ on a photo to make it this ride's cover.</span>
           </div>
         )}
-      </div>
+      </FieldCard>
 
       <PhotoArrangeSheet
         isOpen={showArrange}

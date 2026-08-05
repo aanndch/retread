@@ -5,6 +5,7 @@ import { Button } from '../components/button';
 import { ConfirmModal } from '../components/confirm-modal';
 import { Toast, useToast } from '../components/toast';
 import { PageHeader } from '../components/page-header';
+import { FieldCard } from '../components/field-card';
 import { HASH_HOME, GDRIVE_AUTOSYNC_FILENAME } from '../constants';
 import type { Ride, LocationUnion } from '../types';
 import type { JSX } from 'preact';
@@ -447,11 +448,7 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
         )}
 
         {/* ── Local Backup ───────────────────────────────────────────────── */}
-        <section class="backup-card">
-          <div class="card-head">
-            <h4>Local Backup</h4>
-          </div>
-
+        <FieldCard label="Local Backup">
           <p class="micro-help">Saves a .json file on this device. Use it to move your logs to another device.</p>
 
           <div class="local-actions">
@@ -482,29 +479,27 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
             class="file-hidden-input"
             disabled={working}
           />
-        </section>
+        </FieldCard>
 
         {/* ── Google Drive ───────────────────────────────────────────────── */}
-        <section class="backup-card gdrive-card">
-          <div class="card-head">
-            <h4>Google Drive</h4>
-            {gdriveConnected && (
-              <Button
-                variant="tertiary"
-                size="sm"
-                onClick={() => setShowConfirmDisconnect(true)}
-                disabled={working}
-                class="connected-badge-btn"
-              >
-                <span class="connected-badge-dot" />
-                Connected
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </Button>
-            )}
-          </div>
-
+        <FieldCard
+          label="Google Drive"
+          action={gdriveConnected && (
+            <Button
+              variant="tertiary"
+              size="sm"
+              onClick={() => setShowConfirmDisconnect(true)}
+              disabled={working}
+              class="connected-badge-btn"
+            >
+              <span class="connected-badge-dot" />
+              Connected
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </Button>
+          )}
+        >
           {!gdriveConnected ? (
             <>
               <p class="micro-help">Keep backups safe in the cloud, and restore them on any device.</p>
@@ -600,7 +595,7 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
               </div>
             </div>
           )}
-        </section>
+        </FieldCard>
       </main>
 
       {showConfirmRestore && (

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import type { JSX } from 'preact';
 import { Button } from '../../components/button';
+import { FieldCard } from '../../components/field-card';
 
 interface StoryStepProps {
   note: string;
@@ -28,8 +29,7 @@ export function StoryStep({
 
   return (
     <div class="wizard-step-content">
-      <div class="step-card">
-        <div class="step-card-label">Leg Note</div>
+      <FieldCard label="Leg Note">
         <textarea 
           ref={textareaRef}
           class="form-textarea" 
@@ -40,7 +40,7 @@ export function StoryStep({
           autoFocus
           style={{ overflowY: 'hidden', resize: 'none' }}
         ></textarea>
-      </div>
+      </FieldCard>
 
       {/* Step 3 Actions */}
       <div class="form-actions">

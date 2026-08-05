@@ -3,6 +3,7 @@ import { Button } from '../components/button';
 import { Dropdown } from '../components/dropdown';
 import { Toast, useToast } from '../components/toast';
 import { CloseIcon, GearIcon, SearchIcon } from '../components/icons';
+import { FieldCard } from '../components/field-card';
 import { formatDistance } from '../lib';
 import { getSavedTheme, saveTheme, Theme } from '../theme';
 import { seedDemoRide, seedPhantomDemoRide } from './seed-demo';
@@ -271,8 +272,7 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
             
             <div class="settings-body">
               {/* Theme Toggle */}
-              <div class="setting-item">
-                <label>Color Theme</label>
+              <FieldCard label="Color Theme">
                 <Dropdown
                   class="drop-up"
                   value={themeMode}
@@ -288,11 +288,10 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
                     { value: Theme.Cyberpunk, label: 'Cyberpunk (Neon Noir)' },
                   ]}
                 />
-              </div>
+              </FieldCard>
 
               {/* Backup & Restore */}
-              <div class="setting-item">
-                <label>Data Management</label>
+              <FieldCard label="Data Management">
                 <div class="settings-buttons">
                   <Button 
                     variant="secondary" 
@@ -302,11 +301,10 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
                     Backup & Restore
                   </Button>
                 </div>
-              </div>
+              </FieldCard>
 
               {/* Seed Demo Data */}
-              <div class="setting-item">
-                <label>Demo Content</label>
+              <FieldCard label="Demo Content">
                 <div class="settings-buttons">
                   <Button
                     variant="primary"
@@ -325,11 +323,10 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
                     {seedingDemo ? 'Seeding demo ride…' : 'Seed Spiti Phantom Demo'}
                   </Button>
                 </div>
-              </div>
+              </FieldCard>
 
               {/* Build Log (changelog/roadmap) */}
-              <div class="setting-item">
-                <label>Build Log</label>
+              <FieldCard label="Build Log">
                 <div class="settings-buttons">
                   <Button 
                     variant="secondary" 
@@ -339,7 +336,7 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
                     View Build Log
                   </Button>
                 </div>
-              </div>
+              </FieldCard>
             </div>
           </div>
         </div>
