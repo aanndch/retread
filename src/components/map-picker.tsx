@@ -470,44 +470,34 @@ export function MapPicker({
         </div>
 
         {/* Actions */}
-        <div
-          class="page-action-row page-action-modal"
-          style={{
-            padding: 'var(--spacing-md)',
-            background: 'var(--color-paper-dim)',
-            borderTop: '1px solid var(--color-ink-muted)',
-            marginTop: 0,
-          }}
-        >
-          <FieldCard label="Stop name">
-            <input
-              type="text"
-              class="form-input form-input-sm"
-              aria-label="Stop name"
-              placeholder="Stop name (e.g. Jispa)"
-              value={nameValue}
-              onInput={(e) => setNameValue((e.target as HTMLInputElement).value)}
-            />
+        <FieldCard label="Stop name">
+          <input
+            type="text"
+            class="form-input form-input-sm"
+            aria-label="Stop name"
+            placeholder="Stop name (e.g. Jispa)"
+            value={nameValue}
+            onInput={(e) => setNameValue((e.target as HTMLInputElement).value)}
+          />
 
+          {!pinnedNow && nameValue.trim() && (
+            <span class="field-tip">Add without a pin to keep it as an approximate stop.</span>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
+            <Button variant="secondary" size="sm" onClick={() => handleClose(onClose)}>
+              Cancel
+            </Button>
             {!pinnedNow && nameValue.trim() && (
-              <span class="field-tip">Add without a pin to keep it as an approximate stop.</span>
+              <Button variant="secondary" size="sm" onClick={handleKeepAsLabel}>
+                Add without a pin
+              </Button>
             )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
-              <Button variant="secondary" size="sm" onClick={() => handleClose(onClose)}>
-                Cancel
-              </Button>
-              {!pinnedNow && nameValue.trim() && (
-                <Button variant="secondary" size="sm" onClick={handleKeepAsLabel}>
-                  Add without a pin
-                </Button>
-              )}
-              <Button variant="primary" size="sm" onClick={handleConfirm} disabled={!leafletLoaded || leafletFailed || !pinnedNow}>
-                Confirm Location
-              </Button>
-            </div>
-          </FieldCard>
-        </div>
+            <Button variant="primary" size="sm" onClick={handleConfirm} disabled={!leafletLoaded || leafletFailed || !pinnedNow}>
+              Confirm Location
+            </Button>
+          </div>
+        </FieldCard>
       </div>
     </div>
   );
