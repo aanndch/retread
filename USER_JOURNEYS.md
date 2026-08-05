@@ -44,15 +44,14 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 2. **Tap "Log Your First Ride"**
    - Route: `#/edit?mode=new-ride`
    - Editor opens. No GPS request yet — the browser asks for location only when the user taps "Use my location".
-   - Start pin is empty until the user chooses: "Use my location" (prompts) or "Pick on Map".
+   - Start pin is empty until the user chooses: "Use my location" (prompts) or the place row (opens the picker).
 
 3. **Fill ride title**
    - User types e.g. "Ladakh 2026".
    - Title is required — save blocked without it.
 
 4. **Starting From section**
-   - Start pin empty until the user taps "Use my location". Name field is optional.
-   - User can optionally type a departure name (e.g. "Delhi").
+   - A single tappable place row ("Choose start →"). Tapping it opens the place picker (India-biased search + map), where the stop name is edited on the placed pin; "Use my location" sits beside the row for the live case.
 
 5. **Distance Method**
    - Default: GPS route. User can switch to Manual.
@@ -488,7 +487,7 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
    - Map picker does not open.
 
 3. **User options:**
-   - Paste coordinates manually into the name field (parsed as GPS if valid lat/lng).
+   - Paste coordinates into the offline coordinate-paste modal (parsed as GPS if valid lat/lng).
    - Skip the pin (phantom flow).
    - Go online and retry.
 

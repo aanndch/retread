@@ -42,9 +42,10 @@ A name-only stop is a silent trap that destroys the MVP with zero in-flow feedba
 
 ## 3. Agreed design decisions
 
-- **Pin requirement (legs):** GPS pin is the primary location action. The name field is an optional label shown **before** pin placement (User B — catch-up — knows the name "Manali" before they open the map). A leg without a GPS pin is treated as a **phantom stop** (see below). The bypass is implicit: if the user fills out the form and saves without setting a pin, that IS the "continue without a map" signal. No separate button or flag needed — the form simply renders the phantom.
-- **Name field:** optional *label* attached to a pin. Shown first (above pin buttons) so catch-up users can type a name before picking a location. Unnamed legs with a GPS pin render as **"Stop N"** (N = leg order). Unnamed legs without a pin also render as "Stop N" on the phantom marker.
-  - **Invariant — label, never a location:** a typed name alone must never become a route anchor. `{ kind: 'named', name }` means "phantom label, not a location"; the map draws nothing from it. Until geocode-to-pin lands (Deferred), the name field is cosmetic until a pin exists — the in-flow note ("No map pin — this leg won't appear on the route map") is what prevents a name-only save from looking like a mistake.
+- **Pin requirement (legs):** location entry is a single, tappable **place row** ("Choose destination →", or a pinned chip showing the stop once). Tapping it opens the **place picker** — India-biased search, tap-to-place map, and the stop name edited on the placed pin. A visible **"Use my location"** button sits on the row for the live one-tap case. A leg saved without a pin is a **phantom stop** (see below); the bypass is implicit, and the form simply renders the phantom.
+- **Name field:** lives **inside the picker**, edited on the placed pin — never a separate form field, so the name never renders twice. Reverse geocode suggests it for nameless pins (offline/unknown → "Pin set"). In the picker, "**Keep 'X' as a label (no pin)**" produces a named phantom when search can't find a place.
+  - **Invariant — label, never a location:** a typed name alone must never become a route anchor. `{ kind: 'named', name }` means "phantom label, not a location"; the map draws nothing from it.
+- **Title:** optional — auto-derives from the stop label or **"Stop N"** at save time, so nothing is required behind a toggle.
 - **Phantom points:** a pin-less leg appears on the ride map as a hollow dashed marker with dashed connectors to/from its real neighbors.
   - **Position rule:** **midpoint** between the previous and next real GPS pin — it reads as "somewhere in the middle of the uncertain stretch", and costs almost nothing because the forward scan for the next real pin is already required for the dashed connector. Trailing phantom (no next real pin): small fixed offset from the last real pin with a single dashed stub. Leading phantom with no anchor: skipped.
   - **Route across a phantom gap:** the solid road is **replaced** by the dashed connectors (reads "uncertain here").
@@ -71,8 +72,9 @@ Foundational: everything downstream depends on how unnamed stops are labeled.
 ### Phase 2 — Pin-first editor & ride→leg continuation
 
 **`src/ui/editor/metrics-step.tsx`**
-- Destination section rework: name field shown first as **"Label this stop"** (optional), placed above the pin buttons. Pin actions (**"Use my location"** / **"Pick on map"**) come below. This lets catch-up users type a name before picking a location.
-- Starting From (new/edit ride): same treatment — name field first, then pin buttons.
+- Destination is a single tappable **place row** ("Choose destination →" / pinned chip) + a visible **"Use my location"** button. Tapping the row opens the place picker.
+- Starting From (new/edit ride): the same place row + "Use my location".
+- Title / Date & Time / Distance are compact **collapsible rows** (one-screen editor); the title auto-derives from the stop label or "Stop N".
 - When no pin is set and user attempts to advance: show an honest inline note — "No map pin — this leg won't appear on the route map." The save proceeds (implicit bypass) but the note is visible so the user knows what they're choosing.
 - Pin removal: if a GPS pin is cleared while `kmSource === 'auto'`, clear the measured `km` too (can't measure without a pin); a manually typed value stays.
 
