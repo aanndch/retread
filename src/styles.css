@@ -2173,6 +2173,18 @@ input[type=number] {
   border-color: var(--color-green);
 }
 
+/* Phantom trail stops — dashed dot + italic name, matching the map markers */
+.trail-stop.is-phantom .trail-dot {
+  background-color: transparent;
+  border-style: dashed;
+  border-color: var(--color-ink-muted);
+}
+
+.trail-stop.is-phantom .trail-name {
+  font-style: italic;
+  opacity: 0.7;
+}
+
 .trail-line {
   flex: 1 1 auto;
   min-width: 10px;

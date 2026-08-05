@@ -117,6 +117,41 @@ export function buildStops(startLocation: LocationUnion | null | undefined, sort
 }
 
 /**
+ * Builds a trail of stops for the ride detail page, including phantom stops
+ * (legs without a GPS pin). Returns objects with a name and a phantom flag
+ * so the renderer can apply the dashed/italic design from the map.
+ *
+ * The start location falls back to "Start" when unnamed. Phantom stops use
+ * the "Stop N" label and are flagged for visual distinction.
+ */
+export interface TrailStop {
+  name: string;
+  phantom?: boolean;
+}
+
+export function buildTrailStops(startLocation: LocationUnion | null | undefined, sortedLegs: Leg[]): TrailStop[] {
+  const seen = new Set<string>();
+  const stops: TrailStop[] = [];
+
+  const add = (name: string, phantom?: boolean) => {
+    const key = name.trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    stops.push({ name: name.trim(), phantom });
+  };
+
+  add(startLocation?.name || 'Start', false);
+
+  for (let i = 0; i < sortedLegs.length; i++) {
+    const loc = sortedLegs[i].location;
+    const isPhantom = loc?.kind !== 'gps';
+    add(stopLabel(loc, i + 1), isPhantom);
+  }
+
+  return stops;
+}
+
+/**
  * Builds a deduped, chronologically-ordered trail of distinct named stops
  * for a ride, starting from the departure point. Returns e.g.
  * "Mysore → Coorg → Kochi → Alleppey".

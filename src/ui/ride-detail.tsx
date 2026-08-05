@@ -16,10 +16,11 @@ import {
   computeTotalDistance,
   formatDistance,
   formatIsoDateToDMY,
-  buildStops,
+  buildTrailStops,
   computeDayDistances,
   stopLabel,
 } from "../lib";
+import type { TrailStop } from "../lib";
 import type { Ride, Leg } from "../types";
 
 function DayPhotoRail({ photos, dayLegs, onOpenPhoto }: {
@@ -195,31 +196,31 @@ function buildRideMap(
   return { segments, stops };
 }
 
-function RouteTrail({ stops }: { stops: string[] }) {
+function RouteTrail({ stops }: { stops: TrailStop[] }) {
   const MAX_SHOWN = 5;
-  const nodes: { name: string; more?: number; last?: boolean }[] = [];
+  const nodes: { name: string; phantom?: boolean; more?: number; last?: boolean }[] = [];
 
   if (stops.length <= MAX_SHOWN) {
-    nodes.push(...stops.map((name, i) => ({ name, last: i === stops.length - 1 })));
+    nodes.push(...stops.map((s, i) => ({ name: s.name, phantom: s.phantom, last: i === stops.length - 1 })));
   } else {
-    nodes.push(...stops.slice(0, 3).map((name) => ({ name })));
+    nodes.push(...stops.slice(0, 3).map((s) => ({ name: s.name, phantom: s.phantom })));
     nodes.push({ name: "", more: stops.length - 4 });
-    nodes.push({ name: stops[stops.length - 1], last: true });
+    nodes.push({ name: stops[stops.length - 1].name, phantom: stops[stops.length - 1].phantom, last: true });
   }
 
   return (
-    <div class="ride-trail" role="img" aria-label={`Route: ${stops.join(" to ")}`}>
+    <div class="ride-trail" role="img" aria-label={`Route: ${stops.map(s => s.name).join(" to ")}`}>
       {nodes.map((n, i) => (
         <Fragment key={i}>
           {i > 0 && <span class="trail-line" aria-hidden="true" />}
           <span
-            class={`trail-stop${i === 0 ? " is-start" : ""}${n.last ? " is-end" : ""}`}
+            class={`trail-stop${i === 0 ? " is-start" : ""}${n.last ? " is-end" : ""}${n.phantom ? " is-phantom" : ""}`}
           >
             <span class="trail-dot" aria-hidden="true" />
             {n.more ? (
               <span class="trail-name trail-name-more">+{n.more}</span>
             ) : (
-              <span class="trail-name">{n.name}</span>
+              <span class="trail-name">{n.phantom ? `~ ${n.name}` : n.name}</span>
             )}
           </span>
         </Fragment>
@@ -412,7 +413,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
   }
 
   // Compile deduped trail of distinct stops + per-day distances
-  const stops = buildStops(ride.startLocation, legs);
+  const trailStops = buildTrailStops(ride.startLocation, legs);
   const dayDistances = computeDayDistances(legs, ride?.startOdo);
 
   const uniqueDates = Array.from(new Set(legs.map((l) => l.date))).sort();
@@ -448,7 +449,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
         <section class="ride-hero">
           <span class="ride-hero-kicker">{dateRange}</span>
           <h1 class="ride-hero-title">{ride.title || 'Untitled Ride'}</h1>
-          {stops.length > 0 && <RouteTrail stops={stops} />}
+          {trailStops.length > 0 && <RouteTrail stops={trailStops} />}
         </section>
 
         {/* Cumulative Squiggle route map */}
