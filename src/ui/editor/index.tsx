@@ -570,7 +570,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
         dispatch({ titleError: 'Ride Title is required.' });
         return;
       }
-    } else if (step < 3) {
+    } else if ((mode === 'new-leg' || mode === 'edit') && step < 3) {
       if (location?.kind !== 'gps') dispatch({ mapNote: true });
       dispatch({ step: (step + 1) as 1 | 2 | 3 });
       return;
