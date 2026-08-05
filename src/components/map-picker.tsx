@@ -385,14 +385,7 @@ export function MapPicker({
                   }}
                 />
                 {searching && (
-                  <span style={{
-                    position: 'absolute', right: '10px', top: '50%',
-                    transform: 'translateY(-50%)',
-                    fontSize: '10px', color: 'var(--color-ink-muted)',
-                    fontFamily: 'var(--font-mechanical)',
-                  }}>
-                    …
-                  </span>
+                  <span class="search-spinner search-bar-spinner" aria-hidden="true" />
                 )}
               </div>
 
@@ -429,6 +422,23 @@ export function MapPicker({
                       }}>{r.display}</span>
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Search in flight — a visible row so the user knows it's running */}
+              {searching && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  background: 'var(--color-paper)',
+                  border: '1px solid var(--color-ink-muted)',
+                  borderTop: 'none',
+                  borderRadius: '0 0 var(--border-radius) var(--border-radius)',
+                  padding: '8px 12px',
+                  fontFamily: 'var(--font-typewriter)', fontSize: '12px',
+                  color: 'var(--color-ink-muted)',
+                }}>
+                  <span class="search-spinner" aria-hidden="true" />
+                  Searching…
                 </div>
               )}
 
