@@ -50,6 +50,7 @@ export function App() {
   const searchBackRef = useRef(false);
   const searchCloseRef = useRef(false);
   const [searchCloseRequest, setSearchCloseRequest] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const setSearchVisibility = useCallback((open: boolean) => {
     searchOpenRef.current = open;
@@ -70,6 +71,7 @@ export function App() {
     // A user close should consume the shell-level search entry. When the route
     // transition closes the overlay over a result, that entry is intentionally
     // kept so Back can restore the search session.
+    setSearchQuery('');
     if (isSearchHistoryEntry(history.state)) {
       searchCloseRef.current = true;
       history.back();
@@ -424,6 +426,8 @@ export function App() {
       <SearchOverlay
         isOpen={searchOpen}
         ridesData={ridesData ?? []}
+        query={searchQuery}
+        onQueryChange={setSearchQuery}
         onNavigate={navigateFromSearch}
         onClose={closeSearch}
         closeRequest={searchCloseRequest}

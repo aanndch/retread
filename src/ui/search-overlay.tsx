@@ -7,6 +7,8 @@ import { formatDistance } from '../lib';
 interface SearchOverlayProps {
   isOpen: boolean;
   ridesData: HomeRideEntry[];
+  query: string;
+  onQueryChange: (q: string) => void;
   onNavigate: (route: string) => void;
   onClose: () => void;
   closeRequest: number;
@@ -141,26 +143,26 @@ function SearchThumb({ blob, coverKey }: { blob: Blob | null; coverKey: string }
 export function SearchOverlay({
   isOpen,
   ridesData,
+  query,
+  onQueryChange,
   onNavigate,
   onClose,
   closeRequest,
 }: SearchOverlayProps) {
-  const [query, setQuery] = useState('');
   const [closing, setClosing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const handledCloseRequestRef = useRef(0);
   const closePhaseRef = useRef<ClosePhase>('idle');
 
-  // User-initiated close (× / Escape / backdrop / Android back): clear the
-  // query so the next open starts fresh. Navigation to a result goes through
-  // goTo() instead, which leaves the query intact for a return-reopen.
+  // User-initiated close (× / Escape / backdrop): clear the query so the next
+  // open starts fresh. Navigation to a result goes through goTo() instead,
+  // which leaves the query intact for a return-reopen.
   const handleClose = (userInitiated = true) => {
     if (closing) return;
     closePhaseRef.current = userInitiated ? 'user-closing' : 'idle';
     setClosing(true);
     setTimeout(() => {
       setClosing(false);
-      setQuery('');
       if (userInitiated) closePhaseRef.current = 'waiting-for-history';
       onClose();
     }, 220);
@@ -228,7 +230,7 @@ export function SearchOverlay({
             class="search-input"
             placeholder="Search rides, stops, notes…"
             value={query}
-            onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
+            onInput={(e) => onQueryChange((e.target as HTMLInputElement).value)}
           />
         </div>
 
