@@ -39,7 +39,15 @@ export const TODO_SECTIONS: TodoSection[] = [
       { id: 'distance', title: 'Consistent distance formatting', status: 'done' },
       { id: 'album', title: 'Typewriter photo album mount', status: 'done', note: 'Framed carousel with mechanical counter' },
       { id: 'themes', title: '7 themes with system detection', status: 'done' },
-      { id: 'demo', title: 'Seedable Western Ghats demo ride', status: 'done' },
+      { id: 'demo', title: 'Seedable demo rides', status: 'done', note: 'Western Ghats route + a Spiti ride that exercises phantom stops' },
+      { id: 'month-index', title: 'Clickable month index', status: 'done', note: 'Compact month chips that jump to that month on home' },
+      { id: 'search', title: 'Global ride search', status: 'done', note: 'Find a ride by title, stop, or leg from any screen' },
+      { id: 'pin-first', title: 'Pin-first ride & leg editor', status: 'done', note: 'GPS pins are the core; names become optional stop labels ("Stop N") so the route map always draws' },
+      { id: 'phantom-map', title: 'Phantom stops keep the map honest', status: 'done', note: 'A leg with no pin shows as a dashed "~ Stop N" gap instead of silently dropping off the ride' },
+      { id: 'instant-save', title: 'Instant saves with a route-drawing spinner', status: 'done', note: 'Routes re-snap in the background; the map fills in live instead of blocking the save' },
+      { id: 'map-picker', title: 'Place search + a stable map picker', status: 'done', note: 'Geocoded search, offline coordinate paste, a center-pin marker, and clean reopens' },
+      { id: 'distance-simple', title: 'Simpler distance: GPS route or Manual only', status: 'done', note: 'Odometer mode removed — distance comes from the route or a typed km' },
+      { id: 'gps-consent', title: 'Location asked only on "Use my location"', status: 'done', note: 'No permission prompt on form load' },
     ],
   },
   {
@@ -56,6 +64,8 @@ export const TODO_SECTIONS: TodoSection[] = [
       { id: 'map-icon', title: 'Emoji map icon on "Pick on Map"', status: 'done', note: 'Replaced with a drawn icon' },
       { id: 'trail-dot', title: 'Trail end dot not filled on short trails', status: 'done' },
       { id: 'iphone-actions', title: 'Editor action bar pushed off-screen on iPhone', status: 'done', note: 'min-height: 0 lets the 100dvh viewport height win' },
+      { id: 'map-reopen', title: 'Map picker came up blank after the first open', status: 'done', note: 'Map is rebuilt fresh on every open' },
+      { id: 'dup-leg', title: 'Rapid double-tap could duplicate a leg on save', status: 'done', note: 'Saving locks the button and blocks re-entry' },
     ],
   },
   {
@@ -65,8 +75,6 @@ export const TODO_SECTIONS: TodoSection[] = [
     description:
       'Three clusters rather than unrelated ideas: browse polish (how you find a ride), geo "wow" (maps worth showing off), and route shaping (picking the road a leg actually took). Most ideas are rough — not all have solid plans yet.',
     items: [
-      { id: 'rm-month-index', title: 'Clickable month index', status: 'open', badge: 'FINDING RIDES', note: 'My top pick for the "scroll forever" problem. Compact month chips (JUL 24 · AUG 24…) at the top that jump to that month. Cheap, directly fixes the pain.' },
-      { id: 'rm-search', title: 'Search rides', status: 'open', badge: 'FINDING RIDES', note: 'Filter the home query in memory by title, stop names, locations and leg titles. Biggest unlock for recalling a ride by name.' },
       { id: 'rm-tags', title: 'Tags & filters', status: 'open', badge: 'FINDING RIDES', note: 'Semantic recall — "the monsoon ride". Schema bump (backup is at v1), editor chip input, filter UI.' },
       { id: 'rm-trail', title: 'Scrollable + clickable ride trail', status: 'open', badge: 'BROWSE', note: 'Turn the truncated trail into a horizontal strip; each stop opens its leg.' },
       { id: 'rm-gallery', title: 'Photo gallery tab', status: 'open', badge: 'BROWSE', note: 'Global all-photos view (already flatten per-ride for the overlay). Best "show my friends" screen.' },
