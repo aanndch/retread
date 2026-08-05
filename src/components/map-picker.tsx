@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { Button } from './button';
 import { loadLeaflet } from '../ui/editor/utils';
 import type { LocationUnion } from '../types';
@@ -21,6 +21,21 @@ interface GeocodeResult {
 
 const MIN_QUERY_LEN = 3;
 const DEBOUNCE_MS = 500;
+const SEARCH_TIMEOUT_MS = 10000;
+// No existing pin and no fallback: open on India rather than a random town.
+const DEFAULT_CENTER: [number, number] = [20.5937, 78.9629];
+
+const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+// The selection point is always the map center; the pin rides along as the map
+// pans so the center-crosshair model is obvious, and it visibly lands on any
+// already-set pin when the picker opens.
+const PIN_HTML = `
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="36" viewBox="0 0 30 36" fill="none">
+  <path d="M15 1 C8 1 3 6 3 13 C3 23 15 35 15 35 C15 35 27 23 27 13 C27 6 22 1 15 1 Z"
+        fill="var(--color-paper)" stroke="var(--color-ink)" stroke-width="2"/>
+  <circle cx="15" cy="13" r="5" fill="var(--color-green)"/>
+</svg>`;
 
 export function MapPicker({
   isOpen,
@@ -31,8 +46,12 @@ export function MapPicker({
   showToast,
 }: MapPickerProps) {
   const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const [leafletFailed, setLeafletFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [closing, setClosing] = useState(false);
+
   const mapRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Search state
   const [query, setQuery] = useState('');
@@ -40,8 +59,11 @@ export function MapPicker({
   const [searching, setSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const debounceRef = useRef<number | null>(null);
+  const searchSeqRef = useRef(0);
   const lastSearchedRef = useRef('');
   const selectedNameRef = useRef('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   const initialLocationRef = useRef(initialLocation);
   const fallbackCenterRef = useRef(fallbackCenter);
   initialLocationRef.current = initialLocation;
@@ -55,63 +77,102 @@ export function MapPicker({
     }, 250);
   };
 
-  // Load Leaflet resources once modal opens
+  // Load Leaflet once on mount; bumping loadAttempt retries after a failure.
   useEffect(() => {
     let active = true;
+    setLeafletFailed(false);
     loadLeaflet()
       .then(() => { if (active) setLeafletLoaded(true); })
       .catch((err) => {
         console.error('Failed to load Leaflet library:', err);
-        showToast('Failed to load map libraries.');
+        if (active) setLeafletFailed(true);
       });
     return () => { active = false; };
-  }, []);
+  }, [loadAttempt]);
 
-  // Clean up map instance when modal unmounts
+  // Reset transient state on each open and invalidate any in-flight searches.
   useEffect(() => {
-    return () => {
-      if (mapRef.current) {
-        try { mapRef.current.remove(); } catch (_) {}
-        mapRef.current = null;
-      }
-    };
-  }, []);
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
+    searchSeqRef.current += 1;
+    if (isOpen) {
+      setQuery('');
+      setResults([]);
+      setShowResults(false);
+      lastSearchedRef.current = '';
+      selectedNameRef.current = '';
+    }
+  }, [isOpen]);
 
-  // Stable ref callback — only creates the map once
-  const mapContainerRef = useCallback((el: HTMLDivElement | null) => {
-    if (!el) return;
-    if (mapRef.current) return;
-    if (!(window as any).L) return;
+  // Create the map when open + Leaflet ready; tear it down when closed so the
+  // next open always gets a fresh, correctly-centered instance.
+  useEffect(() => {
+    if (!isOpen || !leafletLoaded || !containerRef.current) return;
     const L = (window as any).L;
-
     const initLoc = initialLocationRef.current;
     const fbCenter = fallbackCenterRef.current;
-    let center: [number, number] = [31.1048, 77.1734];
-    if (initLoc?.kind === 'gps') {
-      center = [initLoc.lat, initLoc.lng];
-    } else if (fbCenter) {
-      center = fbCenter;
+    let center: [number, number] = DEFAULT_CENTER;
+    if (initLoc?.kind === 'gps') center = [initLoc.lat, initLoc.lng];
+    else if (fbCenter) center = fbCenter;
+
+    let map: any;
+    try {
+      map = L.map(containerRef.current, { zoomControl: false }).setView(center, 13);
+    } catch (err) {
+      console.error('Failed to create map:', err);
+      setLeafletFailed(true);
+      showToast('Error setting up the map.');
+      return;
     }
 
-    const map = L.map(el, { zoomControl: false }).setView(center, 13);
-
-    // Place zoom control on the right to avoid overlapping the search bar
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    L.tileLayer(TILE_URL, {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
       subdomains: 'abcd',
-      maxZoom: 20
+      maxZoom: 20,
     }).addTo(map);
 
-    // Dismiss search results on map interaction
+    const icon = L.divIcon({
+      className: 'map-picker-pin',
+      html: PIN_HTML,
+      iconSize: [30, 36],
+      iconAnchor: [15, 34],
+    });
+    const pin = L.marker(center, { icon, interactive: false }).addTo(map);
+    map.on('move', () => pin.setLatLng(map.getCenter()));
+
+    // Dismiss search results on map interaction.
     map.on('click', () => setShowResults(false));
     map.on('dragstart', () => setShowResults(false));
 
     mapRef.current = map;
-  }, []);
 
-  // Geocode search via Nominatim
+    return () => {
+      try { map.remove(); } catch (_) { /* already removed */ }
+      if (mapRef.current === map) mapRef.current = null;
+    };
+    // showToast is stable for the picker's lifetime; recreating the map on a
+    // toast identity change would be wrong, so it is intentionally excluded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, leafletLoaded]);
+
+  // Focus search when the picker opens with the map ready.
+  useEffect(() => {
+    if (isOpen && leafletLoaded) searchInputRef.current?.focus();
+  }, [isOpen, leafletLoaded]);
+
+  // Escape closes the picker.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); handleClose(onClose); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
+  // Geocode via Nominatim: a request-sequence guard stops a slow older response
+  // from overwriting a newer one, and a timeout stops the spinner hanging on a
+  // stalled network.
   const geocode = async (q: string) => {
     const trimmed = q.trim();
     if (trimmed.length < MIN_QUERY_LEN) {
@@ -122,15 +183,18 @@ export function MapPicker({
     if (trimmed === lastSearchedRef.current) return;
     lastSearchedRef.current = trimmed;
 
+    const seq = ++searchSeqRef.current;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
     setSearching(true);
     try {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(trimmed)}&format=json&limit=5&addressdetails=1`,
-        { headers: { 'Accept': 'application/json' } }
+        { headers: { Accept: 'application/json' }, signal: controller.signal }
       );
       if (!res.ok) throw new Error('Search failed');
       const data = await res.json();
-
+      if (searchSeqRef.current !== seq) return;
       const mapped: GeocodeResult[] = data.map((r: any) => ({
         lat: parseFloat(r.lat),
         lng: parseFloat(r.lon),
@@ -140,11 +204,13 @@ export function MapPicker({
       setResults(mapped);
       setShowResults(mapped.length > 0);
     } catch (err) {
-      console.error('Geocode error:', err);
-      setResults([]);
-      setShowResults(false);
+      if (searchSeqRef.current === seq) {
+        setResults([]);
+        setShowResults(false);
+      }
     } finally {
-      setSearching(false);
+      clearTimeout(timer);
+      if (searchSeqRef.current === seq) setSearching(false);
     }
   };
 
@@ -163,18 +229,16 @@ export function MapPicker({
     debounceRef.current = window.setTimeout(() => geocode(value), DEBOUNCE_MS);
   };
 
-  // Pan map to a geocoded result
-  const handleSelectResult = useCallback((r: GeocodeResult) => {
+  // Pan the map to a geocoded result
+  const handleSelectResult = (r: GeocodeResult) => {
     const map = mapRef.current;
-    if (map) {
-      map.setView([r.lat, r.lng], 14);
-    }
+    if (map) map.setView([r.lat, r.lng], 14);
     selectedNameRef.current = r.name;
     setQuery(r.name);
     setShowResults(false);
     setResults([]);
     lastSearchedRef.current = '';
-  }, []);
+  };
 
   if (!isOpen) return null;
 
@@ -186,7 +250,10 @@ export function MapPicker({
       if (!center || typeof center.lat !== 'number' || typeof center.lng !== 'number') {
         throw new Error('Invalid center coordinates');
       }
-      onConfirm(center.lat, center.lng, selectedNameRef.current);
+      // A label the user already typed wins over the searched place name, so
+      // searching never silently rewrites what they entered in the form.
+      const name = initialLocationRef.current?.name || selectedNameRef.current;
+      onConfirm(center.lat, center.lng, name);
       handleClose(onClose);
     } catch (err) {
       console.error('Failed to confirm map picker pin:', err);
@@ -225,9 +292,8 @@ export function MapPicker({
         </div>
 
         {/* Map container — search floats on top */}
-        <div style={{ position: 'relative', width: '100%', height: '400px' }}>
-          {/* Map mount point */}
-          {!leafletLoaded ? (
+        <div style={{ position: 'relative', width: '100%', height: 'min(420px, 60vh)' }}>
+          {!leafletLoaded && !leafletFailed ? (
             <div style={{
               width: '100%', height: '100%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -236,37 +302,32 @@ export function MapPicker({
             }}>
               Loading map...
             </div>
+          ) : leafletFailed ? (
+            <div style={{
+              width: '100%', height: '100%',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px',
+              background: 'var(--color-paper-dim)',
+              fontFamily: 'var(--font-typewriter)', fontSize: '13px',
+            }}>
+              <p style={{ margin: 0 }}>Couldn't load the map. Check your connection.</p>
+              <Button variant="secondary" size="sm" onClick={() => setLoadAttempt(a => a + 1)}>Retry</Button>
+            </div>
           ) : (
             <div
-              ref={mapContainerRef}
+              ref={containerRef}
               style={{ width: '100%', height: '100%', background: 'var(--color-paper-dim)' }}
             />
           )}
 
-          {/* Crosshair */}
-          {leafletLoaded && (
-            <div style={{
-              position: 'absolute', top: '50%', left: '50%',
-              transform: 'translate(-50%, -50%)',
-              pointerEvents: 'none', zIndex: 2000,
-            }}>
-              <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
-                <circle cx="15" cy="15" r="4" stroke="var(--color-ink)" strokeWidth="2" fill="var(--color-paper)" />
-                <line x1="15" y1="0" x2="15" y2="10" stroke="var(--color-ink)" strokeWidth="2" />
-                <line x1="15" y1="20" x2="15" y2="30" stroke="var(--color-ink)" strokeWidth="2" />
-                <line x1="0" y1="15" x2="10" y2="15" stroke="var(--color-ink)" strokeWidth="2" />
-                <line x1="20" y1="15" x2="30" y2="15" stroke="var(--color-ink)" strokeWidth="2" />
-              </svg>
-            </div>
-          )}
-
           {/* Search bar — floats on top of the map */}
-          {leafletLoaded && (
-            <div style={{ position: 'absolute', top: '12px', left: '12px', right: '60px', zIndex: 2200 }}>
+          {leafletLoaded && !leafletFailed && (
+            <div style={{ position: 'absolute', top: '12px', left: '12px', right: '12px', zIndex: 2200 }}>
               <div style={{ position: 'relative' }}>
                 <input
+                  ref={searchInputRef}
                   type="text"
                   class="search-input"
+                  aria-label="Search for a place"
                   placeholder={`Search place (min ${MIN_QUERY_LEN} chars)...`}
                   value={query}
                   onInput={(e) => handleSearchInput((e.target as HTMLInputElement).value)}
@@ -340,7 +401,7 @@ export function MapPicker({
           <Button variant="secondary" size="sm" onClick={() => handleClose(onClose)}>
             Cancel
           </Button>
-          <Button variant="primary" size="sm" onClick={handleConfirm} disabled={!leafletLoaded}>
+          <Button variant="primary" size="sm" onClick={handleConfirm} disabled={!leafletLoaded || leafletFailed}>
             Confirm Location
           </Button>
         </div>

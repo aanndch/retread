@@ -2039,6 +2039,45 @@ input[type=number] {
   stroke-dasharray: 3 4;
 }
 
+/* Route still drawing after a save: translucent overlay with a spinner over
+   the map, so the user sees progress instead of a bare pin */
+.map-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: color-mix(in srgb, var(--color-paper) 68%, transparent);
+  font-family: var(--font-typewriter);
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  color: var(--color-ink-muted);
+  cursor: default;
+}
+
+.map-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--color-ink-muted);
+  border-top-color: var(--color-ink);
+  animation: map-spin 0.8s linear infinite;
+}
+
+@keyframes map-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Center-pin marker in the map picker: a bare SVG pin, no Leaflet chrome */
+.leaflet-marker-icon.map-picker-pin {
+  background: transparent;
+  border: none;
+  pointer-events: none;
+}
+
 /* Squiggle map typographic annotations */
 .sqg-stop-label {
   font-family: var(--font-mechanical);
