@@ -2380,6 +2380,16 @@ input[type=number] {
   min-width: 0;
   padding: var(--spacing-md) 0;
   margin: 0;
+  /* The full route is too long for one screen: scroll horizontally with a
+     hidden scrollbar and a soft paper fade on each edge so "more" is felt
+     without a visible bar (mirrors the day photo rail). */
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+}
+
+.ride-trail::-webkit-scrollbar {
+  display: none;
 }
 
 .trail-stop {
@@ -2389,6 +2399,41 @@ input[type=number] {
   gap: 4px;
   min-width: 0;
   flex: 0 0 auto;
+  /* Stops fade in one by one, left to right */
+  opacity: 0;
+  animation: trail-stop-in 0.35s ease-out forwards;
+  /* The whole stop is a touch target when it links to a leg */
+  border: none;
+  background: none;
+  padding: 6px 4px 8px;
+  cursor: pointer;
+  scroll-snap-align: start;
+  font-family: var(--font-mechanical);
+  color: inherit;
+  border-radius: var(--border-radius-sm);
+  transition: background-color 0.1s ease;
+}
+
+@keyframes trail-stop-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.trail-stop:hover {
+  background-color: var(--color-paper-dim);
+}
+
+.trail-stop:active {
+  background-color: var(--color-ink);
+}
+
+.trail-stop:active .trail-name {
+  color: var(--color-paper);
+}
+
+.trail-stop:focus-visible {
+  outline: 2px solid var(--color-green);
+  outline-offset: 2px;
 }
 
 .trail-dot {
@@ -2429,24 +2474,18 @@ input[type=number] {
   flex: 1 1 auto;
   min-width: 10px;
   border-top: 1px dashed var(--color-ink-muted);
-  margin-top: 4px;
+  /* Align with the dot center: 6px stop padding-top + half the 8px dot. */
+  margin-top: 10px;
 }
 
 .trail-name {
   font-family: var(--font-mechanical);
   font-size: 9px;
-  line-height: 1.2;
+  line-height: 1.25;
   color: var(--color-ink-muted);
   text-align: center;
-  max-width: 72px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.trail-name-more {
-  color: var(--color-ink);
-  font-weight: bold;
+  max-width: 84px;
+  overflow-wrap: break-word;
 }
 
 .leg-trail .trail-name {
@@ -2636,6 +2675,9 @@ input[type=number] {
 
 .timeline-card-item {
   display: flex;
+  /* Land below the pinned page bar AND the sticky day-group header when
+     jumped to from the ride trail. */
+  scroll-margin-top: calc(var(--sticky-topbar-inset) + var(--sticky-topbar-offset) + 38px);
   border: 1px solid var(--color-ink);
   border-radius: var(--border-radius);
   background-color: var(--color-paper);

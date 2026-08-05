@@ -196,36 +196,41 @@ function buildRideMap(
   return { segments, stops };
 }
 
-function RouteTrail({ stops }: { stops: TrailStop[] }) {
-  const MAX_SHOWN = 5;
-  const nodes: { name: string; phantom?: boolean; more?: number; last?: boolean }[] = [];
-
-  if (stops.length <= MAX_SHOWN) {
-    nodes.push(...stops.map((s, i) => ({ name: s.name, phantom: s.phantom, last: i === stops.length - 1 })));
-  } else {
-    nodes.push(...stops.slice(0, 3).map((s) => ({ name: s.name, phantom: s.phantom })));
-    nodes.push({ name: "", more: stops.length - 4 });
-    nodes.push({ name: stops[stops.length - 1].name, phantom: stops[stops.length - 1].phantom, last: true });
-  }
+function RouteTrail({ stops, onSelectStop }: {
+  stops: TrailStop[];
+  onSelectStop: (legId: number) => void;
+}) {
+  // Stagger each stop's fade-in so the route "unrolls" left-to-right — a slow
+  // drip past the viewport edge hints there's more to scroll without a mask.
+  const stopStyle = (i: number) => ({ animationDelay: `${i * 80}ms` });
 
   return (
-    <div class="ride-trail" role="img" aria-label={`Route: ${stops.map(s => s.name).join(" to ")}`}>
-      {nodes.map((n, i) => (
+    <nav class="ride-trail" aria-label="Route stops">
+      {stops.map((s, i) => (
         <Fragment key={i}>
           {i > 0 && <span class="trail-line" aria-hidden="true" />}
-          <span
-            class={`trail-stop${i === 0 ? " is-start" : ""}${n.last ? " is-end" : ""}${n.phantom ? " is-phantom" : ""}`}
-          >
-            <span class="trail-dot" aria-hidden="true" />
-            {n.more ? (
-              <span class="trail-name trail-name-more">+{n.more}</span>
-            ) : (
-              <span class="trail-name">{n.phantom ? `~ ${n.name}` : n.name}</span>
-            )}
-          </span>
+          {s.legId != null ? (
+            <button
+              type="button"
+              class={`trail-stop${i === 0 ? " is-start" : ""}${i === stops.length - 1 ? " is-end" : ""}${s.phantom ? " is-phantom" : ""}`}
+              style={stopStyle(i)}
+              onClick={() => onSelectStop(s.legId!)}
+            >
+              <span class="trail-dot" aria-hidden="true" />
+              <span class="trail-name">{s.phantom ? `~ ${s.name}` : s.name}</span>
+            </button>
+          ) : (
+            <span
+              class={`trail-stop${i === 0 ? " is-start" : ""}${i === stops.length - 1 ? " is-end" : ""}${s.phantom ? " is-phantom" : ""}`}
+              style={stopStyle(i)}
+            >
+              <span class="trail-dot" aria-hidden="true" />
+              <span class="trail-name">{s.phantom ? `~ ${s.name}` : s.name}</span>
+            </span>
+          )}
         </Fragment>
       ))}
-    </div>
+    </nav>
   );
 }
 
@@ -301,6 +306,13 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
   const stableNavigate = useCallback((route: string) => {
     onNavigateRef.current(route);
   }, []);
+
+  // Jump the timeline to a leg's card when its trail stop is tapped. The card
+  // carries a scroll-margin so it lands clear of the pinned page + day headers.
+  const scrollToLeg = (legId: number) => {
+    const el = document.getElementById(`leg-card-${legId}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   // Reactive ride + legs: re-fires whenever routes are backfilled (e.g. OSRM
   // snapping finishing after the page mounted), so the map fills in live.
@@ -461,7 +473,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
         <section class="ride-hero">
           <span class="ride-hero-kicker">{dateRange}</span>
           <h1 class="ride-hero-title">{ride.title || 'Untitled Ride'}</h1>
-          {trailStops.length > 0 && <RouteTrail stops={trailStops} />}
+          {trailStops.length > 0 && <RouteTrail stops={trailStops} onSelectStop={scrollToLeg} />}
         </section>
 
         {/* Cumulative Squiggle route map */}
@@ -579,12 +591,12 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
                       {dayLegs.map((leg) => (
                         <LegCard
                           key={leg.id}
+                          id={`leg-card-${leg.id}`}
                           leg={leg}
                           index={legs.indexOf(leg)}
                           label={dayLegs.length > 1 ? `Leg ${dayLegs.indexOf(leg) + 1}` : ""}
                         />
-                      ))}
-                      <DayPhotoRail photos={photoList} dayLegs={dayLegs} onOpenPhoto={openPhotoModal} />
+                      ))}                      <DayPhotoRail photos={photoList} dayLegs={dayLegs} onOpenPhoto={openPhotoModal} />
                     </div>
                   </div>
                 );

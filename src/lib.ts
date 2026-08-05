@@ -103,8 +103,9 @@ export function buildStops(startLocation: LocationUnion | null | undefined, sort
 
 /**
  * Builds a trail of stops for the ride detail page, including phantom stops
- * (legs without a GPS pin). Returns objects with a name and a phantom flag
- * so the renderer can apply the dashed/italic design from the map.
+ * (legs without a GPS pin). Returns one stop per leg destination in route
+ * order — no dedupe, so every leg is reachable from the rail. Each destination
+ * carries its leg id (null for the ride start) so the rail can link to the leg.
  *
  * The start location falls back to "Start" when unnamed. Phantom stops use
  * the "Stop N" label and are flagged for visual distinction.
@@ -112,25 +113,18 @@ export function buildStops(startLocation: LocationUnion | null | undefined, sort
 export interface TrailStop {
   name: string;
   phantom?: boolean;
+  legId?: number | null;
 }
 
 export function buildTrailStops(startLocation: LocationUnion | null | undefined, sortedLegs: Leg[]): TrailStop[] {
-  const seen = new Set<string>();
   const stops: TrailStop[] = [];
 
-  const add = (name: string, phantom?: boolean) => {
-    const key = name.trim().toLowerCase();
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-    stops.push({ name: name.trim(), phantom });
-  };
-
-  add(startLocation?.name || 'Start', false);
+  stops.push({ name: startLocation?.name?.trim() || 'Start', legId: null });
 
   for (let i = 0; i < sortedLegs.length; i++) {
     const loc = sortedLegs[i].location;
     const isPhantom = loc?.kind !== 'gps';
-    add(stopLabel(loc, i + 1), isPhantom);
+    stops.push({ name: stopLabel(loc, i + 1), phantom: isPhantom, legId: sortedLegs[i].id ?? null });
   }
 
   return stops;

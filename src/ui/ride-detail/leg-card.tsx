@@ -5,11 +5,12 @@ interface LegCardProps {
   leg: Leg;
   index: number;
   label: string;
+  id?: string;
 }
 
-export function LegCard({ leg, index, label }: LegCardProps) {
+export function LegCard({ leg, index, label, id }: LegCardProps) {
   return (
-    <a href={`#/leg/${leg.id}`} class="timeline-card-item">
+    <a id={id} href={`#/leg/${leg.id}`} class="timeline-card-item">
       <div class="timeline-card-body">
         <div class="card-title-row">
           <div
