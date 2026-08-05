@@ -1,22 +1,15 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { Button } from './button';
-import { loadLeaflet } from '../ui/editor/utils';
+import { loadLeaflet, geocodePlace, reverseGeocode, type GeocodePlace } from '../ui/editor/utils';
 import type { LocationUnion } from '../types';
 
 interface MapPickerProps {
   isOpen: boolean;
   initialLocation: LocationUnion | null;
   fallbackCenter: [number, number] | null;
-  onConfirm: (lat: number, lng: number, name?: string) => void;
+  onConfirm: (pin: { lat: number; lng: number } | null, name: string) => void;
   onClose: () => void;
   showToast: (msg: string) => void;
-}
-
-interface GeocodeResult {
-  lat: number;
-  lng: number;
-  name: string;
-  display: string;
 }
 
 const MIN_QUERY_LEN = 3;
@@ -27,9 +20,9 @@ const DEFAULT_CENTER: [number, number] = [20.5937, 78.9629];
 
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 
-// The selection point is always the map center; the pin rides along as the map
-// pans so the center-crosshair model is obvious, and it visibly lands on any
-// already-set pin when the picker opens.
+// The selection point is the map center until the user taps the map, which
+// locks the pin to that spot (tap-to-place). It visibly lands on any already
+// set pin when the picker opens.
 const PIN_HTML = `
 <svg xmlns="http://www.w3.org/2000/svg" width="30" height="36" viewBox="0 0 30 36" fill="none">
   <path d="M15 1 C8 1 3 6 3 13 C3 23 15 35 15 35 C15 35 27 23 27 13 C27 6 22 1 15 1 Z"
@@ -55,14 +48,21 @@ export function MapPicker({
 
   // Search state
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<GeocodeResult[]>([]);
+  const [results, setResults] = useState<GeocodePlace[]>([]);
   const [searching, setSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [noMatches, setNoMatches] = useState(false);
+  const [pinnedNow, setPinnedNow] = useState(false);
   const debounceRef = useRef<number | null>(null);
   const searchSeqRef = useRef(0);
   const lastSearchedRef = useRef('');
-  const selectedNameRef = useRef('');
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // The tapped pin position; null until the user taps the map (center fallback).
+  const pinnedRef = useRef<{ lat: number; lng: number } | null>(null);
+  // The stop's label — edited in the modal, reverse-geocoded onto nameless pins.
+  const [nameValue, setNameValue] = useState('');
+  const nameValueRef = useRef('');
+  nameValueRef.current = nameValue;
 
   const initialLocationRef = useRef(initialLocation);
   const fallbackCenterRef = useRef(fallbackCenter);
@@ -98,10 +98,21 @@ export function MapPicker({
       setQuery('');
       setResults([]);
       setShowResults(false);
+      setNoMatches(false);
+      setPinnedNow(false);
+      pinnedRef.current = null;
+      setNameValue(initialLocationRef.current?.name || '');
       lastSearchedRef.current = '';
-      selectedNameRef.current = '';
     }
   }, [isOpen]);
+
+  // Suggest a label for a placed pin via reverse geocode, only when the label
+  // is still empty (never clobbers a name the user typed).
+  const fillNameFromPin = useCallback(async (lat: number, lng: number) => {
+    if (nameValueRef.current) return;
+    const n = await reverseGeocode(lat, lng);
+    if (n && !nameValueRef.current) setNameValue(n);
+  }, []);
 
   // Create the map when open + Leaflet ready; tear it down when closed so the
   // next open always gets a fresh, correctly-centered instance.
@@ -137,11 +148,32 @@ export function MapPicker({
       iconSize: [30, 36],
       iconAnchor: [15, 34],
     });
-    const pin = L.marker(center, { icon, interactive: false }).addTo(map);
-    map.on('move', () => pin.setLatLng(map.getCenter()));
 
-    // Dismiss search results on map interaction.
-    map.on('click', () => setShowResults(false));
+    // The pin is created lazily — the map starts blank so the user knows to
+    // place it. Editing an existing pin shows it at its current spot.
+    let pinMarker: any = null;
+    const placePin = (latlng: { lat: number; lng: number }) => {
+      if (!pinMarker) {
+        pinMarker = L.marker([latlng.lat, latlng.lng], { icon, interactive: false }).addTo(map);
+      } else {
+        pinMarker.setLatLng([latlng.lat, latlng.lng]);
+      }
+    };
+    if (initLoc?.kind === 'gps') {
+      placePin({ lat: initLoc.lat, lng: initLoc.lng });
+      pinnedRef.current = { lat: initLoc.lat, lng: initLoc.lng };
+      setPinnedNow(true);
+    }
+
+    // Tap-to-place: tapping the map drops the pin at that exact spot.
+    map.on('click', (e: any) => {
+      setShowResults(false);
+      setNoMatches(false);
+      pinnedRef.current = { lat: e.latlng.lat, lng: e.latlng.lng };
+      placePin(e.latlng);
+      setPinnedNow(true);
+      fillNameFromPin(e.latlng.lat, e.latlng.lng);
+    });
     map.on('dragstart', () => setShowResults(false));
 
     mapRef.current = map;
@@ -170,9 +202,9 @@ export function MapPicker({
     return () => document.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
 
-  // Geocode via Nominatim: a request-sequence guard stops a slow older response
-  // from overwriting a newer one, and a timeout stops the spinner hanging on a
-  // stalled network.
+  // Geocode via Nominatim (India-biased, shared helper): a request-sequence
+  // guard stops a slow older response from overwriting a newer one, and a
+  // timeout stops the spinner hanging on a stalled network.
   const geocode = async (q: string) => {
     const trimmed = q.trim();
     if (trimmed.length < MIN_QUERY_LEN) {
@@ -188,25 +220,16 @@ export function MapPicker({
     const timer = window.setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
     setSearching(true);
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(trimmed)}&format=json&limit=5&addressdetails=1`,
-        { headers: { Accept: 'application/json' }, signal: controller.signal }
-      );
-      if (!res.ok) throw new Error('Search failed');
-      const data = await res.json();
+      const mapped = await geocodePlace(trimmed, controller.signal);
       if (searchSeqRef.current !== seq) return;
-      const mapped: GeocodeResult[] = data.map((r: any) => ({
-        lat: parseFloat(r.lat),
-        lng: parseFloat(r.lon),
-        name: r.display_name.split(',')[0],
-        display: r.display_name,
-      }));
       setResults(mapped);
       setShowResults(mapped.length > 0);
+      setNoMatches(mapped.length === 0);
     } catch (err) {
       if (searchSeqRef.current === seq) {
         setResults([]);
         setShowResults(false);
+        setNoMatches(false);
       }
     } finally {
       clearTimeout(timer);
@@ -218,6 +241,7 @@ export function MapPicker({
   const handleSearchInput = (value: string) => {
     setQuery(value);
     setShowResults(false);
+    setNoMatches(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     if (value.trim().length < MIN_QUERY_LEN) {
@@ -229,14 +253,17 @@ export function MapPicker({
     debounceRef.current = window.setTimeout(() => geocode(value), DEBOUNCE_MS);
   };
 
-  // Pan the map to a geocoded result
-  const handleSelectResult = (r: GeocodeResult) => {
+  // Pan the map to a geocoded result, place the pin there, and adopt its name.
+  const handleSelectResult = (r: GeocodePlace) => {
     const map = mapRef.current;
     if (map) map.setView([r.lat, r.lng], 14);
-    selectedNameRef.current = r.name;
+    pinnedRef.current = { lat: r.lat, lng: r.lng };
+    setPinnedNow(true);
+    setNameValue(r.name);
     setQuery(r.name);
     setShowResults(false);
     setResults([]);
+    setNoMatches(false);
     lastSearchedRef.current = '';
   };
 
@@ -246,20 +273,19 @@ export function MapPicker({
     if (e) { e.preventDefault(); e.stopPropagation(); }
     try {
       if (!mapRef.current) return;
-      const center = mapRef.current.getCenter();
-      if (!center || typeof center.lat !== 'number' || typeof center.lng !== 'number') {
-        throw new Error('Invalid center coordinates');
-      }
-      // A label the user already typed wins over the searched place name, so
-      // searching never silently rewrites what they entered in the form.
-      const name = initialLocationRef.current?.name || selectedNameRef.current;
-      onConfirm(center.lat, center.lng, name);
+      if (!pinnedRef.current) return;
+      onConfirm(pinnedRef.current, nameValue.trim());
       handleClose(onClose);
     } catch (err) {
       console.error('Failed to confirm map picker pin:', err);
       showToast('Error setting coordinates from map.');
       handleClose(onClose);
     }
+  };
+
+  const handleKeepAsLabel = () => {
+    onConfirm(null, nameValue.trim());
+    handleClose(onClose);
   };
 
   return (
@@ -384,6 +410,60 @@ export function MapPicker({
                   ))}
                 </div>
               )}
+
+              {/* Search found nothing — the reliable path is tap-to-place */}
+              {noMatches && (
+                <div style={{
+                  background: 'var(--color-paper)',
+                  border: '1px solid var(--color-ink-muted)',
+                  borderTop: 'none',
+                  borderRadius: '0 0 var(--border-radius) var(--border-radius)',
+                  padding: '8px 12px',
+                  boxShadow: '2px 2px 0px var(--color-shadow)',
+                  fontFamily: 'var(--font-typewriter)', fontSize: '12px',
+                  color: 'var(--color-ink-muted)',
+                }}>
+                  No matches — tap the map to drop the pin.
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* Map-bottom hint: waiting vs placed — direct children of the map
+              wrapper so they sit over the map, never the search bar */}
+          {!pinnedNow && (
+            <div style={{
+              position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: '24px',
+              width: 'max-content', maxWidth: 'calc(100% - 24px)',
+              background: 'color-mix(in srgb, var(--color-paper) 85%, transparent)',
+              border: '1px dashed var(--color-ink-muted)',
+              borderRadius: 'var(--border-radius-sm)',
+              padding: '6px 10px',
+              textAlign: 'center',
+              fontFamily: 'var(--font-typewriter)', fontSize: '12px',
+              color: 'var(--color-ink-muted)',
+              pointerEvents: 'none', zIndex: 2100,
+            }}>
+              Tap the map to place the pin
+            </div>
+          )}
+
+          {/* Pin placed — reassure before confirming */}
+          {pinnedNow && (
+            <div style={{
+              position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: '24px',
+              width: 'max-content', maxWidth: 'calc(100% - 24px)',
+              background: 'color-mix(in srgb, var(--color-paper) 85%, transparent)',
+              border: '1px dashed var(--color-ink-muted)',
+              borderRadius: 'var(--border-radius-sm)',
+              padding: '6px 10px',
+              textAlign: 'center',
+              fontFamily: 'var(--font-typewriter)', fontSize: '12px',
+              color: 'var(--color-ink)',
+              pointerEvents: 'none', zIndex: 2100,
+            }}>
+              Pin placed — confirm below.
             </div>
           )}
         </div>
@@ -396,14 +476,37 @@ export function MapPicker({
             background: 'var(--color-paper-dim)',
             borderTop: '1px solid var(--color-ink-muted)',
             marginTop: 0,
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: 'var(--spacing-sm)',
           }}
         >
-          <Button variant="secondary" size="sm" onClick={() => handleClose(onClose)}>
-            Cancel
-          </Button>
-          <Button variant="primary" size="sm" onClick={handleConfirm} disabled={!leafletLoaded || leafletFailed}>
-            Confirm Location
-          </Button>
+          <input
+            type="text"
+            class="form-input form-input-sm"
+            aria-label="Stop name"
+            placeholder="Stop name (e.g. Jispa)"
+            value={nameValue}
+            onInput={(e) => setNameValue((e.target as HTMLInputElement).value)}
+          />
+
+          {!pinnedNow && nameValue.trim() && (
+            <span class="field-tip">Add without a pin to keep it as an approximate stop.</span>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
+            <Button variant="secondary" size="sm" onClick={() => handleClose(onClose)}>
+              Cancel
+            </Button>
+            {!pinnedNow && nameValue.trim() && (
+              <Button variant="secondary" size="sm" onClick={handleKeepAsLabel}>
+                Add without a pin
+              </Button>
+            )}
+            <Button variant="primary" size="sm" onClick={handleConfirm} disabled={!leafletLoaded || leafletFailed || !pinnedNow}>
+              Confirm Location
+            </Button>
+          </div>
         </div>
       </div>
     </div>

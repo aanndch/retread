@@ -85,10 +85,6 @@ export async function saveEditorDetails(
   }
 
   // Saving leg entries (mode === 'new-leg' or mode === 'edit')
-  if (!data.legTitle.trim()) {
-    throw new Error('Leg Title is required to save.');
-  }
-
   const activeRideId = rideId;
   if (activeRideId === null && mode !== 'edit') {
     throw new Error('Ride ID context is missing.');
@@ -105,8 +101,28 @@ export async function saveEditorDetails(
     photos: data.photos,
     photoThumbs: data.photoThumbs,
     km: data.km !== null && !isNaN(data.km) ? data.km : null,
-    location: locationPayload,
-    title: data.legTitle.trim()
+    location: locationPayload
+  };
+
+  // Title is optional: fall back to the stop label, then to a positional
+  // "Stop N" based on the ride's leg order.
+  const resolveTitle = async (rideIdToUse: number, existingLeg?: Leg): Promise<string> => {
+    if (data.legTitle.trim()) return data.legTitle.trim();
+    if (data.location?.name?.trim()) return data.location.name.trim();
+    const all = await db.legs.where('rideId').equals(rideIdToUse).toArray();
+    const sorted = [...all].sort((a, b) => {
+      const d = a.date.localeCompare(b.date);
+      if (d !== 0) return d;
+      return (a.time || '00:00').localeCompare(b.time || '00:00') || (a.id || 0) - (b.id || 0);
+    });
+    let n: number;
+    if (existingLeg && existingLeg.id != null) {
+      const idx = sorted.findIndex((l) => l.id === existingLeg.id);
+      n = (idx >= 0 ? idx : sorted.length) + 1;
+    } else {
+      n = sorted.length + 1;
+    }
+    return `Stop ${n}`;
   };
 
   // The staged cover photo lives on this leg; snapshot its thumbnail onto the
@@ -121,7 +137,8 @@ export async function saveEditorDetails(
   if (mode === 'edit' && legId !== null) {
     const existingLeg = await db.legs.get(legId);
     if (!existingLeg) throw new Error('Leg to update was not found.');
-    
+
+    legData.title = await resolveTitle(existingLeg.rideId, existingLeg);
     await db.legs.update(legId, legData);
     await applyCover(existingLeg.rideId);
     scheduleAutoSync();
@@ -132,6 +149,7 @@ export async function saveEditorDetails(
     });
     return `#/ride/${existingLeg.rideId}`;
   } else {
+    legData.title = await resolveTitle(activeRideId!);
     await db.legs.add({
       rideId: activeRideId!,
       ...legData

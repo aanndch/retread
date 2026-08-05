@@ -1954,6 +1954,190 @@ button:focus,
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Compact collapsible detail rows in the leg form (one-screen editor) */
+.detail-row {
+  border: 1px solid var(--color-ink-muted);
+  border-radius: var(--border-radius);
+  background: var(--color-paper-dim);
+}
+
+.detail-row-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-typewriter);
+  color: var(--color-ink);
+  text-align: left;
+}
+
+.detail-row-label {
+  flex: 0 0 auto;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--color-ink-muted);
+}
+
+.detail-row-value {
+  flex: 1;
+  font-size: 12px;
+  color: var(--color-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-row-chevron {
+  flex: 0 0 auto;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}
+
+.detail-row-body {
+  padding: 12px 12px;
+  border-top: 1px dashed color-mix(in srgb, var(--color-ink-muted) 40%, transparent);
+}
+
+/* Single tappable place control (form destination / start) */
+.place-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.place-row-main {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 0 12px;
+  border: 1px solid var(--color-ink-muted);
+  border-radius: var(--border-radius);
+  background: var(--color-paper-dim);
+  cursor: pointer;
+  font-family: var(--font-typewriter);
+  color: var(--color-ink);
+  text-align: left;
+}
+
+.place-row-main:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.place-row-pin {
+  flex: 0 0 auto;
+}
+
+.place-row-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.place-row-name,
+.place-row-empty {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.place-row-empty {
+  color: var(--color-ink-muted);
+}
+
+.place-row-meta {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.place-row-clear {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-ink-muted);
+  border-radius: var(--border-radius);
+  background: var(--color-paper-dim);
+  color: var(--color-ink-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* "My location" — same 40px height as the row, tighter padding */
+.place-row-btn {
+  height: 40px;
+  padding: 0 14px;
+}
+
+/* Always-open content card for single-purpose wizard steps (Photos / Story).
+   Mirrors .detail-row so every step shares the same card rhythm. */
+.step-card {
+  border: 1px solid var(--color-ink-muted);
+  border-radius: var(--border-radius);
+  background: var(--color-paper-dim);
+  padding: 12px;
+}
+
+.step-card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--color-ink-muted);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Compact step dots for the leg wizard (replaces the text progress bar) */
+.wizard-dots {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.wizard-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-ink-muted);
+  background: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.wizard-dot.active {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+.wizard-dots-label {
+  white-space: nowrap;
+}
+
+.wizard-dots-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-left: auto;
+}
+
 /* Validation Errors */
 .form-input.input-error,
 .form-textarea.input-error {

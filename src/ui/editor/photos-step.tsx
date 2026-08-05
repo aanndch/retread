@@ -32,8 +32,11 @@ export function PhotosStep({
 }: PhotosStepProps) {
   return (
     <div class="wizard-step-content">
-      <div class="form-group">
-        <label class="input-label">Media Uploads</label>
+      <div class="step-card">
+        <div class="step-card-label">
+          Photos{photoPreviews.length > 0 ? ` · ${photoPreviews.length}` : ''}
+        </div>
+
         <div class="photo-uploader">
           <input 
             type="file" 

@@ -28,8 +28,8 @@ export function StoryStep({
 
   return (
     <div class="wizard-step-content">
-      <div class="form-group">
-        <label class="input-label">Leg Note</label>
+      <div class="step-card">
+        <div class="step-card-label">Leg Note</div>
         <textarea 
           ref={textareaRef}
           class="form-textarea" 

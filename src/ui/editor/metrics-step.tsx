@@ -1,38 +1,67 @@
+import { useState } from 'preact/hooks';
 import type { LocationUnion } from '../../types';
 import type { JSX } from 'preact';
 import { Button } from '../../components/button';
-import { PinIcon, MapIcon } from '../../components/icons';
+import { PinIcon } from '../../components/icons';
 import { formatDistance } from '../../lib';
 
-// Friendly chip for a GPS pin: shows the place name (or "Pin set") with the
-// raw coordinates kept small and dim so the location stays verifiable.
-function GpsBadge({ name, lat, lng, onClear }: { name?: string; lat: number; lng: number; onClear: () => void }) {
+// Compact collapsible field: a tappable label + summary row that expands the
+// real control inline. Keeps the leg form on one screen by hiding optional
+// details until the user needs them.
+function DetailRow({ label, value, open, onToggle, children }: {
+  label: string;
+  value: string;
+  open: boolean;
+  onToggle: () => void;
+  children: JSX.Element;
+}) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        width: '100%',
-        background: 'var(--color-paper-dim)',
-        padding: '6px 12px',
-        borderRadius: 'var(--border-radius)',
-        border: '1px solid var(--color-ink-muted)',
-      }}
-    >
-      <span style={{ fontSize: '13px', color: 'var(--color-ink)', display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
-        <span>📍</span>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name || 'Pin set'}</span>
-        <span style={{ opacity: 0.55, fontSize: '11px', flexShrink: 0 }}>{lat.toFixed(4)}, {lng.toFixed(4)}</span>
-      </span>
-      <button
-        type="button"
-        onClick={onClear}
-        aria-label="Clear location pin"
-        style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '0 4px', color: 'var(--color-ink-muted)', flexShrink: 0 }}
-      >
-        &times;
+    <div class="detail-row">
+      <button type="button" class="detail-row-toggle" onClick={onToggle} aria-expanded={open}>
+        <span class="detail-row-label">{label}</span>
+        <span class="detail-row-value">{value}</span>
+        <span class="detail-row-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
       </button>
+      {open && <div class="detail-row-body">{children}</div>}
+    </div>
+  );
+}
+
+// A single, tappable place control: shows the stop once on one line (name or a
+// hint), opens the place picker on tap, and keeps "My location" one tap away.
+function PlaceRow({ emptyLabel, location, gpsLoading, onOpen, onUseLocation, onClear }: {
+  emptyLabel: string;
+  location: LocationUnion | null;
+  gpsLoading: boolean;
+  onOpen: () => void;
+  onUseLocation: () => void;
+  onClear: () => void;
+}) {
+  const isGps = location?.kind === 'gps';
+  const name = location?.name?.trim();
+  return (
+    <div class="place-row">
+      <button type="button" class="place-row-main" onClick={onOpen} disabled={gpsLoading}>
+        <span class="place-row-pin" aria-hidden="true">📍</span>
+        <span class="place-row-text">
+          {name ? (
+            <span class="place-row-name">{name}</span>
+          ) : (
+            <span class="place-row-empty">{emptyLabel}</span>
+          )}
+          {location && !isGps && (
+            <span class="place-row-meta">· no pin</span>
+          )}
+        </span>
+      </button>
+      {location && (
+        <button type="button" class="place-row-clear" onClick={onClear} aria-label="Clear location">
+          ×
+        </button>
+      )}
+      <Button variant="secondary" size="sm" class="place-row-btn" aria-label="Use my location" onClick={onUseLocation} disabled={gpsLoading}>
+        <PinIcon size={14} /> My location
+      </Button>
     </div>
   );
 }
@@ -50,7 +79,6 @@ interface MetricsStepProps {
   kmSource: 'auto' | 'manual' | null;
   distanceFromLabel: string | null;
   location: LocationUnion | null;
-  setLocation: (l: LocationUnion | null) => void;
   gpsLoading: boolean;
   handleDropPin: () => void;
   handleClearLocation: () => void;
@@ -59,10 +87,11 @@ interface MetricsStepProps {
   mapNote: boolean;
   legTitle: string;
   setLegTitle: (t: string) => void;
+  // Preview of the auto-derived title (destination label or "Auto").
+  autoTitle: string;
   distanceMode: 'auto' | 'manual';
   setDistanceMode: (m: 'auto' | 'manual') => void;
   startLocation: LocationUnion | null;
-  setStartLocation: (l: LocationUnion | null) => void;
   startGpsLoading: boolean;
   onClearStartLocation: () => void;
   onRetryStartGps: () => void;
@@ -89,17 +118,16 @@ export function MetricsStep({
   kmSource,
   distanceFromLabel,
   location,
-  setLocation,
   gpsLoading,
   handleDropPin,
   handleClearLocation,
   mapNote,
   legTitle,
   setLegTitle,
+  autoTitle,
   distanceMode,
   setDistanceMode,
   startLocation,
-  setStartLocation,
   startGpsLoading,
   onClearStartLocation,
   onRetryStartGps,
@@ -112,6 +140,16 @@ export function MetricsStep({
   onAutoFillDistance,
   saving
 }: MetricsStepProps) {
+  const [openRow, setOpenRow] = useState<'title' | 'date' | 'distance' | null>(null);
+
+  // Compact summaries for the collapsed detail rows.
+  const dateSummary = `${date || '—'}${time ? ` · ${time}` : ''}`;
+  const distanceSummary = distanceMode === 'manual'
+    ? (km !== null && km !== undefined ? formatDistance(km) : 'Type distance')
+    : (km !== null && km !== undefined
+        ? `≈ ${formatDistance(km)}`
+        : gpsLoading ? 'Measuring…' : 'Auto from route');
+
   return (
     <div class="wizard-step-content">
       {/* Ride Title (New Ride Only) */}
@@ -136,60 +174,16 @@ export function MetricsStep({
       {(mode === 'new-ride' || mode === 'edit-ride') && (
         <div class="form-group">
           <label class="input-label">Starting From</label>
-          <span class="field-tip">Name it, then drop a pin to draw the route.</span>
+          <span class="field-tip">Choose the start — name it inside the picker.</span>
 
-          {/* Starting Location Name text input (optional label) */}
-          <div class="form-group" style={{ marginBottom: '8px' }}>
-            <input 
-              type="text" 
-              class="form-input form-input-sm" 
-              placeholder="Label the start (optional)" 
-              value={startLocation ? startLocation.name : ''}
-              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
-                const val = (e.target as HTMLInputElement).value;
-                if (!startLocation) {
-                  if (val) setStartLocation({ kind: 'named', name: val });
-                } else if (startLocation.kind === 'named') {
-                  if (val) setStartLocation({ kind: 'named', name: val });
-                  else setStartLocation(null);
-                } else {
-                  setStartLocation({ ...startLocation, name: val });
-                }
-              }}
-            />
-          </div>
-
-          {/* Coordinate Pin Selection */}
-          {startGpsLoading ? (
-            <span class="field-tip">📡 Detecting your location...</span>
-          ) : startLocation?.kind === 'gps' ? (
-            <GpsBadge
-              name={startLocation.name}
-              lat={startLocation.lat}
-              lng={startLocation.lng}
-              onClear={onClearStartLocation}
-            />
-          ) : (
-            <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
-              <Button
-                variant="secondary"
-                size="sm"
-                style={{ flex: 1 }}
-                onClick={onRetryStartGps}
-              >
-                <PinIcon size={14} /> Use my location
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                style={{ flex: 1 }}
-                onClick={() => onOpenMapPicker('start')}
-              >
-                <MapIcon size={14} /> Pick on Map
-              </Button>
-            </div>
-          )}
+          <PlaceRow
+            emptyLabel="Choose start →"
+            location={startLocation}
+            gpsLoading={startGpsLoading}
+            onOpen={() => onOpenMapPicker('start')}
+            onUseLocation={onRetryStartGps}
+            onClear={onClearStartLocation}
+          />
 
           {mapNote && startLocation?.kind !== 'gps' && (
             <span class="field-tip">No start pin — your route will begin at the first pinned stop.</span>
@@ -233,192 +227,157 @@ export function MetricsStep({
       {/* Leg metrics (Only for Leg creation or Leg edit modes) */}
       {(mode === 'new-leg' || mode === 'edit') && (
         <>
-          {/* Row 1: Leg Route (Whole Row) */}
-          <div class="form-group">
-            <label class="input-label">Leg Title</label>
-            <input 
-              type="text" 
-              class={`form-input ${titleError ? 'input-error' : ''}`}
-              placeholder="e.g. Manali to Jispa" 
-              value={legTitle} 
-              onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
-                setLegTitle((e.target as HTMLInputElement).value);
-                if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
-              }}
-            />
-            {titleError && <span class="error-text">{titleError}</span>}
-          </div>
-
-          {/* Row 2: Date/Time */}
-          <div class="form-row">
-            <div class="form-group flex-1">
-              <label class="input-label">Date & Time</label>
-              <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
-                <input 
-                  type="date" 
-                  class="form-input" 
-                  required 
-                  style={{ flex: 1.8 }}
-                  value={date} 
-                  onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setDate((e.target as HTMLInputElement).value)}
-                />
-                <input 
-                  type="time" 
-                  class="form-input" 
-                  required 
-                  style={{ flex: 1.2 }}
-                  value={time || ''} 
-                  onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setTime((e.target as HTMLInputElement).value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Row 3: Destination (location before distance so auto-calc has a target) */}
+          {/* Destination — always open (the core of a leg) */}
           <div class="form-group">
             <label class="input-label">Destination</label>
-            <span class="field-tip">Name it, then drop a pin to draw the route.</span>
+            <span class="field-tip">Choose the stop — name it inside the picker.</span>
 
-            {/* Destination Name Text Input (optional label, shown first for catch-up users) */}
-            <div class="form-group" style={{ marginBottom: '8px' }}>
-              <input 
-                type="text" 
-                class="form-input form-input-sm" 
-                placeholder="Label this stop (optional)" 
-                value={location ? location.name : ''}
-                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
-                  const val = (e.target as HTMLInputElement).value;
-                  if (!location) {
-                    if (val) setLocation({ kind: 'named', name: val });
-                  } else if (location.kind === 'named') {
-                    if (val) setLocation({ kind: 'named', name: val });
-                    else setLocation(null);
-                  } else {
-                    setLocation({ ...location, name: val });
-                  }
-                }}
-              />
-            </div>
-
-            {/* Coordinate Pin selection/badge */}
-            {gpsLoading ? (
-              <span class="field-tip">📡 Detecting your location...</span>
-            ) : location?.kind === 'gps' ? (
-              <GpsBadge
-                name={location.name}
-                lat={location.lat}
-                lng={location.lng}
-                onClear={handleClearLocation}
-              />
-            ) : (
-              <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  style={{ flex: 1 }}
-                  onClick={handleDropPin}
-                >
-                  <PinIcon size={14} /> Use my location
-                </Button>
-                <Button 
-                  type="button"
-                  variant="secondary" 
-                  size="sm" 
-                  style={{ flex: 1 }}
-                  onClick={() => onOpenMapPicker('location')}
-                >
-                  <MapIcon size={14} /> Pick on Map
-                </Button>
-              </div>
-            )}
+            <PlaceRow
+              emptyLabel="Choose destination →"
+              location={location}
+              gpsLoading={gpsLoading}
+              onOpen={() => onOpenMapPicker('location')}
+              onUseLocation={handleDropPin}
+              onClear={handleClearLocation}
+            />
 
             {mapNote && location?.kind !== 'gps' && (
               <span class="field-tip">No map pin — this leg won't appear on the route map.</span>
             )}
           </div>
 
-          {/* Row 4: Distance — method toggle plus its field, always visible */}
-          <div class="form-group" style={{ marginTop: 'var(--spacing-md)' }}>
-            <label class="input-label">Distance</label>
-            <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', marginBottom: '8px' }}>
-              <Button
-                type="button"
-                variant={distanceMode === 'auto' ? 'primary' : 'secondary'}
-                size="sm"
-                style={{ flex: 1 }}
-                onClick={() => setDistanceMode('auto')}
-              >
-                GPS route
-              </Button>
-              <Button
-                type="button"
-                variant={distanceMode === 'manual' ? 'primary' : 'secondary'}
-                size="sm"
-                style={{ flex: 1 }}
-                onClick={() => setDistanceMode('manual')}
-              >
-                Manual
-              </Button>
-              <Button
-                type="button"
-                variant={distanceMode === 'manual' ? 'primary' : 'secondary'}
-                size="sm"
-                style={{ flex: 1 }}
-                onClick={() => setDistanceMode('manual')}
-              >
-                Manual
-              </Button>
-            </div>
-
-            <div class="form-group animate-fade-in">
-              {distanceMode === 'auto' && (
-                fallbackCenter && location?.kind === 'gps' ? (
-                  <span class="field-tip">Measured between this leg's pins along real roads.</span>
-                ) : location?.kind === 'gps' ? (
-                  <span class="field-tip">There's no GPS start point before this leg — type it below, or switch to Manual.</span>
-                ) : (
-                  <span class="field-tip">Set this leg's destination GPS pin to measure the route — or type it below.</span>
-                )
-              )}
-              {distanceMode === 'manual' && (
-                <span class="field-tip">Just type how far this leg was.</span>
-              )}
-              <label class="input-label">Distance (km)</label>
+          {/* Title — collapsible (auto-derived default shown) */}
+          <DetailRow
+            label="Title"
+            value={legTitle || autoTitle}
+            open={openRow === 'title'}
+            onToggle={() => setOpenRow(openRow === 'title' ? null : 'title')}
+          >
+            <div class="form-group">
               <input 
-                type="number" 
-                class="form-input" 
-                placeholder="e.g. 118"
-                value={km === null ? '' : km}
-                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => onKmChange((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
+                type="text" 
+                class={`form-input ${titleError ? 'input-error' : ''}`}
+                placeholder="e.g. Manali to Jispa" 
+                value={legTitle} 
+                onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
+                  setLegTitle((e.target as HTMLInputElement).value);
+                  if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
+                }}
               />
-              {distanceMode === 'auto' && fallbackCenter && location?.kind === 'gps' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-                  {km !== null && km !== undefined && !gpsLoading && (
-                    <span class="field-tip">
-                      ≈ {formatDistance(km)} · {distanceFromLabel ? `${distanceFromLabel} → ` : '→ '}{location.name || 'destination'}
-                    </span>
-                  )}
-                  {gpsLoading && <span class="field-tip">Calculating route…</span>}
-                  <button
-                    type="button"
-                    class="btn-calc-link"
-                    onClick={onAutoFillDistance}
-                    disabled={gpsLoading}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style={{ display: 'inline-block', marginRight: '4px' }}>
-                      <circle cx="5" cy="19" r="2.5" />
-                      <path d="M7 17c6-8-2-10 11-11" />
-                      <path d="M14 2l8 8M22 2l-8 8" />
-                    </svg>
-                    <span>{gpsLoading ? 'Measuring…' : 'Recalculate'}</span>
-                  </button>
-                </div>
-              )}
-              {distanceMode === 'auto' && kmSource === 'manual' && km !== null && km !== undefined && (
-                <span class="field-tip">You entered this — tap Recalculate to re-measure.</span>
-              )}
+              {titleError && <span class="error-text">{titleError}</span>}
             </div>
-          </div>
+          </DetailRow>
+
+          {/* Date & Time — collapsible */}
+          <DetailRow
+            label="Date & Time"
+            value={dateSummary}
+            open={openRow === 'date'}
+            onToggle={() => setOpenRow(openRow === 'date' ? null : 'date')}
+          >
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
+                  <input 
+                    type="date" 
+                    class="form-input" 
+                    required 
+                    style={{ flex: 1.8 }}
+                    value={date} 
+                    onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setDate((e.target as HTMLInputElement).value)}
+                  />
+                  <input 
+                    type="time" 
+                    class="form-input" 
+                    required 
+                    style={{ flex: 1.2 }}
+                    value={time || ''} 
+                    onChange={(e: JSX.TargetedEvent<HTMLInputElement>) => setTime((e.target as HTMLInputElement).value)}
+                  />
+                </div>
+              </div>
+            </div>
+          </DetailRow>
+
+          {/* Distance — collapsible */}
+          <DetailRow
+            label="Distance"
+            value={distanceSummary}
+            open={openRow === 'distance'}
+            onToggle={() => setOpenRow(openRow === 'distance' ? null : 'distance')}
+          >
+            <div class="form-group">
+              <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', marginBottom: '8px' }}>
+                <Button
+                  type="button"
+                  variant={distanceMode === 'auto' ? 'primary' : 'secondary'}
+                  size="sm"
+                  style={{ flex: 1 }}
+                  onClick={() => setDistanceMode('auto')}
+                >
+                  GPS route
+                </Button>
+                <Button
+                  type="button"
+                  variant={distanceMode === 'manual' ? 'primary' : 'secondary'}
+                  size="sm"
+                  style={{ flex: 1 }}
+                  onClick={() => setDistanceMode('manual')}
+                >
+                  Manual
+                </Button>
+              </div>
+
+              <div class="form-group animate-fade-in">
+                {distanceMode === 'auto' && (
+                  fallbackCenter && location?.kind === 'gps' ? (
+                    <span class="field-tip">Measured between this leg's pins along real roads.</span>
+                  ) : location?.kind === 'gps' ? (
+                    <span class="field-tip">There's no GPS start point before this leg — type it below, or switch to Manual.</span>
+                  ) : (
+                    <span class="field-tip">Set this leg's destination GPS pin to measure the route — or type it below.</span>
+                  )
+                )}
+                {distanceMode === 'manual' && (
+                  <span class="field-tip">Just type how far this leg was.</span>
+                )}
+                <label class="input-label">Distance (km)</label>
+                <input 
+                  type="number" 
+                  class="form-input" 
+                  placeholder="e.g. 118"
+                  value={km === null ? '' : km}
+                  onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => onKmChange((e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null)}
+                />
+                {distanceMode === 'auto' && fallbackCenter && location?.kind === 'gps' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+                    {km !== null && km !== undefined && !gpsLoading && (
+                      <span class="field-tip">
+                        ≈ {formatDistance(km)} · {distanceFromLabel ? `${distanceFromLabel} → ` : '→ '}{location.name || 'destination'}
+                      </span>
+                    )}
+                    {gpsLoading && <span class="field-tip">Calculating route…</span>}
+                    <button
+                      type="button"
+                      class="btn-calc-link"
+                      onClick={onAutoFillDistance}
+                      disabled={gpsLoading}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style={{ display: 'inline-block', marginRight: '4px' }}>
+                        <circle cx="5" cy="19" r="2.5" />
+                        <path d="M7 17c6-8-2-10 11-11" />
+                        <path d="M14 2l8 8M22 2l-8 8" />
+                      </svg>
+                      <span>{gpsLoading ? 'Measuring…' : 'Recalculate'}</span>
+                    </button>
+                  </div>
+                )}
+                {distanceMode === 'auto' && kmSource === 'manual' && km !== null && km !== undefined && (
+                  <span class="field-tip">You entered this — tap Recalculate to re-measure.</span>
+                )}
+              </div>
+            </div>
+          </DetailRow>
         </>
       )}
 

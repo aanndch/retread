@@ -11,8 +11,8 @@ import { MapPicker } from '../../components/map-picker';
 import { CoordinatePasteModal } from '../../components/coordinate-paste-modal';
 import { saveEditorDetails } from './save-helper';
 import { snapLeg, haversineDistance } from '../../road';
+import { reverseGeocode } from './utils';
 import type { LocationUnion } from '../../types';
-
 // ==========================================
 // REDUCER STATE & MERGER TYPE DEFINITION
 // ==========================================
@@ -163,6 +163,13 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   const photoPreviewsRef = useRef<string[]>([]);
   photoPreviewsRef.current = photoPreviews;
 
+  // Latest pin state readable inside async callbacks (reverse geocode, name to
+  // pin) so a stale closure can never clobber a pin the user set meanwhile.
+  const locationRef = useRef(location);
+  locationRef.current = location;
+  const startLocationRef = useRef(startLocation);
+  startLocationRef.current = startLocation;
+
   // Load existing leg data when editing a leg
   useEffect(() => {
     if (mode === 'edit' && legId !== null) {
@@ -304,6 +311,26 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     return <p class="loading-text">Invalid editor mode.</p>;
   }
 
+  // Best-effort: fill a nameless pin with a reverse-geocoded place name. Silent
+  // and editable — only applied if the pin still has no name when it resolves.
+  const suggestNameForPin = useCallback(async (lat: number, lng: number, target: 'start' | 'location') => {
+    const name = await reverseGeocode(lat, lng);
+    if (!name) return;
+    const current = target === 'start' ? startLocationRef.current : locationRef.current;
+    if (current?.kind === 'gps' && !current.name) {
+      if (target === 'start') dispatch({ startLocation: { ...current, name } });
+      else dispatch({ location: { ...current, name } });
+    }
+  }, []);
+
+  // Auto-fill the leg title from the destination label whenever one exists and
+  // the user hasn't typed a custom title yet.
+  useEffect(() => {
+    if ((mode === 'new-leg' || mode === 'edit') && !legTitle.trim() && location?.name) {
+      dispatch({ legTitle: location.name });
+    }
+  }, [location?.name, legTitle, mode]);
+
   // Geolocation Handler
   const handleDropPin = useCallback(() => {
     if (!navigator.geolocation) {
@@ -315,6 +342,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       (pos) => {
         // Keep any name the user already typed; GPS auto-detect only moves the pin.
         dispatch({ gpsLoading: false, mapNote: false, location: { kind: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude, name: location?.name || '' } });
+        suggestNameForPin(pos.coords.latitude, pos.coords.longitude, 'location');
       },
       (err) => {
         console.warn('Geolocation failed:', err);
@@ -325,16 +353,15 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   }, [location]);
 
   const handleClearLocation = useCallback(() => {
-    const next: LocationUnion | null = location && location.name ? { kind: 'named', name: location.name } : null;
     dispatch({
-      location: next,
+      location: null,
       // A removed pin means no route to measure; only a manually typed value survives.
       ...(kmSource === 'auto' ? { km: null, kmSource: null } : {}),
     });
-  }, [location, kmSource]);
+  }, [kmSource]);
 
   const onClearStartLocation = () => {
-    dispatch({ startLocation: startLocation && startLocation.name ? { kind: 'named', name: startLocation.name } : null });
+    dispatch({ startLocation: null });
   };
 
   const onRetryStartGps = () => {
@@ -347,6 +374,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       (pos) => {
         // Keep any name the user already typed; GPS auto-detect only moves the pin.
         dispatch({ startGpsLoading: false, mapNote: false, startLocation: { kind: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude, name: startLocation?.name || '' } });
+        suggestNameForPin(pos.coords.latitude, pos.coords.longitude, 'start');
       },
       () => {
         dispatch({ startGpsLoading: false });
@@ -479,10 +507,6 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       dispatch({ titleError: 'Ride Title is required to start a new ride.' });
       return;
     }
-    if ((mode === 'new-leg' || mode === 'edit') && !legTitle.trim() && targetStep > 1) {
-      dispatch({ titleError: 'Leg Title is required to continue.' });
-      return;
-    }
     // Advancing without a pin is the implicit "save without a map" bypass; flag
     // it so the form shows the consequence instead of hiding it.
     if (mode === 'new-ride' && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
@@ -500,12 +524,29 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     dispatch({ showMapPicker: true });
   };
 
-  const handleConfirmPickerLocation = (lat: number, lng: number, name?: string) => {
-    if (mapPickerTarget === 'start') {
-      dispatch({ mapNote: false, startLocation: { kind: 'gps', lat, lng, name: name || startLocation?.name || '' } });
+  // From the map picker: a placed pin (or null when the user chose "keep as a
+  // label"), plus the stop name edited in the modal.
+  const handleConfirmPickerLocation = (pin: { lat: number; lng: number } | null, name: string) => {
+    const target = mapPickerTarget;
+    const existing = target === 'start' ? startLocation : location;
+    if (pin) {
+      if (target === 'start') {
+        dispatch({ mapNote: false, startLocation: { kind: 'gps', lat: pin.lat, lng: pin.lng, name: name || existing?.name || '' } });
+      } else {
+        dispatch({ mapNote: false, location: { kind: 'gps', lat: pin.lat, lng: pin.lng, name: name || existing?.name || '' } });
+      }
+      if (!name && !existing?.name) suggestNameForPin(pin.lat, pin.lng, target);
     } else {
-      dispatch({ mapNote: false, location: { kind: 'gps', lat, lng, name: name || location?.name || '' } });
+      // "Keep as a label (no pin)" — a named phantom.
+      const named = name ? { kind: 'named' as const, name } : null;
+      if (target === 'start') dispatch({ mapNote: false, startLocation: named });
+      else dispatch({ mapNote: false, location: named });
     }
+  };
+
+  // From the offline coordinate-paste modal: always a real pin.
+  const handlePasteLocation = (lat: number, lng: number) => {
+    handleConfirmPickerLocation({ lat, lng }, '');
   };
 
   // Cancel closes back to the page's logical parent (pops in-app history when
@@ -528,9 +569,6 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
         dispatch({ titleError: mode === 'edit-ride' ? 'Ride Title is required.' : 'Ride Title is required to start a new ride.' });
         return;
       }
-    } else if ((mode === 'new-leg' || mode === 'edit') && !legTitle.trim()) {
-      dispatch({ titleError: 'Leg Title is required to save.' });
-      return;
     } else if (step < 3) {
       if (location?.kind !== 'gps') dispatch({ mapNote: true });
       dispatch({ step: (step + 1) as 1 | 2 | 3 });
@@ -566,25 +604,35 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     <div class="editor-container">
       <PageHeader onBack={handleCancel} />
 
-      {/* Mode title */}
-      <h2 class="page-heading">
-        {mode === 'new-ride' ? 'New Ride' :
-         mode === 'edit-ride' ? 'Edit Ride Details' :
-         mode === 'new-leg' ? 'Log a Leg' :
-         'Edit Leg Details'}
-      </h2>
-      {mode === 'new-leg' && (
-        <p class="field-tip" style={{ marginTop: '-4px', marginBottom: 'var(--spacing-sm)' }}>A leg is a stretch between two stops. Add photos and notes along the way.</p>
+      {/* Mode title — ride modes keep a heading; leg modes stay lean (no chrome) */}
+      {mode !== 'new-leg' && mode !== 'edit' && (
+        <h2 class="page-heading">
+          {mode === 'new-ride' ? 'New Ride' : 'Edit Ride Details'}
+        </h2>
       )}
 
-      {/* Progress Tab Indicator */}
+      {/* Compact step dots for leg modes */}
       {mode !== 'new-ride' && mode !== 'edit-ride' && (
-        <div class="wizard-progress">
-          <span class={`progress-step ${step === 1 ? 'active' : ''}`} onClick={() => handleStepJump(1)}>1. Details</span>
-          <span class="progress-divider">→</span>
-          <span class={`progress-step ${step === 2 ? 'active' : ''}`} onClick={() => handleStepJump(2)}>2. Photos</span>
-          <span class="progress-divider">→</span>
-          <span class={`progress-step ${step === 3 ? 'active' : ''}`} onClick={() => handleStepJump(3)}>3. Note</span>
+        <div class="wizard-dots" aria-label="Steps">
+          <span class="wizard-dots-label">
+            {(['Details', 'Photos', 'Note'] as const)[step - 1]}
+          </span>
+          <span class="wizard-dots-group">
+            {([
+              [1, 'Details'],
+              [2, 'Photos'],
+              [3, 'Note'],
+            ] as const).map(([n, label]) => (
+              <button
+                key={n}
+                type="button"
+                class={`wizard-dot${step === n ? ' active' : ''}`}
+                aria-label={`${label} step`}
+                aria-current={step === n ? 'step' : undefined}
+                onClick={() => handleStepJump(n)}
+              />
+            ))}
+          </span>
         </div>
       )}
 
@@ -618,15 +666,14 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               distanceMode={distanceMode}
               setDistanceMode={(val) => dispatch({ distanceMode: val })}
               location={location}
-              setLocation={(val) => dispatch({ location: val, ...(val?.kind === 'gps' ? { mapNote: false } : {}) })}
               gpsLoading={gpsLoading}
               handleDropPin={handleDropPin}
               handleClearLocation={handleClearLocation}
               mapNote={mapNote}
               legTitle={legTitle}
               setLegTitle={(val) => dispatch({ legTitle: val })}
+              autoTitle={location?.name || 'Auto'}
               startLocation={startLocation}
-              setStartLocation={(val) => dispatch({ startLocation: val, ...(val?.kind === 'gps' ? { mapNote: false } : {}) })}
               startGpsLoading={startGpsLoading}
               onClearStartLocation={onClearStartLocation}
               onRetryStartGps={onRetryStartGps}
@@ -682,7 +729,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       <CoordinatePasteModal
         isOpen={showPasteModal}
         targetLabel={mapPickerTarget === 'start' ? 'Start point' : 'Destination'}
-        onConfirm={handleConfirmPickerLocation}
+        onConfirm={handlePasteLocation}
         onClose={() => dispatch({ showPasteModal: false })}
       />
 
