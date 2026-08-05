@@ -48,6 +48,8 @@ export const TODO_SECTIONS: TodoSection[] = [
       { id: 'map-picker', title: 'Place search + a stable map picker', status: 'done', note: 'Geocoded search, offline coordinate paste, a center-pin marker, and clean reopens' },
       { id: 'distance-simple', title: 'Simpler distance: GPS route or Manual only', status: 'done', note: 'Odometer mode removed — distance comes from the route or a typed km' },
       { id: 'gps-consent', title: 'Location asked only on "Use my location"', status: 'done', note: 'No permission prompt on form load' },
+      { id: 'log-ride', title: '"Log a ride" creates the ride + first leg in one wizard', status: 'done', note: 'Start · Stop · Photos · Story, single save lands you on the ride page' },
+      { id: 'ride-name', title: 'Location-free ride name pre-filled on Start', status: 'done', note: 'Auto name is just the date — moving the start pin never rewrites it' },
     ],
   },
   {
