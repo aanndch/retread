@@ -60,6 +60,10 @@ export function MapPicker({
   const searchInputRef = useRef<HTMLInputElement>(null);
   // The tapped pin position; null until the user taps the map (center fallback).
   const pinnedRef = useRef<{ lat: number; lng: number } | null>(null);
+  // Live Leaflet pin marker + its icon, so placing a pin (tap, existing pin,
+  // or a picked search result) works from anywhere in the component.
+  const pinMarkerRef = useRef<any>(null);
+  const pinIconRef = useRef<any>(null);
   // The stop's label — edited in the modal, reverse-geocoded onto nameless pins.
   const [nameValue, setNameValue] = useState('');
   const nameValueRef = useRef('');
@@ -115,6 +119,22 @@ export function MapPicker({
     if (n && !nameValueRef.current) setNameValue(n);
   }, []);
 
+  // Place (or move) the pin marker at a given spot — used by taps, the initial
+  // existing pin, and picking a search result.
+  const placePinAt = useCallback((latlng: { lat: number; lng: number }) => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (pinMarkerRef.current) {
+      pinMarkerRef.current.setLatLng([latlng.lat, latlng.lng]);
+      return;
+    }
+    const L = (window as any).L;
+    pinMarkerRef.current = L.marker([latlng.lat, latlng.lng], {
+      icon: pinIconRef.current,
+      interactive: false,
+    }).addTo(map);
+  }, []);
+
   // Create the map when open + Leaflet ready; tear it down when closed so the
   // next open always gets a fresh, correctly-centered instance.
   useEffect(() => {
@@ -149,19 +169,12 @@ export function MapPicker({
       iconSize: [30, 36],
       iconAnchor: [15, 34],
     });
+    pinIconRef.current = icon;
 
     // The pin is created lazily — the map starts blank so the user knows to
     // place it. Editing an existing pin shows it at its current spot.
-    let pinMarker: any = null;
-    const placePin = (latlng: { lat: number; lng: number }) => {
-      if (!pinMarker) {
-        pinMarker = L.marker([latlng.lat, latlng.lng], { icon, interactive: false }).addTo(map);
-      } else {
-        pinMarker.setLatLng([latlng.lat, latlng.lng]);
-      }
-    };
     if (initLoc?.kind === 'gps') {
-      placePin({ lat: initLoc.lat, lng: initLoc.lng });
+      placePinAt({ lat: initLoc.lat, lng: initLoc.lng });
       pinnedRef.current = { lat: initLoc.lat, lng: initLoc.lng };
       setPinnedNow(true);
     }
@@ -171,7 +184,7 @@ export function MapPicker({
       setShowResults(false);
       setNoMatches(false);
       pinnedRef.current = { lat: e.latlng.lat, lng: e.latlng.lng };
-      placePin(e.latlng);
+      placePinAt(e.latlng);
       setPinnedNow(true);
       fillNameFromPin(e.latlng.lat, e.latlng.lng);
     });
@@ -182,6 +195,7 @@ export function MapPicker({
     return () => {
       try { map.remove(); } catch (_) { /* already removed */ }
       if (mapRef.current === map) mapRef.current = null;
+      pinMarkerRef.current = null;
     };
     // showToast is stable for the picker's lifetime; recreating the map on a
     // toast identity change would be wrong, so it is intentionally excluded.
@@ -259,6 +273,7 @@ export function MapPicker({
     const map = mapRef.current;
     if (map) map.setView([r.lat, r.lng], 14);
     pinnedRef.current = { lat: r.lat, lng: r.lng };
+    placePinAt({ lat: r.lat, lng: r.lng });
     setPinnedNow(true);
     setNameValue(r.name);
     setQuery(r.name);
@@ -481,10 +496,10 @@ export function MapPicker({
           />
 
           {!pinnedNow && nameValue.trim() && (
-            <span class="field-tip">Add without a pin to keep it as an approximate stop.</span>
+            <span class="field-tip" style={{ marginTop: 'var(--spacing-xs)' }}>Add without a pin to keep it as an approximate stop.</span>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap', marginTop: 'var(--spacing-md)' }}>
             <Button variant="secondary" size="sm" onClick={() => handleClose(onClose)}>
               Cancel
             </Button>

@@ -45,23 +45,25 @@ function PlaceRow({ emptyLabel, location, gpsLoading, onOpen, onUseLocation, onC
       <button type="button" class="place-row-main" onClick={onOpen} disabled={gpsLoading}>
         <span class="place-row-pin" aria-hidden="true">📍</span>
         <span class="place-row-text">
-          {name ? (
+          {gpsLoading ? (
+            <span class="place-row-empty">Detecting location…</span>
+          ) : name ? (
             <span class="place-row-name">{name}</span>
           ) : (
             <span class="place-row-empty">{emptyLabel}</span>
           )}
-          {location && !isGps && (
+          {location && !isGps && !gpsLoading && (
             <span class="place-row-meta">· no pin</span>
           )}
         </span>
       </button>
-      {location && (
+      {location && !gpsLoading && (
         <button type="button" class="place-row-clear" onClick={onClear} aria-label="Clear location">
           ×
         </button>
       )}
       <Button variant="secondary" size="sm" class="place-row-btn" aria-label="Use my location" onClick={onUseLocation} disabled={gpsLoading}>
-        <PinIcon size={14} /> My location
+        <PinIcon size={14} /> {gpsLoading ? 'Detecting…' : 'My location'}
       </Button>
     </div>
   );
