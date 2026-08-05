@@ -33,7 +33,6 @@ export function MapPicker({
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [closing, setClosing] = useState(false);
   const mapRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Search state
   const [query, setQuery] = useState('');
@@ -63,12 +62,22 @@ export function MapPicker({
     return () => { active = false; };
   }, []);
 
-  // Initialize map once Leaflet is loaded and container is ready
+  // Clean up map instance when modal unmounts
   useEffect(() => {
-    if (!leafletLoaded || !containerRef.current || mapRef.current) return;
+    return () => {
+      if (mapRef.current) {
+        try { mapRef.current.remove(); } catch (_) {}
+        mapRef.current = null;
+      }
+    };
+  }, []);
 
+  // Stable ref callback — only creates the map once
+  const mapContainerRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    if (mapRef.current) return; // already initialized
+    if (!(window as any).L) return;
     const L = (window as any).L;
-    if (!L) return;
 
     let center: [number, number] = [31.1048, 77.1734];
     if (initialLocation?.kind === 'gps') {
@@ -77,9 +86,7 @@ export function MapPicker({
       center = fallbackCenter;
     }
 
-    const map = L.map(containerRef.current, {
-      zoomControl: false,
-    }).setView(center, 13);
+    const map = L.map(el, { zoomControl: false }).setView(center, 13);
 
     // Place zoom control on the right to avoid overlapping the search bar
     L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -95,17 +102,7 @@ export function MapPicker({
     map.on('dragstart', () => setShowResults(false));
 
     mapRef.current = map;
-  }, [leafletLoaded]);
-
-  // Clean up map instance when modal unmounts
-  useEffect(() => {
-    return () => {
-      if (mapRef.current) {
-        try { mapRef.current.remove(); } catch (_) {}
-        mapRef.current = null;
-      }
-    };
-  }, []);
+  }, [initialLocation, fallbackCenter]);
 
   // Geocode search via Nominatim
   const geocode = async (q: string) => {
@@ -164,8 +161,6 @@ export function MapPicker({
     const map = mapRef.current;
     if (map) {
       map.setView([r.lat, r.lng], 14);
-    } else {
-      console.warn('Map reference not available for setView');
     }
     setQuery(r.name);
     setShowResults(false);
@@ -223,22 +218,21 @@ export function MapPicker({
 
         {/* Map container — search floats on top */}
         <div style={{ position: 'relative', width: '100%', height: '400px' }}>
-          {/* Map mount point — stable ref, never re-created */}
-          <div
-            ref={containerRef}
-            style={{ width: '100%', height: '100%', background: 'var(--color-paper-dim)' }}
-          />
-
-          {/* Loading state */}
-          {!leafletLoaded && (
+          {/* Map mount point */}
+          {!leafletLoaded ? (
             <div style={{
-              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: 'var(--color-paper-dim)',
               fontFamily: 'var(--font-typewriter)', fontSize: '13px',
             }}>
               Loading map...
             </div>
+          ) : (
+            <div
+              ref={mapContainerRef}
+              style={{ width: '100%', height: '100%', background: 'var(--color-paper-dim)' }}
+            />
           )}
 
           {/* Crosshair */}
