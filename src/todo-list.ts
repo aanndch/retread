@@ -63,7 +63,7 @@ export const TODO_SECTIONS: TodoSection[] = [
     label: 'Roadmap',
     kind: 'planned',
     description:
-      'Two clusters rather than unrelated ideas: browse polish (how you find a ride) and geo "wow" (maps worth showing off). Most ideas are rough — not all have solid plans yet.',
+      'Three clusters rather than unrelated ideas: browse polish (how you find a ride), geo "wow" (maps worth showing off), and route shaping (picking the road a leg actually took). Most ideas are rough — not all have solid plans yet.',
     items: [
       { id: 'rm-month-index', title: 'Clickable month index', status: 'open', badge: 'FINDING RIDES', note: 'My top pick for the "scroll forever" problem. Compact month chips (JUL 24 · AUG 24…) at the top that jump to that month. Cheap, directly fixes the pain.' },
       { id: 'rm-search', title: 'Search rides', status: 'open', badge: 'FINDING RIDES', note: 'Filter the home query in memory by title, stop names, locations and leg titles. Biggest unlock for recalling a ride by name.' },
@@ -73,6 +73,10 @@ export const TODO_SECTIONS: TodoSection[] = [
       { id: 'rm-borders', title: 'State boundaries + realistic grid', status: 'open', badge: 'GEO', note: 'Bundle simplified state GeoJSON (~150–300KB), true lat/lng graticule, keep the hand-drawn look.' },
       { id: 'rm-country-map', title: 'Country map of all trips on home', status: 'open', badge: 'GEO', note: 'The hero and riskiest — depends on boundary data + a fixed projection. Build last.' },
       { id: 'rm-countries', title: 'Other countries in setup', status: 'open', badge: 'SETUP', note: 'Unlock the hardcoded dropdown, add km↔mi conversion, anchor the geo features.' },
+      { id: 'rm-route-alt', title: 'Route alternatives per leg', status: 'open', badge: 'ROUTES', note: 'OSRM alternatives=true returns 2–3 options; pick from compact distance · duration cards in the leg editor. Caveat: alternatives often overlap on remote roads — real divergence needs via-points.' },
+      { id: 'rm-route-via', title: 'Shape a route with via-points', status: 'open', badge: 'ROUTES', note: 'Tap intermediate stops the leg must pass through ("over the pass, not the highway"). Persist viaPoints on the leg so backfill reproduces the choice instead of resetting to the OSRM default.' },
+      { id: 'rm-route-edit', title: 'Change a saved leg\'s route', status: 'open', badge: 'ROUTES', note: '"Route options" on the leg/ride map reopens the picker and updates the stored path + auto distance retroactively.' },
+      { id: 'rm-route-profile', title: 'Motorcycle-aware routing', status: 'open', badge: 'ROUTES', note: 'The driving profile ignores two-wheeler-friendly roads; a custom OSRM profile (or self-hosting) changes which routes are offered at all.' },
     ],
   },
   {
