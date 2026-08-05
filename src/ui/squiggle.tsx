@@ -10,7 +10,7 @@ export interface SquiggleStop {
   lat: number;
   lng: number;
   label?: string;
-  kind?: 'start' | 'stop' | 'end';
+  kind?: 'start' | 'stop' | 'end' | 'phantom';
 }
 
 interface SquiggleMapProps {
@@ -336,24 +336,43 @@ export function SquiggleMap({
         if (!project) return null;
         const pt = project({ lat: st.lat, lng: st.lng });
         const { x, y, anchor } = centerLabel(pt, width, height);
+        const isPhantom = st.kind === 'phantom';
         return (
           <g key={`stop-${i}`}>
-            <circle
-              cx={pt.x}
-              cy={pt.y}
-              r="4"
-              fill="var(--color-paper)"
-              stroke="var(--color-ink)"
-              stroke-width="2"
-            />
+            {isPhantom ? (
+              <circle
+                cx={pt.x}
+                cy={pt.y}
+                r="5"
+                fill="none"
+                stroke="var(--color-ink-muted)"
+                stroke-width="2"
+                stroke-dasharray="2 3"
+              />
+            ) : (
+              <circle
+                cx={pt.x}
+                cy={pt.y}
+                r="4"
+                fill="var(--color-paper)"
+                stroke="var(--color-ink)"
+                stroke-width="2"
+              />
+            )}
             {st.label && (
               <text
                 x={x}
                 y={y}
                 text-anchor={anchor}
-                class={revealIntermediateLabels ? 'sqg-stop-label sqg-label-hidden' : 'sqg-stop-label'}
+                class={
+                  isPhantom
+                    ? 'sqg-stop-label sqg-phantom-label'
+                    : revealIntermediateLabels
+                      ? 'sqg-stop-label sqg-label-hidden'
+                      : 'sqg-stop-label'
+                }
               >
-                {truncateLabel(st.label)}
+                {isPhantom ? `~ ${truncateLabel(st.label)}` : truncateLabel(st.label)}
               </text>
             )}
           </g>

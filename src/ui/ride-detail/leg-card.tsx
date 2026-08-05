@@ -1,5 +1,5 @@
 import type { Leg, Ride } from '../../types';
-import { formatDistance } from '../../lib';
+import { formatDistance, stopLabel } from '../../lib';
 
 interface LegCardProps {
   leg: Leg;
@@ -35,10 +35,7 @@ export function LegCard({ leg, index, legs, ride, label }: LegCardProps) {
                 }}
               >
                 📍{" "}
-                {leg.location.name ||
-                  (leg.location.kind === "gps"
-                    ? `[${leg.location.lat.toFixed(4)}, ${leg.location.lng.toFixed(4)}]`
-                    : "Named")}
+                {stopLabel(leg.location, index + 1)}
               </span>
             )}
           </div>

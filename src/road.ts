@@ -57,10 +57,21 @@ function interpolateWaypoints(
 // Resilient: times out, retries across hosts, and splits very long legs into
 // hops. Never throws — a straight-line [from, to] is returned on total failure
 // so maps always render something.
+// Options allow callers to tighten the budget (e.g. live auto-fill in the
+// editor must never hang) while the default keeps full resilience for the
+// background backfill.
+export interface SnapOptions {
+  timeoutMs?: number;
+  maxAttempts?: number;
+  hosts?: string[];
+}
+
 export async function snapLeg(
   from: { lat: number; lng: number },
-  to: { lat: number; lng: number }
+  to: { lat: number; lng: number },
+  options?: SnapOptions
 ): Promise<{ lat: number; lng: number }[]> {
+  const { timeoutMs = SNAP_TIMEOUT_MS, maxAttempts = SNAP_RETRIES, hosts = OSRM_BASE_URLS } = options ?? {};
   const directDist = haversineDistance(from, to);
 
   // Safeguard: If points are basically identical, return direct line
@@ -74,7 +85,7 @@ export async function snapLeg(
     const waypoints = [from, ...interpolateWaypoints(from, to, hopCount - 1), to];
     const segments: { lat: number; lng: number }[][] = [];
     for (let i = 0; i < waypoints.length - 1; i++) {
-      segments.push(await snapLeg(waypoints[i], waypoints[i + 1]));
+      segments.push(await snapLeg(waypoints[i], waypoints[i + 1], options));
     }
     const joined: { lat: number; lng: number }[] = [];
     for (const seg of segments) {
@@ -84,14 +95,14 @@ export async function snapLeg(
     return joined;
   }
 
-  for (let attempt = 0; attempt <= SNAP_RETRIES; attempt++) {
-    for (const baseUrl of OSRM_BASE_URLS) {
+  for (let attempt = 0; attempt <= maxAttempts; attempt++) {
+    for (const baseUrl of hosts) {
       let controller: AbortController | null = null;
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         const url = `${baseUrl}${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
         controller = new AbortController();
-        timer = setTimeout(() => controller?.abort(), SNAP_TIMEOUT_MS);
+        timer = setTimeout(() => controller?.abort(), timeoutMs);
         const res = await fetch(url, { signal: controller.signal });
 
         if (!res.ok) {
@@ -128,14 +139,17 @@ export async function snapLeg(
         if (timer) clearTimeout(timer);
       }
     }
-    if (attempt < SNAP_RETRIES) await sleep(SNAP_RETRY_BACKOFF_MS * (attempt + 1));
+    if (attempt < maxAttempts) await sleep(SNAP_RETRY_BACKOFF_MS * (attempt + 1));
   }
 
   console.warn('[OSRM] All hosts exhausted; returning straight-line fallback.');
   return [from, to];
 }
 
-// Retroactive Snapper: Backfills missing road paths for all legs of a ride
+// Retroactive Snapper: Backfills missing road paths for all legs of a ride.
+// Resilience: a pin-less leg gaps only itself. The next pinned leg still snaps
+// from the last known GPS anchor (departure pin or previous pinned leg), so one
+// name-only stop no longer wipes the routes of every leg after it.
 export async function backfillRideRoutes(rideId: number): Promise<void> {
   // Query all legs for the ride sorted chronologically
   const legs = await db.legs.where('rideId').equals(rideId).toArray();
@@ -150,67 +164,53 @@ export async function backfillRideRoutes(rideId: number): Promise<void> {
   // Load the ride record to get the departure pin
   const rideRecord = await db.rides.get(rideId);
 
-  for (let i = 0; i < sortedLegs.length; i++) {
-    const currentLeg = sortedLegs[i];
-    
-    // First leg: use Ride.startLocation as the departure point
-    if (i === 0) {
-      if (rideRecord?.startLocation?.kind === 'gps' && currentLeg.location?.kind === 'gps') {
-        const fromGps = { lat: rideRecord.startLocation.lat, lng: rideRecord.startLocation.lng };
-        const toGps = { lat: currentLeg.location.lat, lng: currentLeg.location.lng };
+  // Last known GPS anchor; advances only through pinned legs.
+  let lastKnownGps: { lat: number; lng: number } | null =
+    rideRecord?.startLocation?.kind === 'gps'
+      ? { lat: rideRecord.startLocation.lat, lng: rideRecord.startLocation.lng }
+      : null;
 
-        const needsSnap =
-          !currentLeg.roadPath ||
-          currentLeg.roadPath.length <= 2 ||
-          haversineDistance(currentLeg.roadPath[0], fromGps) > 0.05 ||
-          haversineDistance(currentLeg.roadPath[currentLeg.roadPath.length - 1], toGps) > 0.05;
-
-        if (needsSnap) {
-          try {
-            const snappedPath = await snapLeg(fromGps, toGps);
-            await db.legs.update(currentLeg.id!, { roadPath: snappedPath });
-          } catch (snapErr) {
-            console.warn(`[OSRM] Snap failed for first leg, saving straight line fallback:`, snapErr);
-            await db.legs.update(currentLeg.id!, { roadPath: [fromGps, toGps] });
-          }
-        }
-      } else {
-        // No valid startLocation GPS, clear any stale roadPath on first leg
-        if (currentLeg.roadPath !== null && currentLeg.roadPath !== undefined) {
-          await db.legs.update(currentLeg.id!, { roadPath: null });
-        }
+  for (const currentLeg of sortedLegs) {
+    // Pin-less leg (named or nothing): nothing to snap. Clear any stale path
+    // from a previous edit, but leave the chain anchor untouched.
+    if (currentLeg.location?.kind !== 'gps') {
+      if (currentLeg.roadPath !== null && currentLeg.roadPath !== undefined) {
+        await db.legs.update(currentLeg.id!, { roadPath: null });
       }
       continue;
     }
 
-    const prevLeg = sortedLegs[i - 1];
-    
-    // Check if both legs have valid GPS points
-    if (prevLeg.location?.kind === 'gps' && currentLeg.location?.kind === 'gps') {
-      const fromGps = { lat: prevLeg.location.lat, lng: prevLeg.location.lng };
-      const toGps = { lat: currentLeg.location.lat, lng: currentLeg.location.lng };
-      
-      // Check if we need to snap (either roadPath is missing, or endpoints changed)
-      const needsSnap =
-        !currentLeg.roadPath ||
-        currentLeg.roadPath.length <= 2 ||
-        haversineDistance(currentLeg.roadPath[0], fromGps) > 0.05 ||
-        haversineDistance(currentLeg.roadPath[currentLeg.roadPath.length - 1], toGps) > 0.05;
-        
-      if (needsSnap) {
-        try {
-          const snappedPath = await snapLeg(fromGps, toGps);
-          await db.legs.update(currentLeg.id!, { roadPath: snappedPath });
-        } catch (snapErr) {
-          console.warn(`[OSRM] Snap failed for leg, saving straight line fallback:`, snapErr);
-          await db.legs.update(currentLeg.id!, { roadPath: [fromGps, toGps] });
-        }
-      }
-    } else {
-      // If either location is named/none, clear any existing snapped path
+    const toGps = { lat: currentLeg.location.lat, lng: currentLeg.location.lng };
+
+    // First GPS anchor in the ride (no departure pin): establish it, nothing to
+    // snap yet.
+    if (!lastKnownGps) {
       if (currentLeg.roadPath !== null && currentLeg.roadPath !== undefined) {
         await db.legs.update(currentLeg.id!, { roadPath: null });
       }
+      lastKnownGps = toGps;
+      continue;
     }
+
+    const fromGps = lastKnownGps;
+
+    // Check if we need to snap (either roadPath is missing, or endpoints changed)
+    const needsSnap =
+      !currentLeg.roadPath ||
+      currentLeg.roadPath.length <= 2 ||
+      haversineDistance(currentLeg.roadPath[0], fromGps) > 0.05 ||
+      haversineDistance(currentLeg.roadPath[currentLeg.roadPath.length - 1], toGps) > 0.05;
+
+    if (needsSnap) {
+      try {
+        const snappedPath = await snapLeg(fromGps, toGps);
+        await db.legs.update(currentLeg.id!, { roadPath: snappedPath });
+      } catch (snapErr) {
+        console.warn(`[OSRM] Snap failed for leg, saving straight line fallback:`, snapErr);
+        await db.legs.update(currentLeg.id!, { roadPath: [fromGps, toGps] });
+      }
+    }
+
+    lastKnownGps = toGps;
   }
 }

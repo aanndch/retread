@@ -18,6 +18,7 @@ import {
   formatIsoDateToDMY,
   buildStops,
   computeDayDistances,
+  stopLabel,
 } from "../lib";
 import type { Ride, Leg } from "../types";
 
@@ -61,6 +62,137 @@ function weekdayFor(date: string): string {
   if (parts.length !== 3) return "";
   const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
   return d.toLocaleDateString(undefined, { weekday: "short" });
+}
+
+// Position phantom (pin-less) stops evenly between their real neighbours so
+// consecutive phantoms never stack on the same spot.
+function distributePhantoms(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+  count: number
+): { lat: number; lng: number }[] {
+  const pts: { lat: number; lng: number }[] = [];
+  for (let k = 1; k <= count; k++) {
+    const t = k / (count + 1);
+    pts.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
+  }
+  return pts;
+}
+
+// A trailing phantom has no next real pin, so hang it a short distance past the
+// last real pin rather than sitting directly on top of it.
+function trailingPhantomPts(
+  lastReal: { lat: number; lng: number },
+  count: number
+): { lat: number; lng: number }[] {
+  const pts: { lat: number; lng: number }[] = [];
+  for (let k = 1; k <= count; k++) {
+    pts.push({ lat: lastReal.lat + k * 0.02, lng: lastReal.lng + k * 0.02 });
+  }
+  return pts;
+}
+
+// Builds the ride map's segments and stops with phantom awareness:
+// - real GPS legs render their snapped road path as usual (day-colored);
+// - a run of pin-less legs becomes a phantom gap, drawn as dashed connectors
+//   through evenly-spaced hollow "~ Stop N" markers; the solid road that would
+//   span the gap is suppressed (the dashed line reads "uncertain here");
+// - a trailing run with no next real pin gets a short dashed stub.
+function buildRideMap(
+  ride: Ride,
+  legs: Leg[],
+  dayColorFor: (l: Leg) => string
+): { segments: SquiggleSegment[]; stops: SquiggleStop[] } {
+  const segments: SquiggleSegment[] = [];
+  const stops: SquiggleStop[] = [];
+
+  const startLoc = ride.startLocation?.kind === "gps" ? ride.startLocation : null;
+  const startPt = startLoc ? { lat: startLoc.lat, lng: startLoc.lng } : null;
+  if (startPt) {
+    stops.push({
+      lat: startPt.lat,
+      lng: startPt.lng,
+      label: startLoc!.name || "Start",
+      kind: "start",
+    });
+  }
+
+  let lastRealPt: { lat: number; lng: number } | null = startPt;
+  let phantomRun: Leg[] = [];
+
+  const addRealStop = (l: Leg, i: number) => {
+    if (l.location?.kind !== "gps") return;
+    // Loop rides: skip an end marker that lands on the start pin.
+    const loopsHome =
+      i === legs.length - 1 &&
+      !!startPt &&
+      Math.abs(l.location.lat - startPt.lat) < 0.001 &&
+      Math.abs(l.location.lng - startPt.lng) < 0.001;
+    if (loopsHome) return;
+    stops.push({
+      lat: l.location.lat,
+      lng: l.location.lng,
+      label: stopLabel(l.location, i + 1),
+      kind: i === legs.length - 1 ? "end" : "stop",
+    });
+  };
+
+  for (let i = 0; i < legs.length; i++) {
+    const l = legs[i];
+    if (l.location?.kind !== "gps") {
+      phantomRun.push(l);
+      continue;
+    }
+    const nextReal = { lat: l.location.lat, lng: l.location.lng };
+
+    if (phantomRun.length > 0) {
+      // A phantom gap ends here: replace this leg's solid route with dashed
+      // connectors through the phantom markers.
+      const prevReal = lastRealPt;
+      if (prevReal) {
+        const phantoms = distributePhantoms(prevReal, nextReal, phantomRun.length);
+        const chain = [prevReal, ...phantoms, nextReal];
+        for (let k = 0; k < chain.length - 1; k++) {
+          segments.push({ path: [chain[k], chain[k + 1]], fallback: true, color: "var(--color-ink-muted)" });
+        }
+        phantoms.forEach((p, pi) => {
+          const phantomLeg = phantomRun[pi];
+          const legNum = i - phantomRun.length + 1 + pi;
+          stops.push({ lat: p.lat, lng: p.lng, label: stopLabel(phantomLeg.location, legNum), kind: "phantom" });
+        });
+      }
+      phantomRun = [];
+      // (suppressed: this real leg's roadPath spans the phantom gap)
+    } else if (l.roadPath && l.roadPath.length > 0) {
+      segments.push({
+        path: l.roadPath,
+        fallback: l.roadPath.length <= 2,
+        color: dayColorFor(l),
+      });
+    }
+
+    addRealStop(l, i);
+    lastRealPt = nextReal;
+  }
+
+  // Trailing phantoms with no next real pin: dashed stub off the last real pin.
+  if (phantomRun.length > 0) {
+    const lastReal = lastRealPt;
+    if (lastReal) {
+      const phantoms = trailingPhantomPts(lastReal, phantomRun.length);
+      const chain = [lastReal, ...phantoms];
+      for (let k = 0; k < chain.length - 1; k++) {
+        segments.push({ path: [chain[k], chain[k + 1]], fallback: true, color: "var(--color-ink-muted)" });
+      }
+      phantoms.forEach((p, pi) => {
+        const phantomLeg = phantomRun[pi];
+        const legNum = legs.length - phantomRun.length + 1 + pi;
+        stops.push({ lat: p.lat, lng: p.lng, label: stopLabel(phantomLeg.location, legNum), kind: "phantom" });
+      });
+    }
+  }
+
+  return { segments, stops };
 }
 
 function RouteTrail({ stops }: { stops: string[] }) {
@@ -285,41 +417,11 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
 
   const uniqueDates = Array.from(new Set(legs.map((l) => l.date))).sort();
 
-  // Day-colored map segments: one per leg that has a snapped road path.
-  const segments: SquiggleSegment[] = legs
-    .filter((l) => l.roadPath && l.roadPath.length > 0)
-    .map((l) => ({
-      path: l.roadPath!,
-      fallback: (l.roadPath?.length ?? 0) <= 2,
-      color: DAY_COLORS[Math.max(0, uniqueDates.indexOf(l.date)) % DAY_COLORS.length],
-    }));
-
-  // Route stops: ride start pin + every GPS leg location.
-  const mapStops: SquiggleStop[] = [];
-  if (ride.startLocation?.kind === "gps") {
-    mapStops.push({
-      lat: ride.startLocation.lat,
-      lng: ride.startLocation.lng,
-      label: ride.startLocation.name || "Start",
-      kind: "start",
-    });
-  }
-  legs.forEach((l, i) => {
-    if (l.location?.kind !== "gps") return;
-    // Loop rides: skip an end marker that lands on the start pin.
-    const loopsHome =
-      i === legs.length - 1 &&
-      ride.startLocation?.kind === "gps" &&
-      Math.abs(l.location.lat - ride.startLocation.lat) < 0.001 &&
-      Math.abs(l.location.lng - ride.startLocation.lng) < 0.001;
-    if (loopsHome) return;
-    mapStops.push({
-      lat: l.location.lat,
-      lng: l.location.lng,
-      label: l.location.name || "",
-      kind: i === legs.length - 1 ? "end" : "stop",
-    });
-  });
+  // Day-colored map segments + stops, with phantom awareness: pin-less legs
+  // become dashed gaps through hollow "~ Stop N" markers.
+  const dayColorFor = (l: Leg) =>
+    DAY_COLORS[Math.max(0, uniqueDates.indexOf(l.date)) % DAY_COLORS.length];
+  const { segments, stops: mapStops } = buildRideMap(ride, legs, dayColorFor);
 
   // When a long ride crowds the hero, hide intermediate labels until hover
   // (they always show in the fullscreen overlay) and note the count in the
@@ -379,7 +481,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
                 <circle cx="3" cy="17" r="1.6" fill="currentColor" />
                 <circle cx="21" cy="10" r="1.6" fill="currentColor" />
               </svg>
-              <p>Log 2+ legs with GPS pins to draw your ride route map.</p>
+              <p>Add GPS pins to draw your ride route map.</p>
               <Button
                 variant="secondary"
                 size="sm"

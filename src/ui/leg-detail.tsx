@@ -12,7 +12,7 @@ import { MapModal } from "../components/map-modal";
 import { PhotoOverlay } from "../components/photo-overlay";
 import { PhotoArrangeSheet } from "../components/photo-arrange-sheet";
 import { backfillRideRoutes } from "../road";
-import { formatIsoDateToDMY, formatDistance } from "../lib";
+import { formatIsoDateToDMY, formatDistance, stopLabel } from "../lib";
 import type { Leg, LocationUnion } from "../types";
 
 interface LegDetailProps {
@@ -20,15 +20,6 @@ interface LegDetailProps {
   onNavigate: (route: string) => void;
   onNavigateBack: (logicalParent: string | null) => void;
   onReady?: () => void;
-}
-
-function locationName(loc?: LocationUnion | null): string {
-  if (!loc) return "";
-  if (loc.name) return loc.name;
-  if (loc.kind === "gps") {
-    return `[${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}]`;
-  }
-  return "Named";
 }
 
 function LegTrail({ start, end }: { start: string; end: string }) {
@@ -201,19 +192,26 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
     }
   }
 
-  // Trail: start = ride departure (first leg) or previous leg's end point
-  const startLoc =
-    myIdx === 0 ? liveData?.ride?.startLocation : myIdx > 0 ? sorted[myIdx - 1]?.location : undefined;
-  const fromLoc: LocationUnion | null | undefined = startLoc;
-  const toLoc: LocationUnion | null | undefined = leg?.location;
-  const trailStart = fromLoc ? locationName(fromLoc) : "";
-  const trailEnd = toLoc ? locationName(toLoc) : "";
-
   const uniqueDates = [...new Set(sorted.map((l) => l.date))];
   const dayNumFor = (date: string) => uniqueDates.indexOf(date) + 1;
   const dayNum = leg ? dayNumFor(leg.date) : 0;
   const legNum = myIdx + 1;
   const totalLegs = sorted.length;
+
+  // Trail: start = ride departure (first leg) or previous leg's end point.
+  // Labels fall back to positional names: the departure is "Start", an unnamed
+  // previous leg is "Stop N", and this leg's destination is its own stop number.
+  const startLoc =
+    myIdx === 0 ? liveData?.ride?.startLocation : myIdx > 0 ? sorted[myIdx - 1]?.location : undefined;
+  const fromLoc: LocationUnion | null | undefined = startLoc;
+  const toLoc: LocationUnion | null | undefined = leg?.location;
+  const trailStart = fromLoc
+    ? myIdx === 0
+      ? fromLoc.name || "Start"
+      : stopLabel(fromLoc, myIdx)
+    : "";
+  const trailEnd = toLoc ? stopLabel(toLoc, legNum) : "";
+
   const prevLeg = myIdx > 0 ? sorted[myIdx - 1] : null;
   const nextLeg = myIdx >= 0 && myIdx < sorted.length - 1 ? sorted[myIdx + 1] : null;
   const prevLegId = prevLeg?.id ?? null;
@@ -276,7 +274,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
         mapStops.push({
           lat: toLoc.lat,
           lng: toLoc.lng,
-          label: toLoc.name || "",
+          label: stopLabel(toLoc, legNum),
           kind: "end",
         });
       }
@@ -285,7 +283,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
     mapStops.push({
       lat: leg.location.lat,
       lng: leg.location.lng,
-      label: leg.location.name || "",
+      label: stopLabel(leg.location, legNum),
       kind: "end",
     });
   }
@@ -343,7 +341,15 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
                 <circle cx="3" cy="17" r="1.6" fill="currentColor" />
                 <circle cx="21" cy="10" r="1.6" fill="currentColor" />
               </svg>
-              <p>No map for this leg yet. Add a GPS pin to draw your route.</p>
+              <p>This stop has no exact location — set its pin to draw it here.</p>
+              <Button
+                variant="secondary"
+                size="sm"
+                style={{ marginTop: 'var(--spacing-sm)' }}
+                onClick={() => onNavigate(`#/edit?mode=edit&legId=${legId}`)}
+              >
+                📍 Set this stop's pin
+              </Button>
             </div>
           )}
         </section>

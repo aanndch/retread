@@ -54,6 +54,7 @@ export async function saveEditorDetails(
     }
 
     scheduleAutoSync();
+    localStorage.setItem('retread-has-saved', 'true');
     return `#/ride/${rideId}`;
   }
 
@@ -80,7 +81,10 @@ export async function saveEditorDetails(
     }) as number;
 
     scheduleAutoSync();
-    return `#/ride/${newRideId}`;
+    localStorage.setItem('retread-has-saved', 'true');
+    // Continue straight into logging the first leg so the user isn't stranded
+    // on an empty ride page; they can always back out of the leg form.
+    return `#/edit?mode=new-leg&rideId=${newRideId}`;
   }
 
   // Saving leg entries (mode === 'new-leg' or mode === 'edit')
@@ -131,6 +135,7 @@ export async function saveEditorDetails(
     }
     await applyCover(existingLeg.rideId);
     scheduleAutoSync();
+    localStorage.setItem('retread-has-saved', 'true');
     return `#/ride/${existingLeg.rideId}`;
   } else {
     await db.legs.add({
@@ -145,6 +150,7 @@ export async function saveEditorDetails(
     }
     await applyCover(activeRideId!);
     scheduleAutoSync();
+    localStorage.setItem('retread-has-saved', 'true');
     return `#/ride/${activeRideId}`;
   }
 }

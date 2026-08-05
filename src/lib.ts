@@ -126,6 +126,16 @@ export function buildStopTrail(startLocation: LocationUnion | null | undefined, 
 }
 
 /**
+ * Display label for a stop: the place name if there is one, otherwise a
+ * positional fallback. `n` is the 1-based leg number ("Stop 2" for the second
+ * leg). Unnamed GPS pins and pin-less phantom stops both fall back here.
+ */
+export function stopLabel(loc: LocationUnion | null | undefined, n: number): string {
+  if (loc?.name) return loc.name;
+  return `Stop ${n}`;
+}
+
+/**
  * Computes the per-day cumulative distance for a ride from its legs,
  * using the same km/odo anchoring rules as computeTotalDistance.
  * Returns a map of date (YYYY-MM-DD) → km.

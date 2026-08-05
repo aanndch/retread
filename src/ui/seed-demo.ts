@@ -143,3 +143,136 @@ export async function seedDemoRide(): Promise<number> {
   return newRideId;
   });
 }
+
+// ---------------------------------------------------------------------------
+// Phantom-flow demo ride (Spiti Circuit)
+//
+// Seeds data that exercises the pin-first + phantom-stop flow end to end:
+//   1. a pinned leg (solid route)            — Manali → Rohtang
+//   2. a NAME-ONLY leg (mid-ride PHANTOM)    — Rohtang → Kunzum La (no pin)
+//   3. a pinned leg whose route spans the phantom gap (suppressed on the ride
+//      map, replaced by dashed connectors)   — Kunzum La → Kaza
+//   4. an UNNAMED GPS pin (labels "Stop 4")  — Kaza → Tabo
+//   5. a TRAILING name-only leg (dashed stub off the last real pin) — Kalpa
+//
+// The mid-ride road paths are hand-drawn plausible lines, not OSRM snaps — the
+// squiggle map only needs believable winding roads to show the contrast.
+// ---------------------------------------------------------------------------
+const SPITI_PATHS: { lat: number; lng: number }[][] = [
+  [
+    { lat: 32.2396, lng: 77.1887 },
+    { lat: 32.2479, lng: 77.2016 },
+    { lat: 32.2611, lng: 77.2158 },
+    { lat: 32.2862, lng: 77.2286 },
+    { lat: 32.3188, lng: 77.2391 },
+    { lat: 32.3467, lng: 77.2456 },
+    { lat: 32.3717, lng: 77.2467 },
+  ],
+  [
+    { lat: 32.3717, lng: 77.2467 },
+    { lat: 32.3941, lng: 77.3436 },
+    { lat: 32.4028, lng: 77.62 },
+    { lat: 32.3597, lng: 77.7234 },
+    { lat: 32.3112, lng: 77.8469 },
+    { lat: 32.2604, lng: 77.9503 },
+    { lat: 32.2261, lng: 78.0766 },
+  ],
+  [
+    { lat: 32.2261, lng: 78.0766 },
+    { lat: 32.1876, lng: 78.1506 },
+    { lat: 32.1411, lng: 78.2242 },
+    { lat: 32.1136, lng: 78.2948 },
+    { lat: 32.0911, lng: 78.3366 },
+    { lat: 32.0804, lng: 78.3673 },
+  ],
+];
+
+export async function seedPhantomDemoRide(): Promise<number> {
+  return db.transaction('rw', db.rides, db.legs, async () => {
+  const day2Photo = createMockPhoto("Day 2: Kunzum La", "#6d6a5e");
+
+  const newRideId = await db.rides.add({
+    title: "Spiti Circuit (Phantom Demo)",
+    createdAt: new Date().toISOString(),
+    startLocation: { kind: 'gps', lat: 32.2396, lng: 77.1887, name: "Manali" },
+    distanceMode: 'auto',
+    coverBlob: day2Photo
+  }) as number;
+
+  // Pinned leg — solid route.
+  await db.legs.add({
+    rideId: newRideId,
+    date: "2026-08-10",
+    time: "07:15",
+    title: "Manali to Rohtang Pass",
+    roadPath: SPITI_PATHS[0],
+    note: "Graded climb out of Manali, past the river gorges. Snow patches still at the top even in summer.",
+    km: 51,
+    location: { kind: 'gps', lat: 32.3717, lng: 77.2467, name: "Rohtang Pass" },
+    photos: [
+      createMockPhoto("Day 1: Rohtang top", "#5c6d5f")
+    ]
+  });
+
+  // PHANTOM: name only, no GPS pin — a dashed gap on the ride map.
+  await db.legs.add({
+    rideId: newRideId,
+    date: "2026-08-11",
+    time: "08:40",
+    title: "Rohtang to Kunzum La",
+    note: "Long gravel climb to Kunzum La. Didn't drop a pin — phone was dead. The map shows this stop as approximate.",
+    km: 72,
+    location: { kind: 'named', name: 'Kunzum La' },
+    photos: [
+      day2Photo
+    ]
+  });
+
+  // Pinned leg whose route spans the phantom gap: the ride map draws dashed
+  // connectors through Kunzum instead of this solid path (leg detail still shows it).
+  await db.legs.add({
+    rideId: newRideId,
+    date: "2026-08-12",
+    time: "09:10",
+    title: "Kunzum La to Kaza",
+    roadPath: SPITI_PATHS[1],
+    note: "Dropped down onto the Spiti river. Kaza felt like a desert town after two days of moonscape.",
+    km: 70,
+    location: { kind: 'gps', lat: 32.2261, lng: 78.0766, name: "Kaza" },
+    photos: [
+      createMockPhoto("Day 3: Spiti valley", "#6e6255")
+    ]
+  });
+
+  // Unnamed GPS pin — labels as "Stop 4".
+  await db.legs.add({
+    rideId: newRideId,
+    date: "2026-08-13",
+    time: "10:05",
+    title: "Kaza to Tabo",
+    roadPath: SPITI_PATHS[2],
+    note: "Ride along the river to the thousand-year-old Tabo monastery. Never got round to naming the pin.",
+    km: 47,
+    location: { kind: 'gps', lat: 32.0804, lng: 78.3673 },
+    photos: [
+      createMockPhoto("Day 4: Tabo monastery", "#4b5b5c")
+    ]
+  });
+
+  // TRAILING PHANTOM: no next real pin — gets a dashed stub off the last real stop.
+  await db.legs.add({
+    rideId: newRideId,
+    date: "2026-08-14",
+    time: "06:30",
+    title: "Tabo to Kalpa",
+    note: "Over the last pass and down to the apple orchards of Kalpa. Shut the map off after Tabo, so this stop is phantom too.",
+    km: 118,
+    location: { kind: 'named', name: 'Kalpa' },
+    photos: [
+      createMockPhoto("Day 5: Kalpa orchards", "#5c6d5f")
+    ]
+  });
+
+  return newRideId;
+  });
+}
