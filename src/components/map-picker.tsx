@@ -12,6 +12,13 @@ interface MapPickerProps {
   showToast: (msg: string) => void;
 }
 
+interface GeocodeResult {
+  lat: number;
+  lng: number;
+  name: string;
+  display: string;
+}
+
 export function MapPicker({
   isOpen,
   initialLocation,
@@ -23,6 +30,14 @@ export function MapPicker({
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [closing, setClosing] = useState(false);
   const pickerMapRef = useRef<any>(null);
+
+  // Search state
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<GeocodeResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const debounceRef = useRef<number | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const handleClose = (action: () => void) => {
     setClosing(true);
@@ -61,6 +76,70 @@ export function MapPicker({
       }
     };
   }, []);
+
+  // Geocode search via Nominatim
+  const geocode = async (q: string) => {
+    if (!q.trim() || q.trim().length < 2) {
+      setResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q.trim())}&format=json&limit=5&addressdetails=1`,
+        { headers: { 'Accept': 'application/json' } }
+      );
+      if (!res.ok) throw new Error('Search failed');
+      const data = await res.json();
+
+      const mapped: GeocodeResult[] = data.map((r: any) => ({
+        lat: parseFloat(r.lat),
+        lng: parseFloat(r.lon),
+        name: r.display_name.split(',')[0],
+        display: r.display_name,
+      }));
+      setResults(mapped);
+      setShowResults(mapped.length > 0);
+    } catch (err) {
+      console.error('Geocode error:', err);
+      setResults([]);
+      setShowResults(false);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Debounced search on input
+  const handleSearchInput = (value: string) => {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => geocode(value), 400);
+  };
+
+  // Pan map to a geocoded result
+  const handleSelectResult = (r: GeocodeResult) => {
+    if (pickerMapRef.current) {
+      pickerMapRef.current.setView([r.lat, r.lng], 14);
+    }
+    setQuery(r.name);
+    setShowResults(false);
+    setResults([]);
+  };
+
+  // Close results when map is clicked/dragged
+  useEffect(() => {
+    if (!pickerMapRef.current) return;
+    const map = pickerMapRef.current;
+    const dismiss = () => setShowResults(false);
+    map.on('click', dismiss);
+    map.on('dragstart', dismiss);
+    return () => {
+      map.off('click', dismiss);
+      map.off('dragstart', dismiss);
+    };
+  }, [leafletLoaded]);
 
   if (!isOpen) return null;
 
@@ -155,6 +234,69 @@ export function MapPicker({
           >
             &times;
           </button>
+        </div>
+
+        {/* Search bar overlay */}
+        <div style={{ position: 'relative', zIndex: 2100, padding: '12px 12px 0' }}>
+          <div style={{ position: 'relative' }}>
+            <input
+              ref={searchInputRef}
+              type="text"
+              class="search-input"
+              placeholder="Search for a place..."
+              value={query}
+              onInput={(e) => handleSearchInput((e.target as HTMLInputElement).value)}
+              onFocus={() => { if (results.length > 0) setShowResults(true); }}
+              style={{ fontSize: '13px', padding: '8px 12px' }}
+            />
+            {searching && (
+              <span style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: '11px',
+                color: 'var(--color-ink-muted)',
+                fontFamily: 'var(--font-mechanical)',
+              }}>
+                Searching…
+              </span>
+            )}
+          </div>
+          {showResults && results.length > 0 && (
+            <div style={{
+              background: 'var(--color-paper)',
+              border: '1px solid var(--color-ink-muted)',
+              borderTop: 'none',
+              borderRadius: '0 0 var(--border-radius) var(--border-radius)',
+              maxHeight: '160px',
+              overflowY: 'auto',
+            }}>
+              {results.map((r, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    border: 'none',
+                    borderBottom: i < results.length - 1 ? '1px dashed var(--color-paper-dim)' : 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-typewriter)',
+                    fontSize: '12px',
+                    color: 'var(--color-ink)',
+                  }}
+                  onClick={() => handleSelectResult(r)}
+                >
+                  <span style={{ display: 'block', fontWeight: 600 }}>{r.name}</span>
+                  <span style={{ display: 'block', fontSize: '10px', color: 'var(--color-ink-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.display}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ position: 'relative', width: '100%', height: '350px' }}>
