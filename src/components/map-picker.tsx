@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { Button } from './button';
 import { FieldCard } from './field-card';
 import { loadLeaflet, geocodePlace, reverseGeocode, type GeocodePlace } from '../ui/editor/utils';
+import { getActiveTheme, Theme } from '../theme';
 import type { LocationUnion } from '../types';
 
 interface MapPickerProps {
@@ -20,6 +21,10 @@ const SEARCH_TIMEOUT_MS = 10000;
 const DEFAULT_CENTER: [number, number] = [20.5937, 78.9629];
 
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+// Dark themes use CARTO's dark_all raster set so the picker map matches the
+// paper, instead of a light map glaring inside a dark sheet.
+const DARK_TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const DARK_THEMES: ReadonlySet<string> = new Set([Theme.Nightfall, Theme.Midnight, Theme.Cyberpunk]);
 
 // The selection point is the map center until the user taps the map, which
 // locks the pin to that spot (tap-to-place). It visibly lands on any already
@@ -157,7 +162,7 @@ export function MapPicker({
     }
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-    L.tileLayer(TILE_URL, {
+    L.tileLayer(DARK_THEMES.has(getActiveTheme()) ? DARK_TILE_URL : TILE_URL, {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
       subdomains: 'abcd',
       maxZoom: 20,
@@ -309,7 +314,7 @@ export function MapPicker({
       <div
         class={`modal-content${closing ? ' closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
-        style={{ padding: 0, overflow: 'hidden', width: '100%', maxWidth: '480px' }}
+        style={{ padding: 0, overflow: 'hidden auto', maxHeight: '100%', width: '100%', maxWidth: '480px' }}
       >
         {/* Header */}
         <div
