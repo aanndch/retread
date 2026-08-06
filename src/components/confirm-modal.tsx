@@ -6,11 +6,13 @@ interface ConfirmModalProps {
   title: string;
   message: string;
   confirmLabel?: string;
+  // Renders the confirm button as a solid red destructive action (deletes).
+  danger?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export function ConfirmModal({ title, message, confirmLabel = 'Confirm', onConfirm, onCancel }: ConfirmModalProps) {
+export function ConfirmModal({ title, message, confirmLabel = 'Confirm', danger = false, onConfirm, onCancel }: ConfirmModalProps) {
   const [closing, setClosing] = useState(false);
   const previousFocus = useRef<HTMLElement | null>(null);
 
@@ -67,13 +69,9 @@ export function ConfirmModal({ title, message, confirmLabel = 'Confirm', onConfi
             <Button variant="secondary" onClick={() => handleClose(onCancel)}>
               Cancel
             </Button>
-            <button
-              type="button"
-              class="btn btn-primary btn-danger-text"
-              onClick={() => handleClose(onConfirm)}
-            >
+            <Button variant={danger ? 'danger' : 'primary'} onClick={() => handleClose(onConfirm)}>
               {confirmLabel}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

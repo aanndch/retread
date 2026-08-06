@@ -647,7 +647,14 @@ button:focus,
 }
 
 .settings-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
   margin-top: var(--spacing-xs);
+}
+
+.settings-buttons .btn {
+  width: 100%;
 }
 
 /* Rides List & Cards */
@@ -1065,7 +1072,7 @@ button:focus,
   color: var(--color-ink);
 }
 
-/* Build Log (changelog/roadmap) */
+/* What's New + Roadmap (changelog/roadmap) */
 .todo-container {
   display: flex;
   flex-direction: column;
@@ -1083,6 +1090,37 @@ button:focus,
   font-size: 11px;
   color: var(--color-ink-muted);
   margin: 0;
+}
+
+.todo-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.todo-tabs button {
+  flex: 1;
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  background: none;
+  border: 1px solid var(--color-ink-muted);
+  border-radius: var(--border-radius-sm);
+  padding: 6px 0;
+  cursor: pointer;
+  transition: color 0.1s ease, border-color 0.1s ease, background-color 0.1s ease;
+}
+
+.todo-tabs button:hover {
+  color: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+.todo-tabs button.active {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+  border-color: var(--color-ink);
 }
 
 .todo-section {
@@ -2789,6 +2827,18 @@ input[type=number] {
 .btn-danger-text:hover {
   background-color: rgba(217, 83, 79, 0.05);
   border-color: var(--color-error);
+}
+
+/* Solid destructive button (delete confirmations): red all around, never theme
+   tinted, so "delete" reads as delete in every theme. */
+.btn-danger-solid {
+  background-color: var(--color-error);
+  border-color: var(--color-error);
+  color: #fff;
+}
+
+.btn-danger-solid:hover:not(:disabled) {
+  opacity: 0.9;
 }
 
 /* Gallery carousel framed as a paper album mount: ink border, hard offset

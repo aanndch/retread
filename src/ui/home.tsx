@@ -325,8 +325,8 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
                 </div>
               </FieldCard>
 
-              {/* Build Log (changelog/roadmap) */}
-              <FieldCard label="Build Log">
+              {/* What's New (changelog + roadmap) */}
+              <FieldCard label="What's New">
                 <div class="settings-buttons">
                   <Button 
                     variant="secondary" 

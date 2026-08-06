@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks';
 import { PageHeader } from '../components/page-header';
 import { TODO_SECTIONS } from '../todo-list';
 
@@ -5,19 +6,45 @@ interface TodoProps {
   onNavigateBack: (logicalParent: string | null) => void;
 }
 
-// Read-only changelog/roadmap: shows shipped features, fixed bugs and planned
-// ideas as a checklist. Nothing here is interactive — status lives in
-// src/todo-list.ts.
+type TodoTab = 'new' | 'roadmap';
+
+// Read-only changelog/roadmap: "What's New" shows shipped features and fixed
+// bugs; "Roadmap" holds planned ideas. Nothing here is interactive — status
+// lives in src/todo-list.ts.
 export function Todo({ onNavigateBack }: TodoProps) {
+  const [tab, setTab] = useState<TodoTab>('new');
+  const sections = TODO_SECTIONS.filter((s) =>
+    tab === 'roadmap' ? s.kind === 'planned' : s.kind === 'shipped'
+  );
+
   return (
     <div class="todo-container">
       <PageHeader onBack={() => onNavigateBack('#/')} />
 
       <main class="todo-body">
-        <h2 class="page-heading">Build Log</h2>
-        <p class="todo-sub">Shipped features, squashed bugs, and what's next for Retread.</p>
+        <h2 class="page-heading">What's New</h2>
+        <p class="todo-sub">Shipped features and squashed bugs — the latest on Retread.</p>
 
-        {TODO_SECTIONS.map((section) => (
+        <nav class="todo-tabs" aria-label="Build log sections">
+          <button
+            type="button"
+            class={tab === 'new' ? 'active' : ''}
+            aria-current={tab === 'new' ? 'page' : undefined}
+            onClick={() => setTab('new')}
+          >
+            What's New
+          </button>
+          <button
+            type="button"
+            class={tab === 'roadmap' ? 'active' : ''}
+            aria-current={tab === 'roadmap' ? 'page' : undefined}
+            onClick={() => setTab('roadmap')}
+          >
+            Roadmap
+          </button>
+        </nav>
+
+        {sections.map((section) => (
           <section class={`todo-section todo-section--${section.kind || 'planned'}`} key={section.id}>
             <h3 class="todo-section-label">
               {section.label}

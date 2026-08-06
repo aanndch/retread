@@ -561,6 +561,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
       {showDeleteModal && (
         <ConfirmModal
           title="Delete Ride Logbook?"
+          danger
           message={`This will permanently delete ${ride.title} and all of its legs. This action cannot be undone.`}
           confirmLabel="Confirm Delete"
           onConfirm={handleDeleteRide}

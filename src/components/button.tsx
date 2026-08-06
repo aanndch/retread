@@ -5,7 +5,7 @@ interface ButtonProps {
   children: ComponentChildren;
   onClick?: (e: JSX.TargetedMouseEvent<HTMLButtonElement>) => void;
   type?: 'button' | 'submit' | 'reset';
-  variant?: 'primary' | 'secondary' | 'tertiary' | 'fab' | 'icon';
+  variant?: 'primary' | 'secondary' | 'tertiary' | 'fab' | 'icon' | 'danger';
   size?: 'sm' | 'md';
   disabled?: boolean;
   class?: string;
@@ -32,6 +32,11 @@ export function Button({
     computedClass = 'btn-fab';
   } else if (variant === 'icon') {
     computedClass = 'btn-icon';
+  } else if (variant === 'danger') {
+    computedClass = 'btn btn-danger-solid';
+    if (size === 'sm') {
+      computedClass += ' btn-sm';
+    }
   } else {
     computedClass = `btn btn-${variant}`;
     if (size === 'sm') {

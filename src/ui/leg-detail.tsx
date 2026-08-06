@@ -394,6 +394,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
       {showDeleteModal && (
         <ConfirmModal
           title="Delete Leg?"
+          danger
           message={`This will permanently delete the leg logged on ${formatIsoDateToDMY(leg.date)}. This action cannot be undone.`}
           confirmLabel="Confirm Delete"
           onConfirm={handleDelete}
