@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "preact/hooks";
+import { useState, useEffect, useRef, useCallback } from "preact/hooks";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db";
 import { Button } from "../components/button";
@@ -7,7 +7,8 @@ import { ConfirmModal } from "../components/confirm-modal";
 import { ArrowLeft, ArrowRight } from "../components/icons";
 import { PageHeader } from "../components/page-header";
 import { StatPlate } from "../components/stat-plate";
-import { useHistoryModal } from "../components/use-history-modal";
+import { useBodyScrollLock } from "../components/use-body-scroll-lock";
+import { closeModal, openModal, setModalPhotoParam, useRouteQuery } from "../components/use-route-query";
 import { SquiggleEmptyState, DAY_COLORS } from "./squiggle";
 import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
@@ -29,23 +30,27 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  // Photo-arrange sheet: history-aware so system Back dismisses it cleanly.
-  const [showArrange, openArrange, closeArrange] = useHistoryModal("arrange");
+  // Page-level modals live in the URL (#/leg/:id?modal=map|photo|arrange):
+  // opening pushes the param, closing pops it back to the bare leg route.
+  const { modal, photo } = useRouteQuery();
+  const showArrange = modal === "arrange";
+  const showPhotoModal = modal === "photo";
+  const showMapModal = modal === "map";
+  useBodyScrollLock(showMapModal);
+  useBodyScrollLock(showPhotoModal);
+  useBodyScrollLock(showArrange);
+  const openArrange = () => openModal("arrange");
+  const closeArrange = () => closeModal("arrange");
   const { toasts, showToast, removeToast } = useToast();
-
-  // Fullscreen Photo Modal: history-aware open/close (pushes and pops its own
-  // history entry so browser back closes it without leaving phantom entries).
-  const [showPhotoModal, openPhoto, closePhotoModal] = useHistoryModal("photo");
 
   const openPhotoModal = (idx: number) => {
     setActivePhotoIdx(idx);
-    openPhoto();
+    openModal("photo", { photo: idx });
   };
+  const closePhotoModal = () => closeModal("photo");
 
-  // Fullscreen Map Modal (history-aware, same lifecycle as the photo overlay).
-  const [showMapModal, openMap, closeMapModal] = useHistoryModal("map");
-
-  const openMapModal = () => openMap();
+  const openMapModal = () => openModal("map");
+  const closeMapModal = () => closeModal("map");
 
   // Persist the reordered photo arrays; the live query re-renders the carousel.
   const handleArrangeSave = async (order: number[]) => {
@@ -101,6 +106,31 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
     photoUrlsRef.current = urls;
     return () => urls.forEach((url) => URL.revokeObjectURL(url));
   }, [leg]);
+
+  // Prev/next inside the photo overlay (swipe pager): replaceState the ?photo=
+  // param in place so Back does not stack an entry per photo — the open and
+  // close stay a push/pop pair.
+  const photoIdxRef = useRef(activePhotoIdx);
+  const handlePhotoIdxChange = useCallback(
+    (idxOrFn: number | ((i: number) => number)) => {
+      const next = typeof idxOrFn === "function" ? idxOrFn(photoIdxRef.current) : idxOrFn;
+      photoIdxRef.current = next;
+      setActivePhotoIdx(next);
+      setModalPhotoParam(next);
+    },
+    []
+  );
+  useEffect(() => {
+    photoIdxRef.current = activePhotoIdx;
+  }, [activePhotoIdx]);
+
+  // Deep link / Back-restore: ?photo=N in the URL picks the exact overlay photo.
+  useEffect(() => {
+    if (modal === "photo" && photo !== null) {
+      const idx = parseInt(photo, 10);
+      if (!Number.isNaN(idx)) setActivePhotoIdx(idx);
+    }
+  }, [modal, photo]);
 
   // Fade the page in once the leg data has actually rendered.
   useEffect(() => {
@@ -403,7 +433,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
         isOpen={showPhotoModal}
         photoUrls={photoUrls}
         activeIdx={activePhotoIdx}
-        setActiveIdx={setActivePhotoIdx}
+        setActiveIdx={handlePhotoIdxChange}
         onClose={closePhotoModal}
         onSetCover={handleSetCover}
       />

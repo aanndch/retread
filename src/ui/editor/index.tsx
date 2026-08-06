@@ -9,7 +9,8 @@ import { EditRideStep } from './edit-ride-step';
 import { PhotosStep } from './photos-step';
 import { StoryStep } from './story-step';
 import { StepActions } from './fields';
-import { useHistoryModal } from '../../components/use-history-modal';
+import { useBodyScrollLock } from '../../components/use-body-scroll-lock';
+import { closeModal, openModal, useRouteQuery } from '../../components/use-route-query';
 import { PageHeader } from '../../components/page-header';
 import { MapPicker } from '../../components/map-picker';
 import { CoordinatePasteModal } from '../../components/coordinate-paste-modal';
@@ -118,8 +119,14 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   const legId = legIdParam ? parseInt(legIdParam, 10) : null;
 
   const [isClosing, setIsClosing] = useState(false);
-  // Photo-arrange sheet: history-aware so system Back dismisses it cleanly.
-  const [showArrange, openArrange, closeArrange] = useHistoryModal("arrange");
+  // Photo-arrange sheet: the ?modal=arrange query param on the host route
+  // (#/edit?mode=…&modal=arrange) drives the sheet, so system Back dismisses
+  // it cleanly.
+  const { modal } = useRouteQuery();
+  const showArrange = modal === 'arrange';
+  useBodyScrollLock(showArrange);
+  const openArrange = () => openModal('arrange');
+  const closeArrange = () => closeModal('arrange');
   const [saving, setSaving] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);

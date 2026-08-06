@@ -7,7 +7,8 @@ import { ToastHost, useToast } from "../components/toast";
 import { ConfirmModal } from "../components/confirm-modal";
 import { PageHeader } from "../components/page-header";
 import { StatPlate } from "../components/stat-plate";
-import { useHistoryModal } from "../components/use-history-modal";
+import { useBodyScrollLock } from "../components/use-body-scroll-lock";
+import { closeModal, openModal, setModalPhotoParam, useRouteQuery } from "../components/use-route-query";
 import { SquiggleEmptyState, DAY_COLORS } from "./squiggle";
 import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
@@ -256,15 +257,25 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
 
-  // Fullscreen Photo Overlay: history-aware open/close (pushes and pops its own
-  // history entry so browser back closes it without leaving phantom entries).
+  // Page-level modals live in the URL: #/ride/:id?modal=map opens the map,
+  // ?modal=photo opens the photo overlay (with ?photo=N for the active photo).
+  // Opening pushes the param, closing pops it back to the bare ride route.
   const [photoActiveIdx, setPhotoActiveIdx] = useState(0);
-  const [showPhotoModal, openPhoto, closePhotoModal] = useHistoryModal("photo");
+  const { modal, photo } = useRouteQuery();
+  const showPhotoModal = modal === "photo";
+  const showMapModal = modal === "map";
+  useBodyScrollLock(showMapModal);
+  useBodyScrollLock(showPhotoModal);
 
   const openPhotoModal = (globalIdx: number) => {
     setPhotoActiveIdx(globalIdx);
-    openPhoto();
+    openModal("photo", { photo: globalIdx });
   };
+  const closePhotoModal = () => closeModal("photo");
+
+  // Fullscreen Map Modal (same URL lifecycle as the photo overlay).
+  const openMapModal = () => openModal("map");
+  const closeMapModal = () => closeModal("map");
 
   // Snapshot the current photo as the ride's home cover (immediate persist).
   const handleSetCover = async (idx: number) => {
@@ -276,11 +287,6 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
     await db.rides.update(rideId, { coverBlob: thumb });
     showToast("Set as ride cover.");
   };
-
-  // Fullscreen Map Modal (history-aware, same lifecycle as the photo overlay).
-  const [showMapModal, openMap, closeMapModal] = useHistoryModal("map");
-
-  const openMapModal = () => openMap();
 
   // The delete confirmation isn't a history entry, so browser back just closes
   // it as a courtesy; route changes unmount it anyway.
@@ -342,6 +348,31 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
     setPhotoList(collected);
     return () => handles.forEach((h) => URL.revokeObjectURL(h));
   }, [legs]);
+
+  // Prev/next inside the photo overlay (swipe pager): replaceState the ?photo=
+  // param in place so Back does not stack an entry per photo — the open and
+  // close stay a push/pop pair.
+  const photoIdxRef = useRef(photoActiveIdx);
+  const handlePhotoIdxChange = useCallback(
+    (idxOrFn: number | ((i: number) => number)) => {
+      const next = typeof idxOrFn === "function" ? idxOrFn(photoIdxRef.current) : idxOrFn;
+      photoIdxRef.current = next;
+      setPhotoActiveIdx(next);
+      setModalPhotoParam(next);
+    },
+    []
+  );
+  useEffect(() => {
+    photoIdxRef.current = photoActiveIdx;
+  }, [photoActiveIdx]);
+
+  // Deep link / Back-restore: ?photo=N in the URL picks the exact overlay photo.
+  useEffect(() => {
+    if (modal === "photo" && photo !== null) {
+      const idx = parseInt(photo, 10);
+      if (!Number.isNaN(idx)) setPhotoActiveIdx(idx);
+    }
+  }, [modal, photo]);
 
   // Fade the page in once the ride data has actually rendered.
   useEffect(() => {
@@ -599,7 +630,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
         isOpen={showPhotoModal}
         photoUrls={photoList.map((p) => p.url)}
         activeIdx={photoActiveIdx}
-        setActiveIdx={setPhotoActiveIdx}
+        setActiveIdx={handlePhotoIdxChange}
         onClose={closePhotoModal}
         onSetCover={handleSetCover}
       />

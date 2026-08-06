@@ -225,10 +225,12 @@ export function App() {
         navDepthRef.current += 1;
       }
 
-      // Query-param-only changes on the same page (e.g. "#/photos" ->
-      // "#/photos?photo=1" opening the lightbox) do not re-transition the
+      // Query-param-only changes on the same page do not re-transition the
       // viewport: the overlay renders over the static page and plays its own
-      // fade. The depth/length bookkeeping above still ran so in-app back
+      // fade. This covers the R1 lightbox ("#/photos" -> "#/photos?photo=1")
+      // and the R2 page modals ("#/" -> "#/?modal=settings", "#/ride/1" ->
+      // "#/ride/1?modal=map", "#/leg/1?modal=arrange", "#/edit?mode=…&modal=
+      // arrange"). The depth/length bookkeeping above still ran so in-app back
       // depth stays honest.
       if (normalizeRoute(prevHash) === normalizeRoute(nextHash)) return;
 

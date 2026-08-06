@@ -38,15 +38,6 @@ export function PhotoOverlay({
     }
   }, [isOpen]);
 
-  // Close modal when hardware back button is pressed
-  useEffect(() => {
-    const handlePopState = () => {
-      onClose();
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [onClose]);
-
   // Dialog semantics: Escape closes, and focus moves to the close button.
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {

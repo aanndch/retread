@@ -32,12 +32,6 @@ export function MapModal({ isOpen, path, segments, stops, compass, caption, onCl
     }, 250);
   };
 
-  useEffect(() => {
-    const handlePopState = () => onClose();
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [onClose]);
-
   // Dialog semantics: Escape closes, and focus moves to the close button so
   // keyboard users land inside the dialog instead of losing focus to the page.
   const closeBtnRef = useRef<HTMLButtonElement>(null);

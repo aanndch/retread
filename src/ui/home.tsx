@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { Link } from 'wouter-preact';
 import { Button } from '../components/button';
-import { useHistoryModal } from '../components/use-history-modal';
+import { useBodyScrollLock } from '../components/use-body-scroll-lock';
+import { closeModal, openModal, useRouteQuery } from '../components/use-route-query';
 import { Dropdown } from '../components/dropdown';
 import { ToastHost, useToast } from '../components/toast';
 import { CloseIcon, GearIcon, PhotoIcon, SearchIcon } from '../components/icons';
@@ -89,7 +90,13 @@ interface HomeProps {
 
 export function Home({ ridesData, onNavigate, onReady }: HomeProps) {
   const [settingsClosing, setSettingsClosing] = useState(false);
-  const [settingsOpen, openSettings, closeSettingsSession] = useHistoryModal('settings');
+  // The settings panel's open state lives in the URL (#/?modal=settings):
+  // opening pushes the param, closing pops it back to #/.
+  const { modal } = useRouteQuery();
+  const settingsOpen = modal === 'settings';
+  useBodyScrollLock(settingsOpen);
+  const openSettings = () => openModal('settings');
+  const closeSettingsSession = () => closeModal('settings');
   const settingsRef = useRef<HTMLDivElement>(null);
   const [themeMode, setThemeMode] = useState<'system' | Theme>('system');
   const [showSkeleton, setShowSkeleton] = useState(false);
@@ -126,7 +133,7 @@ export function Home({ ridesData, onNavigate, onReady }: HomeProps) {
   };
 
   // Close the settings sheet (dismiss): play the exit animation, then pop the
-  // modal's own history entry so system Back also dismisses it cleanly.
+  // modal's own URL entry (history.back) so system Back also dismisses it.
   const dismissSettings = useCallback((afterClose?: () => void) => {
     if (settingsClosing) return;
     if (!settingsOpen) {
@@ -141,17 +148,13 @@ export function Home({ ridesData, onNavigate, onReady }: HomeProps) {
     }, 250);
   }, [settingsClosing, settingsOpen, closeSettingsSession]);
 
-  // Leave settings for another page: replace the modal's history entry with the
-  // destination so Back from that page returns home — no phantom modal entry,
-  // and no back()/navigate race. (replace keeps history.length constant, so the
-  // router treats it as a pop; home sits at depth 0, so the miscount is benign.)
+  // Leave settings for another page: swap the modal's URL entry (#/?modal=
+  // settings) for the destination with replace, so Back from that page returns
+  // to the bare home route — no phantom modal entry and no back()/navigate
+  // race. Navigates immediately (no fade delay needed).
   const leaveSettings = useCallback((route: string) => {
     if (settingsClosing) return;
-    setSettingsClosing(true);
-    setTimeout(() => {
-      setSettingsClosing(false);
-      window.location.replace(route);
-    }, 250);
+    window.location.replace(route);
   }, [settingsClosing]);
 
   // Escape closes the sheet; focus moves into it when it opens.
