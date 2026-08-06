@@ -1318,22 +1318,41 @@ button:focus,
   gap: var(--spacing-sm);
 }
 
-/* Ledger-line field (D1): borderless typewriter input sitting on a 1px dashed
-   ruled line. The hairline IS the field's bottom edge — on focus it turns
-   green and the app's offset ring appears (3px 3px 0 green-light, matching
-   .form-input:focus). The ruling doubles as the suggestion panel's hairline
-   when the panel is open (ruled-line continuity). */
+/* Stamped index-card field (D1): bordered paper-dim box with a hard offset
+   shadow — the "aged paper" mat that reads as a card on the sheet. On focus
+   the border turns green and the app's offset ring appears (3px 3px 0
+   green-light, mirroring .form-input:focus). The suggestion panel below keeps
+   its own dashed hairlines (separate element). */
 .search-field {
-  position: relative;
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  min-height: 44px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  background-color: var(--color-paper-dim);
+  box-shadow: 2px 2px 0 var(--color-shadow);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+/* Subtle shadow deepen on hover — no transform, the box never moves. */
+.search-field:hover {
+  box-shadow: 3px 3px 0 var(--color-shadow);
+}
+
+.search-field:focus-within {
+  border-color: var(--color-green);
+  box-shadow: 3px 3px 0 var(--color-green-light);
 }
 
 .search-field-icon {
   color: var(--color-ink-muted);
   flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.search-field:focus-within .search-field-icon {
+  color: var(--color-green);
 }
 
 .search-input {
@@ -1341,9 +1360,9 @@ button:focus,
   font-size: 15px;
   flex: 1;
   min-width: 0;
-  padding: var(--spacing-sm) 0;
+  padding: 0;
   border: none;
-  background: none;
+  background: transparent;
   color: var(--color-ink);
   box-sizing: border-box;
 }
@@ -1368,24 +1387,6 @@ button:focus,
   display: none;
 }
 
-.search-field::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-bottom: 1px dashed var(--color-paper-dim);
-  pointer-events: none;
-}
-
-.search-field:focus-within::after {
-  border-bottom-color: var(--color-green);
-}
-
-.search-field:focus-within {
-  box-shadow: 3px 3px 0 var(--color-green-light);
-}
-
 .search-clear {
   width: 44px;
   height: 44px;
@@ -1408,12 +1409,13 @@ button:focus,
   background-color: var(--color-paper-dim);
 }
 
-/* Suggestion panel (State B / D10): tucked directly under the field's ruled
-   line (the gap is pulled back so the two share one dashed hairline). */
+/* Suggestion panel (State B / D10): sits below the field card in the top
+   bar's flex gap; the dashed row hairlines are its own separator (the old
+   ruled-line coupling is gone with the ledger field). */
 .search-suggest {
   display: flex;
   flex-direction: column;
-  margin-top: calc(-1 * var(--spacing-sm));
+  margin-top: 0;
 }
 
 .search-suggest-row {
