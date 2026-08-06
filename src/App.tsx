@@ -6,8 +6,6 @@ import { Home } from './ui/home';
 import { SearchOverlay } from './ui/search-overlay';
 import { useRideBook } from './ui/use-ride-book';
 import { useGalleryPhotos } from './ui/use-gallery-photos';
-import { useGallerySession } from './ui/use-gallery-session';
-import { PhotosOverlay } from './ui/photos-overlay';
 import { TestRunner } from './ui/test-runner';
 import { Editor } from './ui/editor';
 import { Backup } from './ui/backup';
@@ -88,6 +86,14 @@ const readSearchQueryFromHash = (hash: string): string => {
   return new URLSearchParams(hash.slice(qi + 1)).get('q') ?? '';
 };
 
+// Read the active lightbox photo from the fragment's ?photo= parameter
+// ("#/photos?photo=12:3"). null means no lightbox; the value is the photo id.
+const readPhotoQueryFromHash = (hash: string): string | null => {
+  const qi = hash.indexOf('?');
+  if (qi === -1) return null;
+  return new URLSearchParams(hash.slice(qi + 1)).get('photo');
+};
+
 export function App() {
   const [setupComplete, setSetupComplete] = useState(false);
   const [showContent, setShowContent] = useState(true);
@@ -109,10 +115,15 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState(() =>
     readSearchQueryFromHash(window.location.hash),
   );
-  // Shared gallery photo list + shell overlay session (survives navigation and
-  // restores the exact photo after "View ride" -> Back).
+  // Active lightbox photo, synced to the URL's ?photo= parameter on the photos
+  // page (null = closed). Re-read from the hash on every route change so a
+  // direct load or Back-from-view-ride restores the exact photo.
+  const [photoId, setPhotoId] = useState<string | null>(() =>
+    readPhotoQueryFromHash(window.location.hash),
+  );
+  // Shared gallery photo list, computed once above the router so the photos
+  // page wall and the lightbox read the same shuffled arrangement.
   const galleryPhotos = useGalleryPhotos(rides);
-  const gallery = useGallerySession();
   const scrollCacheRef = useRef(new Map<string, number>());
   const revealTimerRef = useRef<number | null>(null);
   const swapTimerRef = useRef<number | null>(null);
@@ -190,8 +201,10 @@ export function App() {
       // Save the outgoing route's scroll position (DOM is still the old route here)
       scrollCacheRef.current.set(prevHash, window.scrollY);
       prevHashRef.current = nextHash;
-      // Keep the search query in sync with the URL (deep link / Back-restore).
+      // Keep the search query and lightbox photo in sync with the URL (deep
+      // link / Back-restore).
       setSearchQuery(readSearchQueryFromHash(nextHash));
+      setPhotoId(readPhotoQueryFromHash(nextHash));
 
       // Back/forward (popstate) vs fresh navigation. Chrome fires popstate on
       // plain fragment navigation too, so instead compare history.length: a
@@ -212,20 +225,23 @@ export function App() {
         navDepthRef.current += 1;
       }
 
+      // Query-param-only changes on the same page (e.g. "#/photos" ->
+      // "#/photos?photo=1" opening the lightbox) do not re-transition the
+      // viewport: the overlay renders over the static page and plays its own
+      // fade. The depth/length bookkeeping above still ran so in-app back
+      // depth stays honest.
+      if (normalizeRoute(prevHash) === normalizeRoute(nextHash)) return;
+
       // Content-gated transition (Option A): fade the outgoing route out,
       // swap the route once that fade completes, then keep the viewport
       // invisible until the routed view reports its data is rendered (via
       // onReady), and fade it in. Non-data views reveal immediately. A safety
       // timer backstops views that never signal.
       setShowContent(false);
-      // Start the shell overlays' exit fade at the same moment the viewport
-      // fades out, so navigation away never cuts a full-screen overlay to blank.
-      gallery.onRouteLeaving(nextHash);
       if (swapTimerRef.current !== null) clearTimeout(swapTimerRef.current);
       swapTimerRef.current = window.setTimeout(() => {
         setRouteSnapshot(nextHash);
 
-        gallery.onRouteSwapped(nextHash, isPop);
         if (isGatedRoute(nextHash)) {
           if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
           revealTimerRef.current = window.setTimeout(finishTransition, 600);
@@ -246,8 +262,10 @@ export function App() {
       }, 120);
     };
 
-    const handlePopState = (event: PopStateEvent) => {
-      gallery.onPopState(event);
+    const handlePopState = (_event: PopStateEvent) => {
+      // R1: no session consumers remain — back/forward is now native on the
+      // hash-backed routes. The popstate handler machinery itself is removed
+      // in R3.
     };
 
     const handleSWUpdate = () => setHasSWUpdate(true);
@@ -262,7 +280,7 @@ export function App() {
       if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
       if (swapTimerRef.current !== null) clearTimeout(swapTimerRef.current);
     };
-  }, [finishTransition, gallery.onRouteLeaving, gallery.onRouteSwapped, gallery.onPopState]);
+  }, [finishTransition]);
 
   const navigateTo = useCallback((route: string) => {
     window.location.hash = route;
@@ -283,6 +301,23 @@ export function App() {
   // app, which is standard mobile-web behavior (accepted).
   const closeSearchPage = useCallback(() => {
     history.back();
+  }, []);
+
+  // Opening the lightbox pushes "#/photos?photo=N" onto the history stack, so
+  // Back (or × / Escape / backdrop) closes it with a single pop.
+  const openLightbox = useCallback((photoId: string) => {
+    window.location.hash = `#/photos?photo=${encodeURIComponent(photoId)}`;
+  }, []);
+
+  const closeLightbox = useCallback(() => {
+    history.back();
+  }, []);
+
+  // Prev/next inside the lightbox: replace the ?photo= param in place so Back
+  // does not stack an entry per photo — the open and close stay a push/pop pair.
+  const setLightboxPhoto = useCallback((photoId: string) => {
+    setPhotoId(photoId);
+    history.replaceState(history.state, '', `#/photos?photo=${encodeURIComponent(photoId)}`);
   }, []);
 
   // Show the scroll-to-top button once the page has scrolled down far enough
@@ -360,7 +395,10 @@ export function App() {
           <Photos
             ridesData={rides}
             photos={galleryPhotos}
-            onOpenPhoto={gallery.open}
+            photoId={photoId}
+            onOpenPhoto={openLightbox}
+            onClose={closeLightbox}
+            onNavigatePhoto={setLightboxPhoto}
             onNavigate={navigateTo}
             onNavigateBack={navigateBack}
           />
@@ -416,17 +454,6 @@ export function App() {
           </svg>
         </button>
       )}
-
-      {/* Global gallery lightbox — lives at the shell level so it survives the
-          "View ride" navigation and Back restores the exact photo. */}
-      <PhotosOverlay
-        isOpen={gallery.isOpen}
-        photos={galleryPhotos}
-        activePhotoId={gallery.activePhotoId}
-        onClose={gallery.close}
-        onActiveChange={gallery.setActive}
-        onViewRide={gallery.viewRide}
-      />
 
       {activePrompt === 'pwa-install' && (
         <PWAInstallPrompt onClose={() => setDismissedPrompt(true)} />

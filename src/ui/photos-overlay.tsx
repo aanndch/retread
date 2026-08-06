@@ -6,37 +6,44 @@ import { useExitFade } from '../components/use-exit-fade';
 import { galleryPhotoId, type GalleryPhoto } from './use-gallery-photos';
 
 interface PhotosOverlayProps {
-  isOpen: boolean;
+  photoId: string | null;
   photos: GalleryPhoto[];
-  activePhotoId: string | null;
   onClose: () => void;
-  onActiveChange: (photoId: string) => void;
+  onNavigatePhoto: (photoId: string) => void;
   onViewRide: (route: string) => void;
 }
 
-// Paper-styled lightbox for the gallery, hosted at the App shell so it survives
-// navigation: the photo is the hero on a paper ground with a minimal caption
-// (which ride · where in the stream) and two actions — View ride and Close.
-// The active photo is resolved by identity, so "View ride" -> Back restores
-// the exact photo even after the wall is reshuffled.
+// Paper-styled lightbox for the gallery, rendered by the Photos page on top of
+// the wall while "#/photos?photo=N" is set. The photo is the hero on a paper
+// ground with a minimal caption (which ride · where in the stream) and two
+// actions — View ride and Close. The active photo is resolved by identity, so
+// "View ride" -> Back restores the exact photo even after the wall is
+// reshuffled.
 export function PhotosOverlay({
-  isOpen,
+  photoId,
   photos,
-  activePhotoId,
   onClose,
-  onActiveChange,
+  onNavigatePhoto,
   onViewRide,
 }: PhotosOverlayProps) {
   const touchStartX = useRef(0);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
-  // Play a short fade-out when the overlay closes so it never cuts to a blank
-  // frame; keep the page scroll locked until the fade completes.
-  const { visible, closing } = useExitFade(isOpen);
+  // The ?photo= param is the single source of truth for "open": removing it
+  // plays a short fade-out so the lightbox never cuts to a blank frame, and
+  // the page scroll stays locked until the fade completes.
+  const { visible, closing } = useExitFade(photoId !== null);
   useBodyScrollLock(visible);
+
+  // Keep the last non-null photo on screen through the exit fade — photoId
+  // goes null the moment the param is popped, but the fade must show the photo
+  // that was open, not snap to the first in the list.
+  const lastPhotoIdRef = useRef<string | null>(photoId);
+  if (photoId !== null) lastPhotoIdRef.current = photoId;
+  const resolvedPhotoId = photoId ?? lastPhotoIdRef.current;
 
   const activeIdx = Math.max(
     0,
-    photos.findIndex((p) => galleryPhotoId(p) === activePhotoId)
+    photos.findIndex((p) => galleryPhotoId(p) === resolvedPhotoId)
   );
   const active = photos[activeIdx];
 
@@ -45,7 +52,14 @@ export function PhotosOverlay({
   // photo stays in the frame during the exit fade.
   const [fullUrl, setFullUrl] = useState('');
   useEffect(() => {
-    if (!visible || photos.length === 0) return;
+    if (!visible || photos.length === 0) {
+      // Closed (or empty): drop the object URL so a reopen never briefly
+      // renders the previous photo's revoked URL (that fetch logs
+      // ERR_FILE_NOT_FOUND). The photo itself stays up through the exit fade
+      // because `visible` stays true for the fade duration.
+      setFullUrl('');
+      return;
+    }
     const blob = active?.leg.photos?.[active?.photoIndex ?? 0];
     if (!blob) {
       setFullUrl('');
@@ -74,7 +88,7 @@ export function PhotosOverlay({
 
   const step = (dir: 1 | -1) => {
     const next = (activeIdx + dir + photos.length) % photos.length;
-    onActiveChange(galleryPhotoId(photos[next]));
+    onNavigatePhoto(galleryPhotoId(photos[next]));
   };
 
   return (
