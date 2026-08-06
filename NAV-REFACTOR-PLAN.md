@@ -2,7 +2,16 @@
 
 Working plan for replacing the hand-rolled history/coordination layer with hash-encoded overlay routes, and building a single consistent motion system. Approved direction: **full refactor** (the current three-history-system architecture is the root cause of a class of glitches; patching individually defers the failure).
 
-Status: **plan for review — implementation follows in phases R0–R5, each landing green.**
+Status: **COMPLETE — all phases implemented, verified (R5: 18/18 headless checks), and committed.**
+
+| Phase | Commit | Result |
+|---|---|---|
+| R0 search as routed page | `66be836` | 42/42 checks |
+| R1 gallery lightbox as URL state | `f29e7eb` | 29/29 + 5/5 checks |
+| R2 page modals as query params | `a33a54b` | 16/16 checks |
+| R3 delete the coordination layer | `3e5c6dd` | 21/21 checks |
+| R4 unified motion system + infra | `e730ee4` | 15/15 checks |
+| R5 full regression verification | — | 18/18 checks, 0 console errors |
 
 ---
 

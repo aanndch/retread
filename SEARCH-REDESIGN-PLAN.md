@@ -216,7 +216,10 @@ Recorded defaults (recommended options; adjust on request):
 
 Open questions (not blocking):
 - Whether "Browse all rides" in State D should deep-link or reveal in-place (recommend: reveal in-place).
-- Whether the inverse-green hit mark holds in the cyberpunk theme (neon `#00ffcc` on near-black) or needs a theme override (UI plan §3.11 — verify in the Phase 4 contrast audit).
+
+Resolved during implementation:
+- **Cyberpunk holds** — neon green `#00ffcc` vs near-black paper ≈ 15.2:1 (verified in the Phase 4 contrast audit).
+- **Dark-theme contrast fixed app-wide** — nightfall/midnight/slate (and sepia's muted ink) green + ink-muted token values lifted to clear 4.5:1 in all 7 themes (commit `3497daf`, `src/styles.css` theme overrides only).
 
 ---
 
