@@ -5,7 +5,6 @@ import { PWAInstallPrompt, IOSBackupReminder, useAppPrompts } from './components
 import { Home } from './ui/home';
 import { SearchOverlay } from './ui/search-overlay';
 import { useRideBook } from './ui/use-ride-book';
-import { useSearchSession } from './ui/use-search-session';
 import { useGalleryPhotos } from './ui/use-gallery-photos';
 import { useGallerySession } from './ui/use-gallery-session';
 import { PhotosOverlay } from './ui/photos-overlay';
@@ -82,6 +81,13 @@ const useHashSearch = () => {
 };
 useControlledHashLocation.searchHook = useHashSearch;
 
+// Read the search query from the fragment's ?q= parameter ("#/search?q=manali").
+const readSearchQueryFromHash = (hash: string): string => {
+  const qi = hash.indexOf('?');
+  if (qi === -1) return '';
+  return new URLSearchParams(hash.slice(qi + 1)).get('q') ?? '';
+};
+
 export function App() {
   const [setupComplete, setSetupComplete] = useState(false);
   const [showContent, setShowContent] = useState(true);
@@ -97,9 +103,12 @@ export function App() {
   // search overlay can show a skeleton instead of flashing its empty state.
   const { rides, loading } = useRideBook({ withStatus: true });
 
-  // Search lives at the shell level so it survives navigation: navigating to a
-  // result closes it, and returning to home reopens it with the same query.
-  const search = useSearchSession();
+  // Search query, synced to the URL's ?q= parameter via history.replaceState
+  // (never pushes). Re-read from the hash on every route change so a direct
+  // load or Back-from-result restores the query.
+  const [searchQuery, setSearchQuery] = useState(() =>
+    readSearchQueryFromHash(window.location.hash),
+  );
   // Shared gallery photo list + shell overlay session (survives navigation and
   // restores the exact photo after "View ride" -> Back).
   const galleryPhotos = useGalleryPhotos(rides);
@@ -181,6 +190,8 @@ export function App() {
       // Save the outgoing route's scroll position (DOM is still the old route here)
       scrollCacheRef.current.set(prevHash, window.scrollY);
       prevHashRef.current = nextHash;
+      // Keep the search query in sync with the URL (deep link / Back-restore).
+      setSearchQuery(readSearchQueryFromHash(nextHash));
 
       // Back/forward (popstate) vs fresh navigation. Chrome fires popstate on
       // plain fragment navigation too, so instead compare history.length: a
@@ -209,14 +220,11 @@ export function App() {
       setShowContent(false);
       // Start the shell overlays' exit fade at the same moment the viewport
       // fades out, so navigation away never cuts a full-screen overlay to blank.
-      search.onRouteLeaving(nextHash);
       gallery.onRouteLeaving(nextHash);
       if (swapTimerRef.current !== null) clearTimeout(swapTimerRef.current);
       swapTimerRef.current = window.setTimeout(() => {
         setRouteSnapshot(nextHash);
 
-        // Resolve search at the swap, after the new route has mounted.
-        search.onRouteSwapped(nextHash, isPop);
         gallery.onRouteSwapped(nextHash, isPop);
         if (isGatedRoute(nextHash)) {
           if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
@@ -239,7 +247,6 @@ export function App() {
     };
 
     const handlePopState = (event: PopStateEvent) => {
-      search.onPopState(event, prevHashRef.current || HASH_HOME);
       gallery.onPopState(event);
     };
 
@@ -255,10 +262,27 @@ export function App() {
       if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
       if (swapTimerRef.current !== null) clearTimeout(swapTimerRef.current);
     };
-  }, [finishTransition, search.onRouteLeaving, search.onRouteSwapped, search.onPopState, gallery.onRouteLeaving, gallery.onRouteSwapped, gallery.onPopState]);
+  }, [finishTransition, gallery.onRouteLeaving, gallery.onRouteSwapped, gallery.onPopState]);
 
   const navigateTo = useCallback((route: string) => {
     window.location.hash = route;
+  }, []);
+
+  // Sync a query edit to the URL with history.replaceState — never pushes a
+  // history entry, so Back still returns to the previous page instead of
+  // walking back through keystrokes.
+  const handleSearchQueryChange = useCallback((q: string) => {
+    setSearchQuery(q);
+    const path = window.location.hash.split('?')[0];
+    const next = q ? `${path}?q=${encodeURIComponent(q)}` : path;
+    history.replaceState(history.state, '', next);
+  }, []);
+
+  // Closing search (× / Escape) is a plain history.back(): the route swap
+  // fades the page out. Direct-load on #/search with no prior entry exits the
+  // app, which is standard mobile-web behavior (accepted).
+  const closeSearchPage = useCallback(() => {
+    history.back();
   }, []);
 
   // Show the scroll-to-top button once the page has scrolled down far enough
@@ -281,10 +305,6 @@ export function App() {
   // current entry so a deep link doesn't pile up). At the root with no history
   // there is no parent, so back simply does nothing and Android back exits.
   const navigateBack = useCallback((logicalParent: string | null) => {
-    // Search is a shell-level history entry rather than a routed page, so it
-    // is not included in navDepthRef. A page reached from search must still
-    // pop once to restore that entry instead of falling back to home.
-    if (search.consumeBackFromResult()) return;
     if (navDepthRef.current > 0) {
       history.back();
       return;
@@ -293,7 +313,7 @@ export function App() {
       skipDepthRef.current = true;
       window.location.replace(logicalParent);
     }
-  }, [search.consumeBackFromResult]);
+  }, []);
 
   // 1. Force Setup Wizard on first launch
   if (!setupComplete) {
@@ -311,7 +331,7 @@ export function App() {
   //    running; matching and typed params are wouter's, fed by the controlled
   //    location so the 120ms fade-out swap still gates rendering.
   const homeElement = (
-    <Home ridesData={rides} onNavigate={navigateTo} onOpenSearch={search.openSearch} onReady={finishTransition} />
+    <Home ridesData={rides} onNavigate={navigateTo} onReady={finishTransition} />
   );
 
   const renderRide = (id: string) => {
@@ -343,6 +363,16 @@ export function App() {
             onOpenPhoto={gallery.open}
             onNavigate={navigateTo}
             onNavigateBack={navigateBack}
+          />
+        )}</Route>
+        <Route path="/search">{() => (
+          <SearchOverlay
+            ridesData={rides ?? []}
+            loading={loading}
+            query={searchQuery}
+            onQueryChange={handleSearchQueryChange}
+            onNavigate={navigateTo}
+            onClose={closeSearchPage}
           />
         )}</Route>
         <Route>
@@ -386,19 +416,6 @@ export function App() {
           </svg>
         </button>
       )}
-
-      {/* Global search overlay — lives above the routed viewport so it survives
-          navigation (open it, tap a result, come back, it's still here). */}
-      <SearchOverlay
-        isOpen={search.isOpen}
-        ridesData={rides ?? []}
-        loading={loading}
-        query={search.query}
-        onQueryChange={search.setQuery}
-        onNavigate={search.navigateFromSearch}
-        onClose={search.closeSearch}
-        closeRequest={search.closeRequest}
-      />
 
       {/* Global gallery lightbox — lives at the shell level so it survives the
           "View ride" navigation and Back restores the exact photo. */}

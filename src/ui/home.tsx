@@ -7,7 +7,7 @@ import { ToastHost, useToast } from '../components/toast';
 import { CloseIcon, GearIcon, PhotoIcon, SearchIcon } from '../components/icons';
 import { FieldCard } from '../components/field-card';
 import { formatDistance } from '../lib';
-import { HASH_PHOTOS } from '../constants';
+import { HASH_PHOTOS, HASH_SEARCH } from '../constants';
 import { getSavedTheme, saveTheme, Theme } from '../theme';
 import { seedDemoRide, seedPhantomDemoRide } from './seed-demo';
 import { coverUrlCache, DRAFT_MONTH_KEY, type HomeRideEntry } from './use-ride-book';
@@ -84,11 +84,10 @@ export function TypewriterKey({ size = 40 }: { size?: number }) {
 interface HomeProps {
   ridesData: HomeRideEntry[] | undefined;
   onNavigate: (route: string) => void;
-  onOpenSearch: () => void;
   onReady?: () => void;
 }
 
-export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps) {
+export function Home({ ridesData, onNavigate, onReady }: HomeProps) {
   const [settingsClosing, setSettingsClosing] = useState(false);
   const [settingsOpen, openSettings, closeSettingsSession] = useHistoryModal('settings');
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -272,7 +271,7 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
           <Button
             variant="icon"
             aria-label="Search"
-            onClick={onOpenSearch}
+            onClick={() => onNavigate(HASH_SEARCH)}
           >
             <SearchIcon size={18} />
           </Button>

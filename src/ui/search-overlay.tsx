@@ -8,20 +8,15 @@ import { DAY_COLORS } from './squiggle';
 import { findTolerantSuggestion, matchScore, normalize, noteMatches } from './search-match';
 import type { Leg } from '../types';
 import { useBodyScrollLock } from '../components/use-body-scroll-lock';
-import { useExitFade } from '../components/use-exit-fade';
 
 interface SearchOverlayProps {
-  isOpen: boolean;
   ridesData: HomeRideEntry[];
   loading: boolean;
   query: string;
   onQueryChange: (q: string) => void;
   onNavigate: (route: string) => void;
   onClose: () => void;
-  closeRequest: number;
 }
-
-type ClosePhase = 'idle' | 'user-closing' | 'waiting-for-history';
 
 // Wrap every occurrence of the query in the mark span. Matching is normalized
 // (lowercase, accents stripped) but the mark slices the ORIGINAL text, so the
@@ -434,88 +429,44 @@ function CatalogSections({
 }
 
 export function SearchOverlay({
-  isOpen,
   ridesData,
   loading,
   query,
   onQueryChange,
   onNavigate,
   onClose,
-  closeRequest,
 }: SearchOverlayProps) {
-  const [closing, setClosing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const handledCloseRequestRef = useRef(0);
-  const closePhaseRef = useRef<ClosePhase>('idle');
-  // Play a short fade-out whenever the overlay closes (including navigation)
-  // so it never cuts away; keep the page scroll locked until the fade ends.
-  const { visible, closing: exitClosing } = useExitFade(isOpen);
-  useBodyScrollLock(visible);
-  // Recents live in localStorage; refresh on each open so a second tab's
-  // writes are picked up. addRecent is called on submit/selection only.
+  // The route owns open/close — the viewport transition fades this page in and
+  // out — so the only scroll concern is locking the page body while mounted.
+  // Ref-counting for overlapping locks arrives in R4.
+  useBodyScrollLock(true);
+  // Recents live in localStorage; refresh on each open (the route remounts this
+  // page every time) so a second tab's writes are picked up. addRecent is
+  // called on submit/selection only.
   const { recents, addRecent, clearRecents, reload } = useSearchRecents();
   useEffect(() => {
-    if (isOpen) reload();
-  }, [isOpen, reload]);
+    reload();
+  }, [reload]);
 
-  // User-initiated close (× / Escape / backdrop): clear the query so the next
-  // open starts fresh. Navigation to a result goes through goTo() instead,
-  // which leaves the query intact for a return-reopen.
-  const handleClose = (userInitiated = true) => {
-    if (closing) return;
-    closePhaseRef.current = userInitiated ? 'user-closing' : 'idle';
-    setClosing(true);
-    setTimeout(() => {
-      setClosing(false);
-      // Drop the committed flag in the same tick the session query is cleared
-      // (onClose → closeSearch → setQuery('')), or a reopen with an empty query
-      // would fall through to the browse-all catalog instead of the journal.
-      // activeIndex resets to -1 (none) so the combobox starts clean. The
-      // goTo() navigation path never reaches here, so Back still restores the
-      // committed results view.
-      setCommitted(false);
-      setActiveIndex(-1);
-      if (userInitiated) closePhaseRef.current = 'waiting-for-history';
-      onClose();
-    }, 220);
-  };
-
-  // Focus the input whenever the overlay opens.
+  // Focus the input whenever the page mounts (the user explicitly tapped the
+  // search icon, so the keyboard should already be up).
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  }, [isOpen]);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }, []);
 
-  // Close on Escape. Browser Back is coordinated by App so fragment route
-  // navigation cannot be mistaken for a modal close.
+  // Close on Escape — same as the × button: history.back() returns to the
+  // previous page; the route transition fades the sheet out.
   useEffect(() => {
-    if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
+      if (e.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
     };
-  }, [isOpen, closing]);
-
-  // App increments this only when the search history entry was actually
-  // popped. Consume requests even while closed so a later open cannot inherit
-  // an old close command.
-  useEffect(() => {
-    if (closeRequest === handledCloseRequestRef.current) return;
-    handledCloseRequestRef.current = closeRequest;
-    if (!isOpen) return;
-    if (closePhaseRef.current === 'user-closing') return;
-    if (closePhaseRef.current === 'waiting-for-history') {
-      closePhaseRef.current = 'idle';
-      onClose();
-      return;
-    }
-    handleClose(false);
-  }, [closeRequest, isOpen, closing, onClose]);
+  }, [onClose]);
 
   // Deferred + memoized results: the input keeps the live query (typing stays
   // snappy) while the full-book scan runs against the lagging deferred value,
@@ -524,6 +475,11 @@ export function SearchOverlay({
   // suggestion tap) the results come from the live query so the commit is
   // immediate — the deferred lag only smooths keystroke typing.
   const deferredQuery = useDeferredValue(query);
+  // The URL only encodes the query, not the commit: committed is local state
+  // that starts false on every mount, so a fresh visit always lands on the
+  // journal (empty query) or suggestions (non-empty) and typing after a commit
+  // returns to suggestions — the old "committed never resets on close" bug
+  // disappears structurally.
   const [committed, setCommitted] = useState(false);
   // Active suggestion for the combobox (aria-activedescendant); -1 = none.
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -553,11 +509,9 @@ export function SearchOverlay({
   const panelOpen = query.trim() !== '' && !committed;
   const emptyQuery = query.trim() === '';
 
-  if (!visible) return null;
-
-  // Navigate to a result: leave the query intact so App can reopen search
-  // with it when the user returns (tapping the wrong ride shouldn't lose it).
-  // Blur the input first so the mobile keyboard folds on navigation.
+  // Navigate to a result: the ?q= stays in the URL so Back restores the query
+  // (tapping the wrong ride shouldn't lose it). Blur the input first so the
+  // mobile keyboard folds on navigation.
   const goTo = (route: string) => {
     const q = resultsQuery.trim();
     if (q) addRecent(q);
@@ -636,7 +590,7 @@ export function SearchOverlay({
     }
   };
 
-  // Trap Tab focus inside the sheet while the overlay is open (input, close
+  // Trap Tab focus inside the sheet while the page is mounted (input, close
   // button, result/snippet buttons), wrapping at both ends. Escape handling
   // and the input's own combobox key contract stay untouched.
   const onOverlayKeyDown = (e: KeyboardEvent) => {
@@ -664,200 +618,197 @@ export function SearchOverlay({
   return (
     <div
       ref={rootRef}
-      class={`modal-backdrop search-backdrop${closing || exitClosing ? ' closing' : ''}`}
+      class="search-page"
       role="dialog"
       aria-modal="true"
       aria-label="Search rides"
-      onClick={() => handleClose()}
       onKeyDown={onOverlayKeyDown}
     >
-      <div class="search-sheet" onClick={(e) => e.stopPropagation()}>
-        <div class="search-top">
-          <div class="search-header">
-            <span class="note-label">Search</span>
-            <button type="button" class="btn-close" aria-label="Close search" onClick={() => handleClose()}>
+      <div class="search-top">
+        <div class="search-header">
+          <span class="note-label">Search</span>
+          <button type="button" class="btn-close" aria-label="Close search" onClick={() => onClose()}>
+            <CloseIcon size={16} />
+          </button>
+        </div>
+        <div class="search-field">
+          <SearchIcon size={16} class="search-field-icon" />
+          <input
+            ref={inputRef}
+            type="search"
+            name="q"
+            class="search-input"
+            role="combobox"
+            aria-expanded={panelOpen}
+            aria-controls="search-suggest-listbox"
+            aria-autocomplete="list"
+            aria-activedescendant={
+              activeIndex >= 0 ? `search-suggest-option-${activeIndex}` : undefined
+            }
+            aria-label="Search rides, stops and notes"
+            enterkeyhint="search"
+            autocomplete="off"
+            spellcheck={false}
+            placeholder="Search rides, stops and notes…"
+            value={query}
+            onInput={(e) => handleQueryInput((e.target as HTMLInputElement).value)}
+            onKeyDown={onInputKeyDown}
+          />
+          {query !== '' && (
+            <button
+              type="button"
+              class="search-clear"
+              aria-label="Clear search"
+              onClick={() => {
+                handleQueryInput('');
+                inputRef.current?.focus();
+              }}
+            >
               <CloseIcon size={16} />
             </button>
-          </div>
-          <div class="search-field">
-            <SearchIcon size={16} class="search-field-icon" />
-            <input
-              ref={inputRef}
-              type="search"
-              name="q"
-              class="search-input"
-              role="combobox"
-              aria-expanded={panelOpen}
-              aria-controls="search-suggest-listbox"
-              aria-autocomplete="list"
-              aria-activedescendant={
-                activeIndex >= 0 ? `search-suggest-option-${activeIndex}` : undefined
-              }
-              aria-label="Search rides, stops and notes"
-              enterkeyhint="search"
-              autocomplete="off"
-              spellcheck={false}
-              placeholder="Search rides, stops and notes…"
-              value={query}
-              onInput={(e) => handleQueryInput((e.target as HTMLInputElement).value)}
-              onKeyDown={onInputKeyDown}
-            />
-            {query !== '' && (
-              <button
-                type="button"
-                class="search-clear"
-                aria-label="Clear search"
-                onClick={() => {
-                  handleQueryInput('');
-                  inputRef.current?.focus();
-                }}
-              >
-                <CloseIcon size={16} />
-              </button>
-            )}
-          </div>
-          {panelOpen && (
-            <div
-              class="search-suggest"
-              id="search-suggest-listbox"
-              role="listbox"
-              aria-label="Suggestions"
-            >
-              {suggestions.length === 0 ? (
-                <p class="search-suggest-none">
-                  No suggestions yet — press the Search key to see all matches.
-                </p>
-              ) : (
-                suggestions.map((s, i) => (
-                  <div
-                    id={`search-suggest-option-${i}`}
-                    role="option"
-                    aria-selected={i === activeIndex}
-                    class={`search-suggest-row${i === activeIndex ? ' is-active' : ''}`}
-                    onClick={() => commitSuggestion(s)}
-                    onMouseEnter={() => setActiveIndex(i)}
-                  >
-                    <span class="search-suggest-name">
-                      <SuggestionLabel label={s.label} query={query} />
-                    </span>
-                    <span class="search-suggest-scope">{s.scope}</span>
-                  </div>
-                ))
-              )}
-            </div>
           )}
         </div>
-
-        {loading && catalogEmpty ? (
-          <div class="search-skeleton" aria-hidden="true">
-            {[0, 1, 2].map((i) => (
-              <div class="search-skeleton-row" key={i}>
-                <span class="search-skeleton-thumb" />
-                <span class="search-skeleton-lines">
-                  <span class="search-skeleton-block search-skeleton-title" />
-                  <span class="search-skeleton-block search-skeleton-meta" />
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : emptyQuery && !committed ? (
-          <div class="search-journal">
-            <div class="search-journal-section">
-              <div class="search-section-head">
-                <span class="search-section-title">Recent Searches</span>
-                {recents.length > 0 && (
-                  <button
-                    type="button"
-                    class="search-margin-action"
-                    onClick={clearRecents}
-                  >
-                    Clear All
-                  </button>
-                )}
-              </div>
-              {recents.length === 0 ? (
-                <p class="search-journal-note">
-                  No recent searches yet — try one of the suggestions below.
-                </p>
-              ) : (
-                <div class="search-journal-rows">
-                  {recents.map((recent) => (
-                    <button
-                      type="button"
-                      class="search-journal-row"
-                      key={recent}
-                      onClick={() => runQuery(recent)}
-                    >
-                      <SearchIcon size={14} class="search-journal-icon" />
-                      <span class="search-journal-row-text">{recent}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {journalSuggestions.length > 0 && (
-              <div class="search-journal-section">
-                <div class="search-section-head">
-                  <span class="search-section-title">Suggested</span>
-                </div>
-                <div class="search-journal-rows">
-                  {journalSuggestions.map((s) => (
-                    <button
-                      type="button"
-                      class="search-journal-row search-journal-row--suggested"
-                      key={s}
-                      onClick={() => runQuery(s)}
-                    >
-                      <span class="search-journal-row-text">{s}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <p class="search-log-count">
-              Your Log · {ridesData.length} Rides
-            </p>
-          </div>
-        ) : emptyQuery && ridesData.length === 0 ? (
-          <div class="search-stub">
-            <p class="search-stub-title">
-              Your log is empty — log your first ride to start the book.
-            </p>
-          </div>
-        ) : emptyQuery ? (
-          <CatalogSections catalog={catalog} resultsQuery={resultsQuery} onGoTo={goTo} />
-        ) : !committed ? (
-          null
-        ) : catalogEmpty ? (
-          <div class="search-stub">
-            <p class="search-stub-title">No matches for “{resultsQuery.trim()}”.</p>
-            <p class="search-stub-recovery">
-              {tolerantSuggestion ? (
-                <button
-                  type="button"
-                  class="search-stub-link"
-                  onClick={() => runQuery(tolerantSuggestion)}
+        {panelOpen && (
+          <div
+            class="search-suggest"
+            id="search-suggest-listbox"
+            role="listbox"
+            aria-label="Suggestions"
+          >
+            {suggestions.length === 0 ? (
+              <p class="search-suggest-none">
+                No suggestions yet — press the Search key to see all matches.
+              </p>
+            ) : (
+              suggestions.map((s, i) => (
+                <div
+                  id={`search-suggest-option-${i}`}
+                  role="option"
+                  aria-selected={i === activeIndex}
+                  class={`search-suggest-row${i === activeIndex ? ' is-active' : ''}`}
+                  onClick={() => commitSuggestion(s)}
+                  onMouseEnter={() => setActiveIndex(i)}
                 >
-                  Try “{tolerantSuggestion}”
-                </button>
-              ) : null}
-              {tolerantSuggestion ? <>, or </> : null}
-              <button type="button" class="search-stub-link" onClick={browseAll}>
-                browse all rides →
-              </button>
-            </p>
-            <p class="search-stub-recovery">
-              <button type="button" class="search-stub-link" onClick={backToJournal}>
-                …or return to recent searches.
-              </button>
-            </p>
+                  <span class="search-suggest-name">
+                    <SuggestionLabel label={s.label} query={query} />
+                  </span>
+                  <span class="search-suggest-scope">{s.scope}</span>
+                </div>
+              ))
+            )}
           </div>
-        ) : (
-          <CatalogSections catalog={catalog} resultsQuery={resultsQuery} onGoTo={goTo} />
         )}
       </div>
+
+      {loading && catalogEmpty ? (
+        <div class="search-skeleton" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <div class="search-skeleton-row" key={i}>
+              <span class="search-skeleton-thumb" />
+              <span class="search-skeleton-lines">
+                <span class="search-skeleton-block search-skeleton-title" />
+                <span class="search-skeleton-block search-skeleton-meta" />
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : emptyQuery && !committed ? (
+        <div class="search-journal">
+          <div class="search-journal-section">
+            <div class="search-section-head">
+              <span class="search-section-title">Recent Searches</span>
+              {recents.length > 0 && (
+                <button
+                  type="button"
+                  class="search-margin-action"
+                  onClick={clearRecents}
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+            {recents.length === 0 ? (
+              <p class="search-journal-note">
+                No recent searches yet — try one of the suggestions below.
+              </p>
+            ) : (
+              <div class="search-journal-rows">
+                {recents.map((recent) => (
+                  <button
+                    type="button"
+                    class="search-journal-row"
+                    key={recent}
+                    onClick={() => runQuery(recent)}
+                  >
+                    <SearchIcon size={14} class="search-journal-icon" />
+                    <span class="search-journal-row-text">{recent}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {journalSuggestions.length > 0 && (
+            <div class="search-journal-section">
+              <div class="search-section-head">
+                <span class="search-section-title">Suggested</span>
+              </div>
+              <div class="search-journal-rows">
+                {journalSuggestions.map((s) => (
+                  <button
+                    type="button"
+                    class="search-journal-row search-journal-row--suggested"
+                    key={s}
+                    onClick={() => runQuery(s)}
+                  >
+                    <span class="search-journal-row-text">{s}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p class="search-log-count">
+            Your Log · {ridesData.length} Rides
+          </p>
+        </div>
+      ) : emptyQuery && ridesData.length === 0 ? (
+        <div class="search-stub">
+          <p class="search-stub-title">
+            Your log is empty — log your first ride to start the book.
+          </p>
+        </div>
+      ) : emptyQuery ? (
+        <CatalogSections catalog={catalog} resultsQuery={resultsQuery} onGoTo={goTo} />
+      ) : !committed ? (
+        null
+      ) : catalogEmpty ? (
+        <div class="search-stub">
+          <p class="search-stub-title">No matches for “{resultsQuery.trim()}”.</p>
+          <p class="search-stub-recovery">
+            {tolerantSuggestion ? (
+              <button
+                type="button"
+                class="search-stub-link"
+                onClick={() => runQuery(tolerantSuggestion)}
+              >
+                Try “{tolerantSuggestion}”
+              </button>
+            ) : null}
+            {tolerantSuggestion ? <>, or </> : null}
+            <button type="button" class="search-stub-link" onClick={browseAll}>
+              browse all rides →
+            </button>
+          </p>
+          <p class="search-stub-recovery">
+            <button type="button" class="search-stub-link" onClick={backToJournal}>
+              …or return to recent searches.
+            </button>
+          </p>
+        </div>
+      ) : (
+        <CatalogSections catalog={catalog} resultsQuery={resultsQuery} onGoTo={goTo} />
+      )}
     </div>
   );
 }
