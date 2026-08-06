@@ -7,7 +7,7 @@ import { ToastHost, useToast } from '../components/toast';
 import { PageHeader } from '../components/page-header';
 import { FieldCard } from '../components/field-card';
 import { HASH_HOME, GDRIVE_AUTOSYNC_FILENAME } from '../constants';
-import type { Ride, LocationUnion } from '../types';
+import type { Ride } from '../types';
 import type { JSX } from 'preact';
 import {
   requestAccessToken,
@@ -24,30 +24,15 @@ import {
   setAutoSyncEnabled,
   getLastSyncTime,
   scheduleAutoSync,
-  blobToBase64,
+  buildBackupPayload,
   base64ToBlob,
+  type BackupPayload,
   type DriveBackupFile,
 } from '../gdrive';
 
 interface BackupProps {
   onNavigate: (route: string) => void;
   onNavigateBack: (logicalParent: string | null) => void;
-}
-
-interface BackupPayload {
-  version: 1;
-  rides: (Omit<Ride, 'coverBlob'> & { coverBlob: string | null })[];
-  legs: {
-    rideId: number;
-    title?: string;
-    date: string;
-    time?: string;
-    note: string;
-    km: number | null;
-    location: LocationUnion | null;
-    roadPath: { lat: number; lng: number }[] | null;
-    photos: string[];
-  }[];
 }
 
 export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
@@ -137,67 +122,26 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
   const handleExport = async () => {
     setWorking(true);
     setStatusText('Preparing export package...');
-    
+
     try {
-      const rides = await db.rides.toArray();
-      const legs = await db.legs.toArray();
-      
-      setStatusText(`Serializing database logs (${rides.length} rides, ${legs.length} legs)...`);
-      
-      const serializedRides: BackupPayload['rides'] = [];
-      for (const ride of rides) {
-        const { coverBlob, ...rest } = ride;
-        serializedRides.push({
-          ...rest,
-          coverBlob: coverBlob ? await blobToBase64(coverBlob) : null,
-        });
-      }
-      
-      const serializedLegs = [];
-      for (const leg of legs) {
-        setStatusText(`Encoding photos for leg on ${leg.date}...`);
-        
-        const base64Photos = [];
-        if (leg.photos) {
-          for (const blob of leg.photos) {
-            const base64 = await blobToBase64(blob);
-            base64Photos.push(base64);
-          }
-        }
-        
-        serializedLegs.push({
-          rideId: leg.rideId,
-          title: leg.title || '',
-          date: leg.date,
-          time: leg.time || '',
-          note: leg.note,
-          km: leg.km ?? null,
-          location: leg.location ?? null,
-          roadPath: leg.roadPath ?? null,
-          photos: base64Photos
-        });
-      }
-      
-      const payload: BackupPayload = {
-        version: 1,
-        rides: serializedRides,
-        legs: serializedLegs
-      };
-      
+      setStatusText('Serializing database logs...');
+      // Same serialization as the Google Drive path (single source of truth).
+      const payload = await buildBackupPayload();
+
       const jsonString = JSON.stringify(payload);
       const jsonBlob = new Blob([jsonString], { type: 'application/json' });
       const downloadUrl = URL.createObjectURL(jsonBlob);
-      
+
       const dateTag = new Date().toISOString().split('T')[0];
       const anchor = document.createElement('a');
       anchor.href = downloadUrl;
       anchor.download = `retread-backup-${dateTag}.json`;
       document.body.appendChild(anchor);
       anchor.click();
-      
+
       document.body.removeChild(anchor);
       URL.revokeObjectURL(downloadUrl);
-      
+
       setStatusText('Backup file generated successfully.');
     } catch (err) {
       console.error('Backup export failed:', err);
@@ -255,52 +199,71 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
 
   const handleConfirmRestore = async () => {
     if (!pendingRestoreData) return;
-    
+
     setShowConfirmRestore(false);
     setWorking(true);
     setStatusText('Restoring database...');
-    
+
     try {
       const parsedData = pendingRestoreData;
       setPendingRestoreData(null);
 
+      // Pre-compute every record BEFORE the transaction: Dexie cannot track the
+      // non-Dexie awaits inside a transaction (fetch/blob/thumbnail), so doing
+      // them there would commit it too early and throw "transaction committed
+      // too early" — after the database was already cleared, appearing to fail
+      // while having wiped the existing data. Same fix as GDrive restore.
+      setStatusText('Decoding ride covers...');
+      const ridesToAdd: Ride[] = [];
+      for (const ride of parsedData.rides) {
+        const { id: _oldId, coverBlob, ...rideData } = ride;
+        ridesToAdd.push({
+          ...rideData,
+          coverBlob: coverBlob ? await base64ToBlob(coverBlob) : null,
+        });
+      }
+
+      setStatusText('Decoding photos (this may take a few moments)...');
+      const legsToAdd: {
+        leg: BackupPayload['legs'][number];
+        photoBlobs: Blob[];
+        photoThumbs: Blob[];
+      }[] = [];
+      for (const leg of parsedData.legs) {
+        const photoBlobs: Blob[] = [];
+        const photoThumbs: Blob[] = [];
+        if (leg.photos) {
+          for (const base64 of leg.photos) {
+            const blob = await base64ToBlob(base64);
+            photoBlobs.push(blob);
+            try {
+              photoThumbs.push(await createThumbnail(blob));
+            } catch {
+              photoThumbs.push(blob); // keep arrays aligned even if thumb fails
+            }
+          }
+        }
+        legsToAdd.push({ leg, photoBlobs, photoThumbs });
+      }
+
+      // Pure-Dexie transaction: no non-Dexie awaits, so it commits atomically
+      // only after the whole restore succeeds.
       await db.transaction('rw', db.rides, db.legs, async () => {
         await db.rides.clear();
         await db.legs.clear();
-        
-        setStatusText('Restoring ride indexes...');
-        
+
         const rideIdMapping = new Map<number, number>();
-        for (const ride of parsedData.rides) {
-          const { id: _oldId, coverBlob, ...rideData } = ride;
-          const coverBlobDecoded = coverBlob ? await base64ToBlob(coverBlob) : null;
-          const newId = await db.rides.add({ ...rideData, coverBlob: coverBlobDecoded }) as number;
-          if (_oldId !== undefined) {
-            rideIdMapping.set(_oldId, newId);
-          }
+        for (let i = 0; i < ridesToAdd.length; i++) {
+          const newId = await db.rides.add(ridesToAdd[i]) as number;
+          const oldId = parsedData.rides[i].id;
+          if (oldId !== undefined) rideIdMapping.set(oldId, newId);
         }
-        
-        setStatusText('Decoding and restoring ride data (this may take a few moments)...');
-        
-        for (const leg of parsedData.legs) {
+
+        for (const { leg, photoBlobs, photoThumbs } of legsToAdd) {
           const mappedRideId = rideIdMapping.get(leg.rideId);
           if (mappedRideId === undefined) {
             console.warn(`Skipping leg on ${leg.date} due to missing ride index.`);
             continue;
-          }
-          
-          const photoBlobs = [];
-          const photoThumbs = [];
-          if (leg.photos) {
-            for (const base64 of leg.photos) {
-              const blob = await base64ToBlob(base64);
-              photoBlobs.push(blob);
-              try {
-                photoThumbs.push(await createThumbnail(blob));
-              } catch {
-                photoThumbs.push(blob); // keep arrays aligned even if thumb fails
-              }
-            }
           }
 
           await db.legs.add({
@@ -313,14 +276,14 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
             photoThumbs,
             km: leg.km,
             location: leg.location,
-            roadPath: leg.roadPath
+            roadPath: leg.roadPath,
           });
         }
       });
 
       setStatusText('Restore finished successfully.');
       showToast('Logs database successfully restored!', 'success');
-      
+
       if (fileInputRef.current) fileInputRef.current.value = '';
       onNavigate('#/');
     } catch (err: unknown) {

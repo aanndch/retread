@@ -21,7 +21,7 @@ import type { Ride, LocationUnion } from './types';
 // v1: rides + legs with per-leg title/time, and the ride cover snapshot
 // (Ride.coverBlob, base64-serialized). Pre-release; the format is reset to 1
 // whenever the schema changes since there's no production data to migrate.
-interface BackupPayload {
+export interface BackupPayload {
   version: 1;
   rides: (Omit<Ride, 'coverBlob'> & { coverBlob: string | null })[];
   legs: {
