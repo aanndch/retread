@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'preact/hooks';
 import { Button } from './button';
 import { CloseIcon } from './icons';
+import { useBodyScrollLock } from './use-body-scroll-lock';
 
 interface ConfirmModalProps {
   title: string;
@@ -15,6 +16,8 @@ interface ConfirmModalProps {
 export function ConfirmModal({ title, message, confirmLabel = 'Confirm', danger = false, onConfirm, onCancel }: ConfirmModalProps) {
   const [closing, setClosing] = useState(false);
   const previousFocus = useRef<HTMLElement | null>(null);
+  // Confirms mount only while visible — lock the page scroll behind them.
+  useBodyScrollLock(true);
 
   const handleClose = (action: () => void) => {
     setClosing(true);

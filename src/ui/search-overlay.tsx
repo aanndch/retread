@@ -3,6 +3,7 @@ import type { ComponentChildren } from 'preact';
 import { coverUrlCache, type HomeRideEntry } from './use-ride-book';
 import { CloseIcon } from '../components/icons';
 import { formatDistance } from '../lib';
+import { useBodyScrollLock } from '../components/use-body-scroll-lock';
 
 interface SearchOverlayProps {
   isOpen: boolean;
@@ -153,6 +154,8 @@ export function SearchOverlay({
   const inputRef = useRef<HTMLInputElement>(null);
   const handledCloseRequestRef = useRef(0);
   const closePhaseRef = useRef<ClosePhase>('idle');
+  // Lock the page scroll behind the full-screen search overlay.
+  useBodyScrollLock(isOpen);
 
   // User-initiated close (× / Escape / backdrop): clear the query so the next
   // open starts fresh. Navigation to a result goes through goTo() instead,

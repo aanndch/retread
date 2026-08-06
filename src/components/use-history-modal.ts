@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
+import { useBodyScrollLock } from './use-body-scroll-lock';
 
 // History-aware modal lifecycle shared by the ride/leg detail pages.
 //
@@ -8,6 +9,8 @@ import { useCallback, useEffect, useState } from 'preact/hooks';
 // pops the entry and fires popstate, which clears the open state here.
 export function useHistoryModal(key: string) {
   const [isOpen, setIsOpen] = useState(false);
+  // Lock the page scroll while any history-backed overlay is open.
+  useBodyScrollLock(isOpen);
 
   const open = useCallback(() => {
     setIsOpen(true);

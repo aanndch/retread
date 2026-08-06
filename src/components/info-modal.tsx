@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'preact/hooks';
 import { Button } from './button';
 import { CloseIcon } from './icons';
 import type { ComponentChildren } from 'preact';
+import { useBodyScrollLock } from './use-body-scroll-lock';
 
 interface InfoModalProps {
   title: string;
@@ -14,6 +15,8 @@ interface InfoModalProps {
 export function InfoModal({ title, children, actionLabel, onAction, onClose }: InfoModalProps) {
   const [closing, setClosing] = useState(false);
   const previousFocus = useRef<HTMLElement | null>(null);
+  // Info modals mount only while visible — lock the page scroll behind them.
+  useBodyScrollLock(true);
 
   const handleClose = (action: () => void) => {
     setClosing(true);
