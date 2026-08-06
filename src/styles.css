@@ -11,6 +11,7 @@
   --color-tint-3: #a39478;
   --color-shadow: rgba(0, 0, 0, 0.08);
   --color-error: #d9534f;
+  --color-overlay: rgba(43, 41, 38, 0.55);
 
   --font-typewriter: 'Space Mono', 'Courier Prime', Courier, monospace;
   --font-mechanical: 'JetBrains Mono', monospace;
@@ -56,6 +57,7 @@ html {
     --color-tint-3: #b6a88d;
     --color-shadow: rgba(0, 0, 0, 0.12);
     --color-error: #d9534f;
+    --color-overlay: rgba(0, 0, 0, 0.72);
   }
 }
 html[data-theme="daylight"] {
@@ -85,6 +87,7 @@ html[data-theme="nightfall"] {
   --color-tint-3: #b6a88d;
   --color-shadow: rgba(0, 0, 0, 0.12);
   --color-error: #d9534f;
+  --color-overlay: rgba(0, 0, 0, 0.72);
 }
 
 /* Explicit Override: Monotone Theme */
@@ -130,6 +133,7 @@ html[data-theme="midnight"] {
   --color-tint-3: #adb2bf;
   --color-shadow: rgba(0, 0, 0, 0.20);
   --color-error: #e05545;
+  --color-overlay: rgba(0, 0, 0, 0.72);
 }
 
 /* Explicit Override: Slate Theme */
@@ -160,6 +164,7 @@ html[data-theme="cyberpunk"] {
   --color-tint-3: #c8c8e6;
   --color-shadow: rgba(0, 255, 204, 0.15);
   --color-error: #ff2255;
+  --color-overlay: rgba(0, 0, 0, 0.8);
 }
 
 /* Global Reset */
@@ -584,7 +589,7 @@ button:focus,
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(43, 41, 38, 0.75); /* Darker tint to immediately cover behind text */
+  background-color: var(--color-overlay); /* Theme-aware dim behind the sheet */
   z-index: 200;
   display: flex;
   justify-content: center;
