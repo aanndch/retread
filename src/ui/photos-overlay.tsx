@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { Button } from '../components/button';
 import { CloseIcon } from '../components/icons';
 import { useBodyScrollLock } from '../components/use-body-scroll-lock';
+import { useExitFade } from '../components/use-exit-fade';
 import { galleryPhotoId, type GalleryPhoto } from './use-gallery-photos';
 
 interface PhotosOverlayProps {
@@ -28,8 +29,10 @@ export function PhotosOverlay({
 }: PhotosOverlayProps) {
   const touchStartX = useRef(0);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
-  // Lock the page scroll behind the full-screen lightbox.
-  useBodyScrollLock(isOpen);
+  // Play a short fade-out when the overlay closes so it never cuts to a blank
+  // frame; keep the page scroll locked until the fade completes.
+  const { visible, closing } = useExitFade(isOpen);
+  useBodyScrollLock(visible);
 
   const activeIdx = Math.max(
     0,
@@ -38,10 +41,11 @@ export function PhotosOverlay({
   const active = photos[activeIdx];
 
   // Full-size object URL for the active photo only, so the wall never holds
-  // hundreds of full-size URLs in memory at once.
+  // hundreds of full-size URLs in memory at once. Keyed on `visible` so the
+  // photo stays in the frame during the exit fade.
   const [fullUrl, setFullUrl] = useState('');
   useEffect(() => {
-    if (!isOpen || photos.length === 0) return;
+    if (!visible || photos.length === 0) return;
     const blob = active?.leg.photos?.[active?.photoIndex ?? 0];
     if (!blob) {
       setFullUrl('');
@@ -50,11 +54,11 @@ export function PhotosOverlay({
     const url = URL.createObjectURL(blob);
     setFullUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [isOpen, activeIdx, photos, active]);
+  }, [visible, activeIdx, photos, active]);
 
   // Dialog semantics: Escape closes, and focus moves to the close button.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!visible) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
@@ -64,9 +68,9 @@ export function PhotosOverlay({
     document.addEventListener('keydown', handleKeyDown);
     closeBtnRef.current?.focus();
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [visible, onClose]);
 
-  if (!isOpen || photos.length === 0) return null;
+  if (!visible || photos.length === 0) return null;
 
   const step = (dir: 1 | -1) => {
     const next = (activeIdx + dir + photos.length) % photos.length;
@@ -74,7 +78,7 @@ export function PhotosOverlay({
   };
 
   return (
-    <div class="photo-paper-backdrop" role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={onClose}>
+    <div class={`photo-paper-backdrop${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={onClose}>
       <button
         type="button"
         ref={closeBtnRef}

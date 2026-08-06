@@ -16,6 +16,9 @@ export interface GallerySession {
   setActive: (photoId: string) => void;
   close: () => void;
   viewRide: (route: string) => void;
+  // Called synchronously at the start of a route change (before the fade-out
+  // swap) so the overlay can fade out in step with the viewport.
+  onRouteLeaving: (nextHash: string) => void;
   onRouteSwapped: (nextHash: string, isPop: boolean) => void;
   onPopState: (event: PopStateEvent) => void;
 }
@@ -54,17 +57,23 @@ export function useGallerySession(): GallerySession {
     window.location.hash = route;
   }, []);
 
+  const onRouteLeaving = useCallback(
+    (nextHash: string) => {
+      // Navigating away from the gallery closes the overlay but keeps its entry
+      // in the stack so Back can restore it.
+      if (isOpenRef.current && nextHash !== HASH_PHOTOS) {
+        setVisibility(false);
+      }
+    },
+    [setVisibility]
+  );
+
   const onRouteSwapped = useCallback(
     (nextHash: string, isPop: boolean) => {
       // Back to the gallery after "View ride": the gallery entry is back on top,
       // so restore the overlay with the same photo.
       if (isPop && nextHash === HASH_PHOTOS && isGalleryHistoryEntry(history.state)) {
         setVisibility(true);
-      }
-      // Navigating away from the gallery closes the overlay but keeps its entry
-      // in the stack so Back can restore it.
-      if (isOpenRef.current && nextHash !== HASH_PHOTOS) {
-        setVisibility(false);
       }
     },
     [setVisibility]
@@ -81,5 +90,5 @@ export function useGallerySession(): GallerySession {
     [setVisibility]
   );
 
-  return { isOpen, activePhotoId, open, setActive, close, viewRide, onRouteSwapped, onPopState };
+  return { isOpen, activePhotoId, open, setActive, close, viewRide, onRouteLeaving, onRouteSwapped, onPopState };
 }

@@ -4,6 +4,7 @@ import { coverUrlCache, type HomeRideEntry } from './use-ride-book';
 import { CloseIcon } from '../components/icons';
 import { formatDistance } from '../lib';
 import { useBodyScrollLock } from '../components/use-body-scroll-lock';
+import { useExitFade } from '../components/use-exit-fade';
 
 interface SearchOverlayProps {
   isOpen: boolean;
@@ -154,8 +155,10 @@ export function SearchOverlay({
   const inputRef = useRef<HTMLInputElement>(null);
   const handledCloseRequestRef = useRef(0);
   const closePhaseRef = useRef<ClosePhase>('idle');
-  // Lock the page scroll behind the full-screen search overlay.
-  useBodyScrollLock(isOpen);
+  // Play a short fade-out whenever the overlay closes (including navigation)
+  // so it never cuts away; keep the page scroll locked until the fade ends.
+  const { visible, closing: exitClosing } = useExitFade(isOpen);
+  useBodyScrollLock(visible);
 
   // User-initiated close (× / Escape / backdrop): clear the query so the next
   // open starts fresh. Navigation to a result goes through goTo() instead,
@@ -207,7 +210,7 @@ export function SearchOverlay({
     handleClose(false);
   }, [closeRequest, isOpen, closing, onClose]);
 
-  if (!isOpen) return null;
+  if (!visible) return null;
 
   const results = buildSearchResults(query, ridesData);
 
@@ -218,7 +221,7 @@ export function SearchOverlay({
   };
 
   return (
-    <div class={`modal-backdrop search-backdrop${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Search rides" onClick={() => handleClose()}>
+    <div class={`modal-backdrop search-backdrop${closing || exitClosing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Search rides" onClick={() => handleClose()}>
       <div class="search-sheet" onClick={(e) => e.stopPropagation()}>
         <div class="search-top">
           <div class="search-header">

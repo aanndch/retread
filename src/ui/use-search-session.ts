@@ -20,6 +20,9 @@ export interface SearchSession {
   // True when Back was pressed from a search-opened page; pops the search
   // entry so the overlay restores instead of falling back to home.
   consumeBackFromResult: () => boolean;
+  // Called synchronously at the start of a route change (before the fade-out
+  // swap) so the overlay can fade out in step with the viewport.
+  onRouteLeaving: (nextHash: string) => void;
   // Called at the route-swap moment (after the outgoing fade) so the overlay
   // reopens for Back to home and closes when navigating to a real page.
   onRouteSwapped: (nextHash: string, isPop: boolean) => void;
@@ -82,6 +85,18 @@ export function useSearchSession(): SearchSession {
     return false;
   }, []);
 
+  const onRouteLeaving = useCallback(
+    (nextHash: string) => {
+      // Route changes away from an open search entry should close the overlay,
+      // including browser Forward after returning to search. Runs at the start
+      // of the route change so the overlay fades out with the viewport.
+      if (isOpenRef.current && nextHash !== HASH_HOME && nextHash !== '') {
+        setVisibility(false);
+      }
+    },
+    [setVisibility]
+  );
+
   const onRouteSwapped = useCallback(
     (nextHash: string, isPop: boolean) => {
       // A marked search entry restores the mounted overlay and its query when
@@ -94,11 +109,6 @@ export function useSearchSession(): SearchSession {
         backRef.current = false;
         resultRef.current = false;
         setVisibility(true);
-      }
-      // Route changes away from an open search entry should close the overlay,
-      // including browser Forward after returning to search.
-      if (isOpenRef.current && nextHash !== HASH_HOME && nextHash !== '') {
-        setVisibility(false);
       }
     },
     [setVisibility]
@@ -151,6 +161,7 @@ export function useSearchSession(): SearchSession {
     closeSearch,
     navigateFromSearch,
     consumeBackFromResult,
+    onRouteLeaving,
     onRouteSwapped,
     onPopState,
   };

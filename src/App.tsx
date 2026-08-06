@@ -205,6 +205,10 @@ export function App() {
       // onReady), and fade it in. Non-data views reveal immediately. A safety
       // timer backstops views that never signal.
       setShowContent(false);
+      // Start the shell overlays' exit fade at the same moment the viewport
+      // fades out, so navigation away never cuts a full-screen overlay to blank.
+      search.onRouteLeaving(nextHash);
+      gallery.onRouteLeaving(nextHash);
       if (swapTimerRef.current !== null) clearTimeout(swapTimerRef.current);
       swapTimerRef.current = window.setTimeout(() => {
         setRouteSnapshot(nextHash);
@@ -249,7 +253,7 @@ export function App() {
       if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
       if (swapTimerRef.current !== null) clearTimeout(swapTimerRef.current);
     };
-  }, [finishTransition, search.onRouteSwapped, search.onPopState, gallery.onRouteSwapped, gallery.onPopState]);
+  }, [finishTransition, search.onRouteLeaving, search.onRouteSwapped, search.onPopState, gallery.onRouteLeaving, gallery.onRouteSwapped, gallery.onPopState]);
 
   const navigateTo = useCallback((route: string) => {
     window.location.hash = route;

@@ -3749,6 +3749,10 @@ input[type=number] {
   overflow: hidden;
 }
 
+.photo-paper-backdrop.closing {
+  animation: fade-out 0.15s ease-in forwards;
+}
+
 .photo-paper-stage {
   flex: 1;
   width: 100%;
