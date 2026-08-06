@@ -465,6 +465,10 @@ export async function performRestore(
 
 let autoSyncEnabled = localStorage.getItem(GDRIVE_LOCAL_STORAGE_KEY_AUTOSYNC) === 'true';
 let pendingSyncTimeout: ReturnType<typeof setTimeout> | null = null;
+// Only one auto-sync upload at a time. Saves landing mid-upload set needsResync
+// so the very latest state is still captured once the current upload finishes.
+let syncInProgress = false;
+let needsResync = false;
 
 export function isAutoSyncEnabled(): boolean {
   return autoSyncEnabled;
@@ -486,13 +490,37 @@ export function getLastSyncTime(): string | null {
 export function scheduleAutoSync(): void {
   if (!autoSyncEnabled || !cachedToken) return;
   if (pendingSyncTimeout) clearTimeout(pendingSyncTimeout);
-  pendingSyncTimeout = setTimeout(async () => {
-    try {
-      await performAutoSync();
-    } catch (err) {
-      console.warn('[GDrive] Auto-sync failed:', err);
-    }
+  pendingSyncTimeout = setTimeout(() => {
+    void runAutoSync();
   }, GDRIVE_AUTOSYNC_DELAY_MS);
+}
+
+// Runs one auto-sync upload, coalescing rapid saves through the debounce timer
+// and serializing concurrent runs. Success/error outcomes are broadcast so the
+// backup page can keep "Last backup" fresh and surface failures.
+async function runAutoSync(): Promise<void> {
+  if (!autoSyncEnabled) return;
+  if (syncInProgress) {
+    needsResync = true;
+    return;
+  }
+  syncInProgress = true;
+  needsResync = false;
+  try {
+    await performAutoSync();
+    window.dispatchEvent(new CustomEvent('retread-gdrive-synced', { detail: { time: new Date().toISOString() } }));
+  } catch (err) {
+    console.warn('[GDrive] Auto-sync failed:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    window.dispatchEvent(new CustomEvent('retread-gdrive-sync-error', { detail: message }));
+  } finally {
+    syncInProgress = false;
+    if (needsResync) {
+      pendingSyncTimeout = setTimeout(() => {
+        void runAutoSync();
+      }, GDRIVE_AUTOSYNC_DELAY_MS);
+    }
+  }
 }
 
 async function performAutoSync(): Promise<void> {

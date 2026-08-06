@@ -6,7 +6,7 @@ import { ConfirmModal } from '../components/confirm-modal';
 import { ToastHost, useToast } from '../components/toast';
 import { PageHeader } from '../components/page-header';
 import { FieldCard } from '../components/field-card';
-import { HASH_HOME, GDRIVE_AUTOSYNC_FILENAME } from '../constants';
+import { HASH_HOME } from '../constants';
 import type { Ride } from '../types';
 import type { JSX } from 'preact';
 import {
@@ -126,6 +126,28 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
       setWorking(false);
     }
   };
+
+  // Surface auto-sync outcomes: refresh "Last backup" (and the file list) after
+  // a successful auto-sync, and toast failures so a dead auto-sync isn't silent.
+  // Successes stay quiet on purpose — a toast per save would be noise.
+  useEffect(() => {
+    const onSynced = (e: Event) => {
+      const time = (e as CustomEvent<{ time?: string }>).detail?.time;
+      setLastSync(time ?? new Date().toISOString());
+      refreshGdriveFiles();
+    };
+    const onSyncError = (e: Event) => {
+      const message = (e as CustomEvent<string>).detail ?? 'Unknown error';
+      showToast(`Auto-sync failed: ${message}`);
+    };
+    window.addEventListener('retread-gdrive-synced', onSynced);
+    window.addEventListener('retread-gdrive-sync-error', onSyncError);
+    return () => {
+      window.removeEventListener('retread-gdrive-synced', onSynced);
+      window.removeEventListener('retread-gdrive-sync-error', onSyncError);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Local Import ──────────────────────────────────────────────────────────
 
@@ -520,16 +542,14 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
                             </span>
                           </div>
                           <div class="gdrive-file-actions">
-                            {file.name !== GDRIVE_AUTOSYNC_FILENAME && (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleGDriveRestore(file.id)}
-                                disabled={working || deletingFileId !== null}
-                              >
-                                Restore
-                              </Button>
-                            )}
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleGDriveRestore(file.id)}
+                              disabled={working || deletingFileId !== null}
+                            >
+                              Restore
+                            </Button>
                             <Button
                               variant="secondary"
                               size="sm"
