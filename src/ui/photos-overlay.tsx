@@ -1,29 +1,40 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Button } from '../components/button';
 import { CloseIcon } from '../components/icons';
-import type { GalleryPhoto } from './photos';
+import { useBodyScrollLock } from '../components/use-body-scroll-lock';
+import { galleryPhotoId, type GalleryPhoto } from './use-gallery-photos';
 
 interface PhotosOverlayProps {
   isOpen: boolean;
   photos: GalleryPhoto[];
-  activeIdx: number;
-  setActiveIdx: (idx: number | ((i: number) => number)) => void;
+  activePhotoId: string | null;
   onClose: () => void;
-  onViewRide: (rideId: number) => void;
+  onActiveChange: (photoId: string) => void;
+  onViewRide: (route: string) => void;
 }
 
-// Paper-styled lightbox for the gallery: the photo is the hero on a paper
-// ground, with a minimal caption (which ride · where in the stream) and two
-// actions — View ride and Close. Swiping flips through the shuffled wall.
+// Paper-styled lightbox for the gallery, hosted at the App shell so it survives
+// navigation: the photo is the hero on a paper ground with a minimal caption
+// (which ride · where in the stream) and two actions — View ride and Close.
+// The active photo is resolved by identity, so "View ride" -> Back restores
+// the exact photo even after the wall is reshuffled.
 export function PhotosOverlay({
   isOpen,
   photos,
-  activeIdx,
-  setActiveIdx,
+  activePhotoId,
   onClose,
+  onActiveChange,
   onViewRide,
 }: PhotosOverlayProps) {
   const touchStartX = useRef(0);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  // Lock the page scroll behind the full-screen lightbox.
+  useBodyScrollLock(isOpen);
+
+  const activeIdx = Math.max(
+    0,
+    photos.findIndex((p) => galleryPhotoId(p) === activePhotoId)
+  );
   const active = photos[activeIdx];
 
   // Full-size object URL for the active photo only, so the wall never holds
@@ -31,7 +42,7 @@ export function PhotosOverlay({
   const [fullUrl, setFullUrl] = useState('');
   useEffect(() => {
     if (!isOpen || photos.length === 0) return;
-    const blob = photos[activeIdx]?.leg.photos?.[photos[activeIdx]?.photoIndex ?? 0];
+    const blob = active?.leg.photos?.[active?.photoIndex ?? 0];
     if (!blob) {
       setFullUrl('');
       return;
@@ -39,18 +50,34 @@ export function PhotosOverlay({
     const url = URL.createObjectURL(blob);
     setFullUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [isOpen, activeIdx, photos]);
+  }, [isOpen, activeIdx, photos, active]);
+
+  // Dialog semantics: Escape closes, and focus moves to the close button.
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    closeBtnRef.current?.focus();
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen || photos.length === 0) return null;
 
   const step = (dir: 1 | -1) => {
-    setActiveIdx((i) => (i + dir + photos.length) % photos.length);
+    const next = (activeIdx + dir + photos.length) % photos.length;
+    onActiveChange(galleryPhotoId(photos[next]));
   };
 
   return (
     <div class="photo-paper-backdrop" role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={onClose}>
       <button
         type="button"
+        ref={closeBtnRef}
         class="btn-close-overlay"
         aria-label="Close photo"
         onClick={(e) => {
@@ -83,7 +110,7 @@ export function PhotosOverlay({
         <span class="photo-paper-counter">
           Photo {activeIdx + 1} / {photos.length}
         </span>
-        <Button variant="secondary" size="sm" onClick={() => active && onViewRide(active.ride.id!)}>
+        <Button variant="secondary" size="sm" onClick={() => active && onViewRide(`#/ride/${active.ride.id}`)}>
           View ride
         </Button>
       </div>

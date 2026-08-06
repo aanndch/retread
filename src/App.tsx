@@ -6,6 +6,9 @@ import { Home } from './ui/home';
 import { SearchOverlay } from './ui/search-overlay';
 import { useRideBook } from './ui/use-ride-book';
 import { useSearchSession } from './ui/use-search-session';
+import { useGalleryPhotos } from './ui/use-gallery-photos';
+import { useGallerySession } from './ui/use-gallery-session';
+import { PhotosOverlay } from './ui/photos-overlay';
 import { TestRunner } from './ui/test-runner';
 import { Editor } from './ui/editor';
 import { Backup } from './ui/backup';
@@ -95,6 +98,10 @@ export function App() {
   // Search lives at the shell level so it survives navigation: navigating to a
   // result closes it, and returning to home reopens it with the same query.
   const search = useSearchSession();
+  // Shared gallery photo list + shell overlay session (survives navigation and
+  // restores the exact photo after "View ride" -> Back).
+  const galleryPhotos = useGalleryPhotos(ridesData);
+  const gallery = useGallerySession();
   const scrollCacheRef = useRef(new Map<string, number>());
   const revealTimerRef = useRef<number | null>(null);
   const swapTimerRef = useRef<number | null>(null);
@@ -204,6 +211,7 @@ export function App() {
 
         // Resolve search at the swap, after the new route has mounted.
         search.onRouteSwapped(nextHash, isPop);
+        gallery.onRouteSwapped(nextHash, isPop);
         if (isGatedRoute(nextHash)) {
           if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
           revealTimerRef.current = window.setTimeout(finishTransition, 600);
@@ -226,6 +234,7 @@ export function App() {
 
     const handlePopState = (event: PopStateEvent) => {
       search.onPopState(event, prevHashRef.current || HASH_HOME);
+      gallery.onPopState(event);
     };
 
     const handleSWUpdate = () => setHasSWUpdate(true);
@@ -240,7 +249,7 @@ export function App() {
       if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
       if (swapTimerRef.current !== null) clearTimeout(swapTimerRef.current);
     };
-  }, [finishTransition, search.onRouteSwapped, search.onPopState]);
+  }, [finishTransition, search.onRouteSwapped, search.onPopState, gallery.onRouteSwapped, gallery.onPopState]);
 
   const navigateTo = useCallback((route: string) => {
     window.location.hash = route;
@@ -321,7 +330,15 @@ export function App() {
         <Route path="/edit">{() => <Editor onNavigate={navigateTo} onNavigateBack={navigateBack} />}</Route>
         <Route path="/backup">{() => <Backup onNavigate={navigateTo} onNavigateBack={navigateBack} />}</Route>
         <Route path="/todo">{() => <Todo onNavigateBack={navigateBack} />}</Route>
-        <Route path="/photos">{() => <Photos ridesData={ridesData} onNavigate={navigateTo} onNavigateBack={navigateBack} />}</Route>
+        <Route path="/photos">{() => (
+          <Photos
+            ridesData={ridesData}
+            photos={galleryPhotos}
+            onOpenPhoto={gallery.open}
+            onNavigate={navigateTo}
+            onNavigateBack={navigateBack}
+          />
+        )}</Route>
         <Route>
           <div class="placeholder-view">
             <h3>Page Not Found</h3>
@@ -374,6 +391,17 @@ export function App() {
         onNavigate={search.navigateFromSearch}
         onClose={search.closeSearch}
         closeRequest={search.closeRequest}
+      />
+
+      {/* Global gallery lightbox — lives at the shell level so it survives the
+          "View ride" navigation and Back restores the exact photo. */}
+      <PhotosOverlay
+        isOpen={gallery.isOpen}
+        photos={galleryPhotos}
+        activePhotoId={gallery.activePhotoId}
+        onClose={gallery.close}
+        onActiveChange={gallery.setActive}
+        onViewRide={gallery.viewRide}
       />
 
       {activePrompt === 'pwa-install' && (
