@@ -1292,6 +1292,7 @@ button:focus,
   flex-direction: column;
   gap: var(--spacing-sm);
   overflow-y: auto;
+  overscroll-behavior: contain; /* the sheet scrolls on its own (D12) */
   box-sizing: border-box;
 }
 
@@ -1848,6 +1849,70 @@ button:focus,
   font-weight: bold;
   padding: 0 2px;
   border-radius: var(--border-radius-sm);
+}
+
+/* Motion (D11): section headers reveal with a small rise + fade (150 ms,
+   30 ms stagger between sections); skeleton blocks pulse slowly. Every
+   transition lists its exact properties — never `transition: all`. */
+@keyframes search-head-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.search-section-head--catalog {
+  animation: search-head-in 150ms ease-out both;
+}
+
+.search-section:nth-child(2) .search-section-head--catalog {
+  animation-delay: 30ms;
+}
+
+@keyframes search-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.search-skeleton-thumb,
+.search-skeleton-block {
+  animation: search-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+/* Touch polish (D12): no tap delay on rows, suggestions, journal entries,
+   margin notes or stub links — the app's tactile :active states already
+   provide feedback, so double-tap zoom timing is the only thing killed. */
+.search-row,
+.search-suggest-row,
+.search-journal-row,
+.search-margin-note,
+.search-stub-link {
+  touch-action: manipulation;
+}
+
+/* Kill every search transition/animation under prefers-reduced-motion: section
+   headers appear instantly and the skeleton pulse becomes a static dim block. */
+@media (prefers-reduced-motion: reduce) {
+  .search-clear,
+  .search-suggest-row,
+  .search-journal-row,
+  .search-row,
+  .search-margin-note,
+  .search-section-head--catalog,
+  .search-skeleton-thumb,
+  .search-skeleton-block {
+    transition: none;
+    animation: none;
+  }
 }
 
 .editor-form {

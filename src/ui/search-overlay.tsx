@@ -544,9 +544,11 @@ export function SearchOverlay({
 
   // Navigate to a result: leave the query intact so App can reopen search
   // with it when the user returns (tapping the wrong ride shouldn't lose it).
+  // Blur the input first so the mobile keyboard folds on navigation.
   const goTo = (route: string) => {
     const q = resultsQuery.trim();
     if (q) addRecent(q);
+    inputRef.current?.blur();
     onNavigate(route);
   };
 
