@@ -9,6 +9,7 @@ import { EditRideStep } from './edit-ride-step';
 import { PhotosStep } from './photos-step';
 import { StoryStep } from './story-step';
 import { StepActions } from './fields';
+import { useHistoryModal } from '../../components/use-history-modal';
 import { PageHeader } from '../../components/page-header';
 import { MapPicker } from '../../components/map-picker';
 import { CoordinatePasteModal } from '../../components/coordinate-paste-modal';
@@ -117,7 +118,8 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   const legId = legIdParam ? parseInt(legIdParam, 10) : null;
 
   const [isClosing, setIsClosing] = useState(false);
-  const [showArrange, setShowArrange] = useState(false);
+  // Photo-arrange sheet: history-aware so system Back dismisses it cleanly.
+  const [showArrange, openArrange, closeArrange] = useHistoryModal("arrange");
   const [saving, setSaving] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -511,7 +513,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       photoPreviews: reorder(photoPreviews),
       coverPhotoIndex: coverPhotoIndex === null ? null : order.indexOf(coverPhotoIndex),
     });
-    setShowArrange(false);
+    closeArrange();
   };
 
   // Stage a photo as the ride cover. Persisted on save via save-helper.
@@ -739,7 +741,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               handleSetCover={handleSetCover}
               coverPhotoIndex={coverPhotoIndex}
               showArrange={showArrange}
-              setShowArrange={setShowArrange}
+              setShowArrange={(open) => (open ? openArrange() : closeArrange())}
               handleArrangeSave={handleArrangeSave}
               step={step}
               handleStepJump={handleStepJump}

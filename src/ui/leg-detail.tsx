@@ -29,7 +29,8 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showArrange, setShowArrange] = useState(false);
+  // Photo-arrange sheet: history-aware so system Back dismisses it cleanly.
+  const [showArrange, openArrange, closeArrange] = useHistoryModal("arrange");
   const { toasts, showToast, removeToast } = useToast();
 
   // Fullscreen Photo Modal: history-aware open/close (pushes and pops its own
@@ -46,11 +47,6 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
 
   const openMapModal = () => openMap();
 
-  // Open the photo-arrange sheet (draft is managed inside the shared sheet).
-  const openArrange = () => {
-    setShowArrange(true);
-  };
-
   // Persist the reordered photo arrays; the live query re-renders the carousel.
   const handleArrangeSave = async (order: number[]) => {
     if (!leg) return;
@@ -59,7 +55,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
     const photos = order.map((i) => originalPhotos[i]).filter(Boolean);
     const photoThumbs = order.map((i) => originalThumbs[i]).filter(Boolean);
     await db.legs.update(legId, { photos, photoThumbs });
-    setShowArrange(false);
+    closeArrange();
     setActivePhotoIdx(0);
     showToast("Photo order saved.");
   };
@@ -325,7 +321,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
           isOpen={showArrange}
           photoUrls={photoUrls}
           onSave={handleArrangeSave}
-          onClose={() => setShowArrange(false)}
+          onClose={closeArrange}
         />
 
         {leg.note && (

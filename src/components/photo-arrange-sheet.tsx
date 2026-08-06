@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { Button } from './button';
 
 interface PhotoArrangeSheetProps {
@@ -13,6 +13,18 @@ interface PhotoArrangeSheetProps {
 // indices into that original order so the caller can reindex its arrays.
 export function PhotoArrangeSheet({ isOpen, photoUrls, onSave, onClose }: PhotoArrangeSheetProps) {
   const [draft, setDraft] = useState<number[]>([]);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  // Escape closes the sheet; focus moves into it when it opens.
+  useEffect(() => {
+    if (!isOpen) return;
+    sheetRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   // Seed the draft when the sheet opens (photoUrls is the current order).
   if (isOpen && draft.length === 0) {
@@ -33,7 +45,12 @@ export function PhotoArrangeSheet({ isOpen, photoUrls, onSave, onClose }: PhotoA
 
   return (
     <div class="modal-backdrop arrange-backdrop" onClick={onClose}>
-      <div class="arrange-sheet" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={sheetRef}
+        tabIndex={-1}
+        class="arrange-sheet"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div class="arrange-sheet-header">
           <span class="note-label">Arrange Photos</span>
         </div>
