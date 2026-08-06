@@ -2,8 +2,11 @@ import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { coverUrlCache, type HomeRideEntry } from './use-ride-book';
 import { CloseIcon, SearchIcon } from '../components/icons';
-import { formatDistance } from '../lib';
+import { formatDistance, formatIsoDateToDMY } from '../lib';
 import { useSearchRecents } from './use-search-recents';
+import { DAY_COLORS } from './squiggle';
+import { findTolerantSuggestion, matchScore, normalize, noteMatches } from './search-match';
+import type { Leg } from '../types';
 import { useBodyScrollLock } from '../components/use-body-scroll-lock';
 import { useExitFade } from '../components/use-exit-fade';
 
@@ -18,31 +21,23 @@ interface SearchOverlayProps {
   closeRequest: number;
 }
 
-interface Snippet {
-  label: string;
-  text: string;
-  legId?: number;
-}
-
-interface SearchResult {
-  entry: HomeRideEntry;
-  snippets: Snippet[];
-}
-
 type ClosePhase = 'idle' | 'user-closing' | 'waiting-for-history';
 
-// Wrap every case-insensitive occurrence of the query in the mark span.
+// Wrap every occurrence of the query in the mark span. Matching is normalized
+// (lowercase, accents stripped) but the mark slices the ORIGINAL text, so the
+// visible characters keep their case and diacritics.
 function highlight(text: string, query: string): ComponentChildren {
-  const lower = text.toLowerCase();
-  const q = query.toLowerCase();
+  const normText = normalize(text);
+  const normQ = normalize(query).trim();
+  if (!normQ) return text;
   const parts: ComponentChildren[] = [];
   let idx = 0;
-  let pos = lower.indexOf(q);
+  let pos = normText.indexOf(normQ);
   while (pos !== -1) {
     if (pos > idx) parts.push(text.slice(idx, pos));
-    parts.push(<mark class="search-hit">{text.slice(pos, pos + q.length)}</mark>);
-    idx = pos + q.length;
-    pos = lower.indexOf(q, idx);
+    parts.push(<mark class="search-hit">{text.slice(pos, pos + normQ.length)}</mark>);
+    idx = pos + normQ.length;
+    pos = normText.indexOf(normQ, idx);
   }
   if (idx < text.length) parts.push(text.slice(idx));
   return parts;
@@ -50,7 +45,7 @@ function highlight(text: string, query: string): ComponentChildren {
 
 // For freeform notes, show a short window around the first hit.
 function windowed(text: string, query: string): string {
-  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  const idx = normalize(text).indexOf(normalize(query).trim());
   if (idx === -1) return text;
   const start = Math.max(0, idx - 30);
   const end = Math.min(text.length, idx + query.length + 40);
@@ -90,20 +85,11 @@ interface SearchSuggestion {
   scope: 'RIDE' | 'LEG';
 }
 
-// Prefix (or word-initial) match, so a 1-char query doesn't light up every
-// mid-word substring in the book.
-function matchesQuery(name: string, q: string): boolean {
-  if (name.startsWith(q)) return true;
-  const idx = name.indexOf(q);
-  if (idx <= 0) return false;
-  return !/[a-z0-9]/.test(name[idx - 1]);
-}
-
 // Suggestion panel rows: built ONLY from real rides/legs/stops — a suggested
 // term is implicitly endorsed, so never suggest something with zero results.
 // Prefix matches rank first (rides are newest-first in the data), capped at 8.
 function buildSuggestions(query: string, ridesData: HomeRideEntry[]): SearchSuggestion[] {
-  const q = query.trim().toLowerCase();
+  const q = query.trim();
   if (!q) return [];
   const out: SearchSuggestion[] = [];
   const seen = new Set<string>();
@@ -115,13 +101,13 @@ function buildSuggestions(query: string, ridesData: HomeRideEntry[]): SearchSugg
   };
   for (const entry of ridesData) {
     const title = entry.ride.title?.trim();
-    if (title && matchesQuery(title, q)) push(title, 'RIDE');
+    if (title && matchScore(title, q) > 0) push(title, 'RIDE');
     if (out.length >= 8) break;
     for (const leg of entry.legs) {
       const legTitle = leg.title?.trim();
-      if (legTitle && matchesQuery(legTitle, q)) push(legTitle, 'LEG');
+      if (legTitle && matchScore(legTitle, q) > 0) push(legTitle, 'LEG');
       const stopName = leg.location?.name?.trim();
-      if (stopName && matchesQuery(stopName, q)) push(stopName, 'LEG');
+      if (stopName && matchScore(stopName, q) > 0) push(stopName, 'LEG');
       if (out.length >= 8) break;
     }
   }
@@ -140,62 +126,154 @@ function useDeferredValue<T>(value: T): T {
   return deferred;
 }
 
-function buildSearchResults(query: string, ridesData: HomeRideEntry[]): SearchResult[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
+type MarginNoteLabel = 'stop' | 'note' | 'ride';
 
-  const results: SearchResult[] = [];
+interface MarginNote {
+  label: MarginNoteLabel;
+  text: string;
+  legId?: number;
+}
+
+interface RideRow {
+  kind: 'ride';
+  entry: HomeRideEntry;
+  notes: MarginNote[];
+  score: number;
+}
+
+interface LegRow {
+  kind: 'leg';
+  leg: Leg;
+  entry: HomeRideEntry;
+  notes: MarginNote[];
+  dayNum: number; // 1-based day within the ride → day-color swatch
+  score: number;
+}
+
+interface SearchCatalog {
+  rides: RideRow[];
+  legs: LegRow[];
+}
+
+// Display identity for a leg row: its title, else its stop name, else "Leg".
+function legLabel(leg: Leg): string {
+  return leg.title?.trim() || leg.location?.name?.trim() || 'Leg';
+}
+
+// Max 2 margin notes per row, deduped by (label, leg, text).
+function dedupeNotes(notes: MarginNote[]): MarginNote[] {
+  const seen = new Set<string>();
+  const out: MarginNote[] = [];
+  for (const n of notes) {
+    const key = `${n.label}|${n.legId ?? 'root'}|${n.text}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(n);
+    if (out.length >= 2) break;
+  }
+  return out;
+}
+
+// Builds the sectioned catalog (D2): RIDES holds rides whose title matched
+// (plus start-stop and orphan note matches as margin notes beneath); LEGS
+// holds legs whose title/location matched, with a day-color swatch identity.
+// Note matches never float alone — they attach to their leg row when the leg
+// itself matched, else to the parent ride row. An empty query returns the
+// whole book as ride rows ("browse all rides").
+function buildSearchCatalog(query: string, ridesData: HomeRideEntry[]): SearchCatalog {
+  const q = query.trim();
+  const rides: RideRow[] = [];
+  const legs: LegRow[] = [];
+
+  if (!q) {
+    for (const entry of ridesData) {
+      rides.push({ kind: 'ride', entry, notes: [], score: 0 });
+    }
+    return { rides, legs };
+  }
 
   for (const entry of ridesData) {
-    const snippets: Snippet[] = [];
-    // Dedupe by (legId, matched field, text) so one match source yields one
-    // snippet: a leg's location name used to appear twice — as a plain STOP
-    // snippet from the stops scan and again as a STOP·leg snippet below.
-    const seen = new Set<string>();
-    const add = (s: Snippet, field: string) => {
-      const key = `${s.legId ?? 'root'}|${field}|${s.text}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      if (snippets.length < 2) snippets.push(s);
-    };
+    const rideNotes: MarginNote[] = [];
+    let rideScore = 0;
+    let rideMatched = false;
 
-    if (entry.ride.title && entry.ride.title.toLowerCase().includes(q)) {
-      add({ label: 'RIDE', text: entry.ride.title }, 'title');
+    if (entry.ride.title) {
+      const s = matchScore(entry.ride.title, q);
+      if (s > 0) {
+        rideMatched = true;
+        rideScore = s;
+      }
     }
 
-    // Stop names (start location + leg locations). Each stop remembers its leg
-    // so the key above collides with the matching STOP·leg snippet.
-    const stops: { name: string; legId?: number }[] = [];
-    if (entry.ride.startLocation?.name) stops.push({ name: entry.ride.startLocation.name });
+    // The ride's departure pin is a ride-level stop, not a leg: its match
+    // becomes a stop: margin note under the ride row.
+    if (entry.ride.startLocation?.name && matchScore(entry.ride.startLocation.name, q) > 0) {
+      rideNotes.push({ label: 'stop', text: entry.ride.startLocation.name });
+      rideMatched = true;
+    }
+
+    const uniqueDates = Array.from(new Set(entry.legs.map((l) => l.date))).sort();
+
     for (const leg of entry.legs) {
-      if (leg.location?.name) stops.push({ name: leg.location.name, legId: leg.id });
-    }
-    for (const stop of stops) {
-      if (stop.name.toLowerCase().includes(q)) {
-        add({ label: 'STOP', text: stop.name, legId: stop.legId }, 'stop');
+      let legMatched = false;
+      let legScore = 0;
+      const legNotes: MarginNote[] = [];
+
+      const legTitle = leg.title?.trim();
+      if (legTitle) {
+        const s = matchScore(legTitle, q);
+        if (s > 0) {
+          legMatched = true;
+          legScore = Math.max(legScore, s);
+        }
+      }
+
+      const stopName = leg.location?.name;
+      if (stopName) {
+        const s = matchScore(stopName, q);
+        if (s > 0) {
+          legMatched = true;
+          legScore = Math.max(legScore, s);
+          // Surface the matched stop explicitly when the row identity (the
+          // leg title) doesn't carry the mark itself.
+          if (legTitle && matchScore(legTitle, q) === 0) {
+            legNotes.push({ label: 'stop', text: stopName, legId: leg.id });
+          }
+        }
+      }
+
+      if (leg.note && noteMatches(leg.note, q)) {
+        const note: MarginNote = { label: 'note', text: windowed(leg.note, q), legId: leg.id };
+        if (legMatched) {
+          legNotes.push(note);
+        } else {
+          rideNotes.push(note);
+          rideMatched = true;
+        }
+      }
+
+      if (legMatched) {
+        const dayNum = uniqueDates.indexOf(leg.date) + 1;
+        legs.push({
+          kind: 'leg',
+          leg,
+          entry,
+          notes: dedupeNotes(legNotes),
+          dayNum,
+          score: legScore,
+        });
       }
     }
 
-    // Leg titles, locations and notes (deep-link to the specific leg)
-    for (const leg of entry.legs) {
-      if (leg.title && leg.title.toLowerCase().includes(q)) {
-        add({ label: 'LEG', text: leg.title, legId: leg.id }, 'leg-title');
-      }
-      if (leg.location?.name && leg.location.name.toLowerCase().includes(q)) {
-        add({ label: `STOP · ${leg.title || 'Leg'}`, text: leg.location.name, legId: leg.id }, 'stop');
-      }
-      if (leg.note && leg.note.toLowerCase().includes(q)) {
-        add({ label: `NOTE · ${leg.title || 'Leg'}`, text: windowed(leg.note, q), legId: leg.id }, 'note');
-      }
-    }
-
-    if (snippets.length > 0) {
-      results.push({ entry, snippets });
+    if (rideMatched) {
+      rides.push({ kind: 'ride', entry, notes: dedupeNotes(rideNotes), score: rideScore });
     }
   }
 
-  // Most recent trip first
-  return results.sort((a, b) => b.entry.startDate.localeCompare(a.entry.startDate));
+  // Relevance first, recency as tiebreak (rides arrive newest-first).
+  rides.sort((a, b) => b.score - a.score || b.entry.startDate.localeCompare(a.entry.startDate));
+  legs.sort((a, b) => b.score - a.score || b.entry.startDate.localeCompare(a.entry.startDate));
+  return { rides, legs };
 }
 
 // The predictive/unique tail of a suggestion renders in green — the part of
@@ -247,6 +325,107 @@ function SearchThumb({ blob, coverKey }: { blob: Blob | null; coverKey: string }
     );
   }
   return <img src={url} alt="" loading="lazy" class="search-thumb" />;
+}
+
+// Sectioned catalog (D2/D3): RIDES and LEGS groups with mechanical-font
+// headers + counts and a dashed rule to the edge; rows are borderless index
+// entries separated by dashed hairlines. Margin notes deep-link to their leg
+// when one is known, else to the parent ride.
+function CatalogSections({
+  catalog,
+  resultsQuery,
+  onGoTo,
+}: {
+  catalog: SearchCatalog;
+  resultsQuery: string;
+  onGoTo: (route: string) => void;
+}) {
+  return (
+    <div class="search-index">
+      {catalog.rides.length > 0 && (
+        <section class="search-section">
+          <h2 class="search-section-head search-section-head--catalog" aria-live="polite">
+            Rides · {catalog.rides.length}
+            <span class="search-section-rule" aria-hidden="true" />
+          </h2>
+          {catalog.rides.map((row) => (
+            <div class="search-row-wrap" key={row.entry.ride.id}>
+              <button
+                type="button"
+                class="search-row"
+                onClick={() => onGoTo(`#/ride/${row.entry.ride.id}`)}
+              >
+                <SearchThumb blob={row.entry.firstPhotoBlob} coverKey={row.entry.coverKey} />
+                <span class="search-row-body">
+                  <span class="search-row-title">{highlight(row.entry.ride.title, resultsQuery)}</span>
+                  <span class="search-row-meta">
+                    RIDE · {row.entry.dateRange}
+                    {row.entry.totalKm > 0 ? ` · ${formatDistance(row.entry.totalKm)}` : ''}
+                  </span>
+                </span>
+              </button>
+              {row.notes.map((n, i) => (
+                <button
+                  type="button"
+                  class="search-margin-note"
+                  key={i}
+                  onClick={() =>
+                    onGoTo(n.legId !== undefined ? `#/leg/${n.legId}` : `#/ride/${row.entry.ride.id}`)
+                  }
+                >
+                  <span class="search-margin-note-label">{n.label}:</span>
+                  <span class="search-margin-note-text">{highlight(n.text, resultsQuery)}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </section>
+      )}
+      {catalog.legs.length > 0 && (
+        <section class="search-section">
+          <h2 class="search-section-head search-section-head--catalog" aria-live="polite">
+            Legs · {catalog.legs.length}
+            <span class="search-section-rule" aria-hidden="true" />
+          </h2>
+          {catalog.legs.map((row) => (
+            <div class="search-row-wrap" key={row.leg.id}>
+              <button
+                type="button"
+                class="search-row"
+                onClick={() => onGoTo(`#/leg/${row.leg.id}`)}
+              >
+                <span
+                  class="search-day-swatch"
+                  aria-hidden="true"
+                  style={{ background: DAY_COLORS[Math.max(0, row.dayNum - 1) % DAY_COLORS.length] }}
+                />
+                <span class="search-row-body">
+                  <span class="search-row-title">{highlight(legLabel(row.leg), resultsQuery)}</span>
+                  <span class="search-row-meta">
+                    LEG · {formatIsoDateToDMY(row.leg.date)}
+                    {row.leg.km ? ` · ${formatDistance(row.leg.km)}` : ''}
+                  </span>
+                </span>
+              </button>
+              {row.notes.map((n, i) => (
+                <button
+                  type="button"
+                  class="search-margin-note"
+                  key={i}
+                  onClick={() =>
+                    onGoTo(n.legId !== undefined ? `#/leg/${n.legId}` : `#/ride/${row.entry.ride.id}`)
+                  }
+                >
+                  <span class="search-margin-note-label">{n.label}:</span>
+                  <span class="search-margin-note-text">{highlight(n.text, resultsQuery)}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </section>
+      )}
+    </div>
+  );
 }
 
 export function SearchOverlay({
@@ -336,13 +515,16 @@ export function SearchOverlay({
   // Active suggestion for the combobox (aria-activedescendant); -1 = none.
   const [activeIndex, setActiveIndex] = useState(-1);
   const resultsQuery = committed ? query : deferredQuery;
-  const results = useMemo(
-    () => buildSearchResults(resultsQuery, ridesData),
+  const catalog = useMemo(
+    () => buildSearchCatalog(resultsQuery, ridesData),
     [resultsQuery, ridesData],
   );
-  // Count every match (result rows + snippet rows), not matched rides — the
-  // truthful intermediate number; Phase 3 replaces this line with section counts.
-  const matchCount = results.reduce((n, r) => n + 1 + r.snippets.length, 0);
+  const catalogEmpty = catalog.rides.length === 0 && catalog.legs.length === 0;
+  // Tolerant "Try …" recovery for the no-results stub.
+  const tolerantSuggestion = useMemo(
+    () => (resultsQuery.trim() ? findTolerantSuggestion(resultsQuery, ridesData) : null),
+    [resultsQuery, ridesData],
+  );
   // Derived example searches for the pre-search journal.
   const journalSuggestions = useMemo(() => deriveSuggestions(ridesData), [ridesData]);
   // Suggestion panel rows, built live from the typed query.
@@ -356,6 +538,7 @@ export function SearchOverlay({
   // State B: while typing (and not yet committed), the suggestion panel in the
   // sticky top bar replaces the result list below.
   const panelOpen = query.trim() !== '' && !committed;
+  const emptyQuery = query.trim() === '';
 
   if (!visible) return null;
 
@@ -378,6 +561,21 @@ export function SearchOverlay({
   const handleQueryInput = (value: string) => {
     if (committed) setCommitted(false);
     onQueryChange(value);
+  };
+
+  // "Browse all rides" reveals the whole book in place (State D recovery).
+  const browseAll = () => {
+    onQueryChange('');
+    setCommitted(true);
+    setActiveIndex(-1);
+  };
+
+  // "Return to recent searches" (State D third rung): clear the query and
+  // drop the commit so the pre-search journal comes back.
+  const backToJournal = () => {
+    onQueryChange('');
+    setCommitted(false);
+    setActiveIndex(-1);
   };
 
   // Commit a suggestion: fill the field with the entity name and go straight
@@ -535,7 +733,7 @@ export function SearchOverlay({
           )}
         </div>
 
-        {loading && results.length === 0 ? (
+        {loading && catalogEmpty ? (
           <div class="search-skeleton" aria-hidden="true">
             {[0, 1, 2].map((i) => (
               <div class="search-skeleton-row" key={i}>
@@ -547,7 +745,7 @@ export function SearchOverlay({
               </div>
             ))}
           </div>
-        ) : query.trim() === '' ? (
+        ) : emptyQuery && !committed ? (
           <div class="search-journal">
             <div class="search-journal-section">
               <div class="search-section-head">
@@ -607,53 +805,42 @@ export function SearchOverlay({
               Your Log · {ridesData.length} Rides
             </p>
           </div>
+        ) : emptyQuery && ridesData.length === 0 ? (
+          <div class="search-stub">
+            <p class="search-stub-title">
+              Your log is empty — log your first ride to start the book.
+            </p>
+          </div>
+        ) : emptyQuery ? (
+          <CatalogSections catalog={catalog} resultsQuery={resultsQuery} onGoTo={goTo} />
         ) : !committed ? (
           null
-        ) : results.length === 0 ? (
-          <p class="search-empty">No rides match “{resultsQuery.trim()}”.</p>
-        ) : (
-          <>
-            <p class="search-count">
-              {matchCount} {matchCount === 1 ? 'match' : 'matches'}
+        ) : catalogEmpty ? (
+          <div class="search-stub">
+            <p class="search-stub-title">No matches for “{resultsQuery.trim()}”.</p>
+            <p class="search-stub-recovery">
+              {tolerantSuggestion ? (
+                <button
+                  type="button"
+                  class="search-stub-link"
+                  onClick={() => runQuery(tolerantSuggestion)}
+                >
+                  Try “{tolerantSuggestion}”
+                </button>
+              ) : null}
+              {tolerantSuggestion ? <>, or </> : null}
+              <button type="button" class="search-stub-link" onClick={browseAll}>
+                browse all rides →
+              </button>
             </p>
-            <div class="search-results">
-              {results.map(({ entry, snippets }) => (
-                <div class="search-result" key={entry.ride.id}>
-                  <button
-                    type="button"
-                    class="search-result-main"
-                    onClick={() => goTo(`#/ride/${entry.ride.id}`)}
-                  >
-                    <SearchThumb blob={entry.firstPhotoBlob} coverKey={entry.coverKey} />
-                    <span class="search-result-body">
-                      <span class="search-result-title">{highlight(entry.ride.title, resultsQuery)}</span>
-                      <span class="search-result-meta">
-                        {entry.dateRange}
-                        {entry.totalKm > 0 ? ` · ${formatDistance(entry.totalKm)}` : ''}
-                      </span>
-                    </span>
-                  </button>
-                  {snippets.map((s, i) => (
-                    <button
-                      type="button"
-                      class="search-snippet"
-                      key={i}
-                      onClick={() => {
-                        if (s.legId !== undefined) {
-                          goTo(`#/leg/${s.legId}`);
-                        } else {
-                          goTo(`#/ride/${entry.ride.id}`);
-                        }
-                      }}
-                    >
-                      <span class="search-snippet-label">{s.label}</span>
-                      <span class="search-snippet-text">{highlight(s.text, resultsQuery)}</span>
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </>
+            <p class="search-stub-recovery">
+              <button type="button" class="search-stub-link" onClick={backToJournal}>
+                …or return to recent searches.
+              </button>
+            </p>
+          </div>
+        ) : (
+          <CatalogSections catalog={catalog} resultsQuery={resultsQuery} onGoTo={goTo} />
         )}
       </div>
     </div>

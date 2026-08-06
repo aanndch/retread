@@ -1468,21 +1468,44 @@ button:focus,
   padding: var(--spacing-xs) 0;
 }
 
-.search-count {
-  font-family: var(--font-mechanical);
-  font-size: 10px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-  margin: var(--spacing-xs) 0 0;
+/* No-results / empty-book stubs (D8): dashed-border journal stubs with
+   fix-first copy and a full recovery ladder — never a bare dead-end line. */
+.search-stub {
+  margin-top: var(--spacing-md);
+  border: 1px dashed var(--color-ink-muted);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--spacing-sm);
 }
 
-.search-empty {
+.search-stub-title {
+  font-family: var(--font-typewriter);
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--color-ink);
+  text-transform: uppercase;
+}
+
+.search-stub-recovery {
   font-family: var(--font-typewriter);
   font-size: 13px;
   color: var(--color-ink-muted);
-  text-align: center;
-  padding: var(--spacing-xl) 0;
+  line-height: 1.5;
+}
+
+.search-stub-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--color-green);
+  text-decoration: underline;
 }
 
 /* Pre-search journal (State A): recents, derived suggestions, log marginalia.
@@ -1514,6 +1537,24 @@ button:focus,
   text-transform: uppercase;
   color: var(--color-ink-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* Catalog section header (D2): mech 10px uppercase label · count, then a
+   flex-1 dashed hairline running to the right edge (echoes the page-header's
+   dashed rule). Tabular-nums keeps counts from jittering. */
+.search-section-head--catalog {
+  margin: 0; /* h2 reset */
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.search-section-rule {
+  flex: 1;
+  border-bottom: 1px dashed var(--color-paper-dim);
 }
 
 /* Mechanical-uppercase margin action (CLEAR ALL) with a full 44px hit target */
@@ -1609,18 +1650,23 @@ button:focus,
 
 /* Initial book load: minimal skeleton rows (paper-dim blocks) matching the
    result-row geometry so nothing flashes empty while the Dexie live query
-   resolves. Visual refinement (pulse, hairlines) lands in Phase 3. */
+   resolves. Rows sit on the same dashed hairlines as real index rows (D9). */
 .search-skeleton {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
   margin-top: var(--spacing-sm);
+}
+
+.search-skeleton-row + .search-skeleton-row {
+  border-top: 1px dashed var(--color-paper-dim);
+  padding-top: var(--spacing-xs);
 }
 
 .search-skeleton-row {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  min-height: 44px;
 }
 
 .search-skeleton-thumb {
@@ -1653,38 +1699,77 @@ button:focus,
   width: 40%;
 }
 
-.search-results {
+/* Sectioned catalog (D2/D3): index rows in RIDES / LEGS sections separated by
+   dashed hairlines — search is an index into the logbook, not a stack of
+   cards. The old 24px result gap becomes the section gap. */
+.search-index {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
   margin-top: var(--spacing-sm);
 }
 
-.search-result {
+.search-section {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
 }
 
-/* Compact result row: thumb + title + meta as one tap target */
-.search-result-main {
+.search-row-wrap + .search-row-wrap {
+  border-top: 1px dashed var(--color-paper-dim);
+  padding-top: var(--spacing-xs);
+}
+
+/* Index row (D3): borderless 44px tap target. Hover washes paper-dim and
+   slides a 2px green rule in from the left; active presses the row 1px. No
+   lift shadow — that physicality belongs to shelf cards, not index rows. */
+.search-row {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
   width: 100%;
+  min-height: 44px;
+  padding: var(--spacing-xs);
   text-align: left;
   background: none;
-  border: 1px solid var(--color-ink);
-  border-radius: var(--border-radius);
-  padding: var(--spacing-xs);
+  border: none;
   cursor: pointer;
-  box-shadow: 1px 1px 0px var(--color-shadow);
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.search-result-main:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 2px 2px 0px var(--color-shadow);
+.search-row:hover {
+  background-color: var(--color-paper-dim);
+  box-shadow: inset 2px 0 0 var(--color-green);
+}
+
+.search-row:active {
+  transform: translateY(1px);
+}
+
+.search-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.search-row-title {
+  font-family: var(--font-typewriter);
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--color-ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.search-row-meta {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .search-thumb {
@@ -1704,58 +1789,57 @@ button:focus,
   color: var(--color-ink-muted);
 }
 
-.search-result-body {
+/* Day-color swatch (D6): the leg's day-group color from the ride timeline,
+   offset so the leg title lines up under the ride title column (thumb 48px). */
+.search-day-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--border-radius-sm);
+  flex-shrink: 0;
+  margin-left: calc(48px - 12px);
+}
+
+/* Margin-note context (D5): inline mech label prefix + 1px dashed left rule
+   (dash = annotation), text clamped to 2 lines. Indented under its row's
+   title column so it reads as marginalia on the index entry. */
+.search-margin-note {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.search-result-title {
-  font-family: var(--font-typewriter);
-  font-size: 13px;
-  color: var(--color-ink);
-}
-
-.search-result-meta {
-  font-family: var(--font-mechanical);
-  font-size: 10px;
-  color: var(--color-ink-muted);
-  letter-spacing: 0.5px;
-}
-
-.search-snippet {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  width: 100%;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  margin-left: calc(48px + var(--spacing-sm));
+  padding: var(--spacing-xs) 0 var(--spacing-xs) var(--spacing-sm);
+  border: none;
+  border-left: 1px dashed var(--color-tint-3);
+  width: auto;
   text-align: left;
   background: none;
-  border: none;
-  border-left: 2px solid var(--color-tint-2);
-  padding: var(--spacing-xs) var(--spacing-sm);
   cursor: pointer;
   font-family: var(--font-typewriter);
   font-size: 12px;
-  color: var(--color-ink);
   line-height: 1.4;
+  color: var(--color-ink);
+  transition: background-color 0.15s ease;
 }
 
-.search-snippet:hover {
+.search-margin-note:hover {
   background-color: var(--color-paper-dim);
 }
 
-.search-snippet-label {
+.search-margin-note-label {
   font-family: var(--font-mechanical);
   font-size: 8px;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--color-ink-muted);
+  flex-shrink: 0;
 }
 
-.search-snippet-text {
+.search-margin-note-text {
   min-width: 0;
-  word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .search-hit {
