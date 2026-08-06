@@ -28,6 +28,20 @@
   --border-radius-sm: 2px;
 }
 
+/* Kill the browser's blue tap flash so touches feel like paper, not a glow.
+   The app's own :active states already provide tactile feedback. Inherited,
+   so it covers every tappable element. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Theme the long-press text selection to match the paper ink aesthetic
+   instead of the browser-default blue. */
+::selection {
+  background-color: var(--color-green);
+  color: var(--color-paper);
+}
+
 /* System Dark Theme Preference */
 @media (prefers-color-scheme: dark) {
   :root {
