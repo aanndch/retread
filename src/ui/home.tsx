@@ -307,7 +307,7 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
               <FieldCard label="Demo Content">
                 <div class="settings-buttons">
                   <Button
-                    variant="primary"
+                    variant="secondary"
                     size="sm"
                     onClick={handleSeedDemoRide}
                     disabled={seedingDemo}
@@ -320,7 +320,7 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
                     onClick={handleSeedPhantomRide}
                     disabled={seedingDemo}
                   >
-                    {seedingDemo ? 'Seeding demo ride…' : 'Seed Spiti Phantom Demo'}
+                    {seedingDemo ? 'Seeding demo ride…' : 'Seed Spiti Phantom Demo Ride'}
                   </Button>
                 </div>
               </FieldCard>
