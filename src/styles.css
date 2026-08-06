@@ -1426,6 +1426,10 @@ button:focus,
   display: flex;
   flex-direction: column;
   margin-top: 0;
+  /* D10: dashed top hairline sets the panel off from the field card; the
+     padding keeps the first row clear of the 8px flex gap above the rule. */
+  border-top: 1px dashed var(--color-paper-dim);
+  padding-top: var(--spacing-sm);
 }
 
 .search-suggest-row {
