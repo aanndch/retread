@@ -2437,6 +2437,10 @@ input[type=number] {
   gap: 4px;
   min-width: 0;
   flex: 0 0 auto;
+  /* Fixed-width cell so the dot is always dead-center: the dot-to-line gap
+     stays identical for every stop no matter how long its label wraps. */
+  width: 56px;
+  box-sizing: border-box;
   /* Stops fade in one by one, left to right */
   opacity: 0;
   animation: trail-stop-in 0.35s ease-out forwards;
@@ -2509,8 +2513,10 @@ input[type=number] {
 }
 
 .trail-line {
-  flex: 1 1 auto;
-  min-width: 10px;
+  flex: 0 0 auto;
+  /* Fixed-length connector: dot-to-dot spacing is uniform on every trail
+     instead of stretching to fill a short row or collapsing when long. */
+  width: 16px;
   border-top: 1px dashed var(--color-ink-muted);
   /* Align with the dot center: 6px stop padding-top + half the 8px dot. */
   margin-top: 10px;
@@ -2522,7 +2528,7 @@ input[type=number] {
   line-height: 1.25;
   color: var(--color-ink-muted);
   text-align: center;
-  max-width: 84px;
+  max-width: 100%;
   overflow-wrap: break-word;
 }
 
