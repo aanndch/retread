@@ -2439,7 +2439,7 @@ input[type=number] {
   flex: 0 0 auto;
   /* Fixed-width cell so the dot is always dead-center: the dot-to-line gap
      stays identical for every stop no matter how long its label wraps. */
-  width: 56px;
+  width: 64px;
   box-sizing: border-box;
   /* Stops fade in one by one, left to right */
   opacity: 0;
@@ -2523,13 +2523,17 @@ input[type=number] {
 }
 
 .trail-name {
+  display: block;
+  width: 100%;
   font-family: var(--font-mechanical);
   font-size: 9px;
   line-height: 1.25;
   color: var(--color-ink-muted);
   text-align: center;
-  max-width: 100%;
-  overflow-wrap: break-word;
+  /* One line only — labels are ellipsized in JS to fit the fixed cell, so a
+     lone letter can never wrap onto a second line. */
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 /* Ride map hero */

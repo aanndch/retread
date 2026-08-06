@@ -200,6 +200,20 @@ function buildRideMap(
   return { segments, stops };
 }
 
+// Trail labels are capped to one line inside the fixed 64px stop cells. The
+// label font is monospace (JetBrains Mono advances ~0.6em per glyph ≈ 5.4px at
+// 9px), so 10 glyphs fit the 56px content box. Longer names are cut at a word
+// boundary and ellipsized; the full name stays available on hover (title) and
+// on the leg card.
+const TRAIL_LABEL_MAX_GLYPHS = 10;
+function fitTrailLabel(label: string): string {
+  if (label.length <= TRAIL_LABEL_MAX_GLYPHS) return label;
+  const budget = TRAIL_LABEL_MAX_GLYPHS - 1;
+  const spaceAt = label.lastIndexOf(' ', budget - 1);
+  const cut = spaceAt > 0 ? spaceAt : budget;
+  return `${label.slice(0, cut)}…`;
+}
+
 function RouteTrail({ stops, onSelectStop }: {
   stops: TrailStop[];
   onSelectStop: (legId: number) => void;
@@ -221,7 +235,7 @@ function RouteTrail({ stops, onSelectStop }: {
               onClick={() => onSelectStop(s.legId!)}
             >
               <span class="trail-dot" aria-hidden="true" />
-              <span class="trail-name">{s.phantom ? `~ ${s.name}` : s.name}</span>
+              <span class="trail-name" title={s.name}>{fitTrailLabel(s.phantom ? `~ ${s.name}` : s.name)}</span>
             </button>
           ) : (
             <span
@@ -229,7 +243,7 @@ function RouteTrail({ stops, onSelectStop }: {
               style={stopStyle(i)}
             >
               <span class="trail-dot" aria-hidden="true" />
-              <span class="trail-name">{s.phantom ? `~ ${s.name}` : s.name}</span>
+              <span class="trail-name" title={s.name}>{fitTrailLabel(s.phantom ? `~ ${s.name}` : s.name)}</span>
             </span>
           )}
         </Fragment>
