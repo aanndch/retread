@@ -463,6 +463,14 @@ export function SearchOverlay({
     setClosing(true);
     setTimeout(() => {
       setClosing(false);
+      // Drop the committed flag in the same tick the session query is cleared
+      // (onClose → closeSearch → setQuery('')), or a reopen with an empty query
+      // would fall through to the browse-all catalog instead of the journal.
+      // activeIndex resets to -1 (none) so the combobox starts clean. The
+      // goTo() navigation path never reaches here, so Back still restores the
+      // committed results view.
+      setCommitted(false);
+      setActiveIndex(-1);
       if (userInitiated) closePhaseRef.current = 'waiting-for-history';
       onClose();
     }, 220);
