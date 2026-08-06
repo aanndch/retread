@@ -43,7 +43,7 @@ function setRouteSnapshot(hash: string) {
 
 // Controlled location hook fed to wouter's <Router>: navigation still goes
 // through window.location.hash so the app's hashchange handler (fade, scroll
-// cache, back-depth) keeps running; the rendered location is the delayed swap.
+// cache) keeps running; the rendered location is the delayed swap.
 const useControlledHashLocation = (): [
   string,
   (to: string, opts?: { replace?: boolean; state?: unknown; transition?: boolean }) => void,
@@ -127,18 +127,6 @@ export function App() {
   const scrollCacheRef = useRef(new Map<string, number>());
   const revealTimerRef = useRef<number | null>(null);
   const swapTimerRef = useRef<number | null>(null);
-  // Depth of in-app entries pushed above the initial load. The in-app back
-  // button pops one of these with history.back() when > 0; at 0 it falls back
-  // to navigating (replace) to the page's logical parent so a deep link never
-  // accidentally leaves the app. A replace-fallback marks skipDepth so the
-  // resulting hashchange isn't counted as a fresh forward push.
-  const navDepthRef = useRef(0);
-  const skipDepthRef = useRef(false);
-  // history.length is the reliable back/forward signal: a forward push
-  // increments it, while a back/forward traversal keeps it constant. Chrome
-  // fires popstate on plain fragment navigation too (anchor clicks, hash
-  // assignment), so popstate cannot be used to tell forward from back.
-  const prevHistoryLenRef = useRef(window.history.length);
 
   // Reveal the new route once its content is ready to render (fade-in gate).
   const finishTransition = useCallback(() => {
@@ -206,32 +194,12 @@ export function App() {
       setSearchQuery(readSearchQueryFromHash(nextHash));
       setPhotoId(readPhotoQueryFromHash(nextHash));
 
-      // Back/forward (popstate) vs fresh navigation. Chrome fires popstate on
-      // plain fragment navigation too, so instead compare history.length: a
-      // forward push grows it, a back/forward traversal leaves it unchanged.
-      const historyLen = window.history.length;
-      const isPop = historyLen === prevHistoryLenRef.current;
-      prevHistoryLenRef.current = historyLen;
-
-      // Keep the in-app depth counter in sync so navigateBack knows whether a
-      // history.back() is safe. Pops subtract, forward pushes add; a
-      // replace-fallback from navigateBack is flagged with skipDepth so the
-      // resulting hashchange isn't counted as a fresh push.
-      if (skipDepthRef.current) {
-        skipDepthRef.current = false;
-      } else if (isPop) {
-        navDepthRef.current = Math.max(0, navDepthRef.current - 1);
-      } else {
-        navDepthRef.current += 1;
-      }
-
       // Query-param-only changes on the same page do not re-transition the
       // viewport: the overlay renders over the static page and plays its own
       // fade. This covers the R1 lightbox ("#/photos" -> "#/photos?photo=1")
       // and the R2 page modals ("#/" -> "#/?modal=settings", "#/ride/1" ->
       // "#/ride/1?modal=map", "#/leg/1?modal=arrange", "#/edit?mode=…&modal=
-      // arrange"). The depth/length bookkeeping above still ran so in-app back
-      // depth stays honest.
+      // arrange").
       if (normalizeRoute(prevHash) === normalizeRoute(nextHash)) return;
 
       // Content-gated transition (Option A): fade the outgoing route out,
@@ -253,31 +221,23 @@ export function App() {
 
         // Restore or reset scroll only after the outgoing view has faded out
         // and the new one has mounted. Snapping earlier would yank a scrolled
-        // page to the top while it is still visible and fading out.
+        // page to the top while it is still visible and fading out. With the
+        // coordination layer gone (R3) there is no back/forward discriminator,
+        // so restore any previously-visited route's cached position and top
+        // otherwise — the common "Back returns where I was scrolled" case
+        // holds for browser Back and the logical-parent back button alike.
         requestAnimationFrame(() => {
-          if (isPop) {
-            restoreScroll(scrollCacheRef.current.get(nextHash));
-          } else {
-            window.scrollTo(0, 0);
-          }
+          restoreScroll(scrollCacheRef.current.get(nextHash));
         });
       }, 120);
-    };
-
-    const handlePopState = (_event: PopStateEvent) => {
-      // R1: no session consumers remain — back/forward is now native on the
-      // hash-backed routes. The popstate handler machinery itself is removed
-      // in R3.
     };
 
     const handleSWUpdate = () => setHasSWUpdate(true);
 
     window.addEventListener('hashchange', handleHashChange);
-    window.addEventListener('popstate', handlePopState);
     window.addEventListener('sw-update', handleSWUpdate);
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
-      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('sw-update', handleSWUpdate);
       if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
       if (swapTimerRef.current !== null) clearTimeout(swapTimerRef.current);
@@ -337,17 +297,14 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Back navigation: pop the browser history when there's an in-app entry to
-  // return to, otherwise fall back to the page's logical parent (replacing the
-  // current entry so a deep link doesn't pile up). At the root with no history
-  // there is no parent, so back simply does nothing and Android back exits.
+  // Back navigation: always land on the caller's logical parent by replacing
+  // the current history entry — no depth tracking, no history.back(). Replace
+  // (not push) keeps the entry count flat across back-button presses, so
+  // repeated presses can't spiral history growth, and browser Back from the
+  // parent then returns to whatever preceded the child. A deep-linked child
+  // (no prior in-app entry) still lands on its parent — the app is never left.
   const navigateBack = useCallback((logicalParent: string | null) => {
-    if (navDepthRef.current > 0) {
-      history.back();
-      return;
-    }
     if (logicalParent) {
-      skipDepthRef.current = true;
       window.location.replace(logicalParent);
     }
   }, []);
