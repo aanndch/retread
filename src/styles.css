@@ -1317,22 +1317,155 @@ button:focus,
   gap: var(--spacing-sm);
 }
 
+/* Ledger-line field (D1): borderless typewriter input sitting on a 1px dashed
+   ruled line. The hairline IS the field's bottom edge — on focus it turns
+   green and the app's offset ring appears (3px 3px 0 green-light, matching
+   .form-input:focus). The ruling doubles as the suggestion panel's hairline
+   when the panel is open (ruled-line continuity). */
+.search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 44px;
+}
+
+.search-field-icon {
+  color: var(--color-ink-muted);
+  flex-shrink: 0;
+}
+
 .search-input {
   font-family: var(--font-typewriter);
-  font-size: 14px;
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--color-ink);
-  border-radius: var(--border-radius);
-  background-color: var(--color-paper);
+  font-size: 15px;
+  flex: 1;
+  min-width: 0;
+  padding: var(--spacing-sm) 0;
+  border: none;
+  background: none;
   color: var(--color-ink);
   box-sizing: border-box;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: var(--color-green);
-  box-shadow: 3px 3px 0px var(--color-green-light);
+}
+
+.search-input::placeholder {
+  color: var(--color-ink-muted);
+  opacity: 0.6;
+}
+
+/* Hide the browser's native search-field clear button (we render our own ×) */
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-input::-ms-clear {
+  display: none;
+}
+
+.search-field::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-bottom: 1px dashed var(--color-paper-dim);
+  pointer-events: none;
+}
+
+.search-field:focus-within::after {
+  border-bottom-color: var(--color-green);
+}
+
+.search-field:focus-within {
+  box-shadow: 3px 3px 0 var(--color-green-light);
+}
+
+.search-clear {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  margin-right: calc(-1 * var(--spacing-sm));
+  border-radius: var(--border-radius-sm);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.search-clear:hover,
+.search-clear:focus-visible {
+  color: var(--color-ink);
+  background-color: var(--color-paper-dim);
+}
+
+/* Suggestion panel (State B / D10): tucked directly under the field's ruled
+   line (the gap is pulled back so the two share one dashed hairline). */
+.search-suggest {
+  display: flex;
+  flex-direction: column;
+  margin-top: calc(-1 * var(--spacing-sm));
+}
+
+.search-suggest-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--spacing-xs);
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.search-suggest-row + .search-suggest-row {
+  border-top: 1px dashed var(--color-paper-dim);
+}
+
+.search-suggest-row.is-active {
+  background-color: var(--color-paper-dim);
+  box-shadow: inset 2px 0 0 var(--color-green);
+}
+
+.search-suggest-name {
+  font-family: var(--font-typewriter);
+  font-size: 13px;
+  color: var(--color-ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The predictive tail — the part of the entity name beyond what was typed */
+.search-suggest-tail {
+  color: var(--color-green);
+}
+
+.search-suggest-scope {
+  font-family: var(--font-mechanical);
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  flex-shrink: 0;
+}
+
+.search-suggest-none {
+  font-family: var(--font-typewriter);
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+  padding: var(--spacing-xs) 0;
 }
 
 .search-count {

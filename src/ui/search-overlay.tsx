@@ -85,6 +85,49 @@ function deriveSuggestions(ridesData: HomeRideEntry[]): string[] {
   return out.slice(0, 3);
 }
 
+interface SearchSuggestion {
+  label: string;
+  scope: 'RIDE' | 'LEG';
+}
+
+// Prefix (or word-initial) match, so a 1-char query doesn't light up every
+// mid-word substring in the book.
+function matchesQuery(name: string, q: string): boolean {
+  if (name.startsWith(q)) return true;
+  const idx = name.indexOf(q);
+  if (idx <= 0) return false;
+  return !/[a-z0-9]/.test(name[idx - 1]);
+}
+
+// Suggestion panel rows: built ONLY from real rides/legs/stops — a suggested
+// term is implicitly endorsed, so never suggest something with zero results.
+// Prefix matches rank first (rides are newest-first in the data), capped at 8.
+function buildSuggestions(query: string, ridesData: HomeRideEntry[]): SearchSuggestion[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const out: SearchSuggestion[] = [];
+  const seen = new Set<string>();
+  const push = (label: string, scope: SearchSuggestion['scope']) => {
+    const key = label.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ label, scope });
+  };
+  for (const entry of ridesData) {
+    const title = entry.ride.title?.trim();
+    if (title && matchesQuery(title, q)) push(title, 'RIDE');
+    if (out.length >= 8) break;
+    for (const leg of entry.legs) {
+      const legTitle = leg.title?.trim();
+      if (legTitle && matchesQuery(legTitle, q)) push(legTitle, 'LEG');
+      const stopName = leg.location?.name?.trim();
+      if (stopName && matchesQuery(stopName, q)) push(stopName, 'LEG');
+      if (out.length >= 8) break;
+    }
+  }
+  return out.slice(0, 8);
+}
+
 // React 18's useDeferredValue never made it into preact/hooks, so emulate it:
 // render with the previous value immediately (typing stays snappy) and let an
 // effect-triggered update catch up with the new value on the next render — the
@@ -153,6 +196,22 @@ function buildSearchResults(query: string, ridesData: HomeRideEntry[]): SearchRe
 
   // Most recent trip first
   return results.sort((a, b) => b.entry.startDate.localeCompare(a.entry.startDate));
+}
+
+// The predictive/unique tail of a suggestion renders in green — the part of
+// the entity name beyond what the user has already typed.
+function SuggestionLabel({ label, query }: { label: string; query: string }) {
+  const q = query.trim().toLowerCase();
+  const lower = label.toLowerCase();
+  if (q && lower.startsWith(q)) {
+    return (
+      <>
+        {label.slice(0, q.length)}
+        <span class="search-suggest-tail">{label.slice(q.length)}</span>
+      </>
+    );
+  }
+  return <>{label}</>;
 }
 
 function SearchThumb({ blob, coverKey }: { blob: Blob | null; coverKey: string }) {
@@ -269,24 +328,41 @@ export function SearchOverlay({
   // Deferred + memoized results: the input keeps the live query (typing stays
   // snappy) while the full-book scan runs against the lagging deferred value,
   // so intermediate keystrokes reuse the cached result list instead of
-  // re-scanning every ride.
+  // re-scanning every ride. Once the query is committed (Enter / Search key /
+  // suggestion tap) the results come from the live query so the commit is
+  // immediate — the deferred lag only smooths keystroke typing.
   const deferredQuery = useDeferredValue(query);
+  const [committed, setCommitted] = useState(false);
+  // Active suggestion for the combobox (aria-activedescendant); -1 = none.
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const resultsQuery = committed ? query : deferredQuery;
   const results = useMemo(
-    () => buildSearchResults(deferredQuery, ridesData),
-    [deferredQuery, ridesData],
+    () => buildSearchResults(resultsQuery, ridesData),
+    [resultsQuery, ridesData],
   );
   // Count every match (result rows + snippet rows), not matched rides — the
   // truthful intermediate number; Phase 3 replaces this line with section counts.
   const matchCount = results.reduce((n, r) => n + 1 + r.snippets.length, 0);
   // Derived example searches for the pre-search journal.
-  const suggestions = useMemo(() => deriveSuggestions(ridesData), [ridesData]);
+  const journalSuggestions = useMemo(() => deriveSuggestions(ridesData), [ridesData]);
+  // Suggestion panel rows, built live from the typed query.
+  const suggestions = useMemo(() => buildSuggestions(query, ridesData), [query, ridesData]);
+
+  // Reset the active suggestion whenever the query changes.
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [query]);
+
+  // State B: while typing (and not yet committed), the suggestion panel in the
+  // sticky top bar replaces the result list below.
+  const panelOpen = query.trim() !== '' && !committed;
 
   if (!visible) return null;
 
   // Navigate to a result: leave the query intact so App can reopen search
   // with it when the user returns (tapping the wrong ride shouldn't lose it).
   const goTo = (route: string) => {
-    const q = deferredQuery.trim();
+    const q = resultsQuery.trim();
     if (q) addRecent(q);
     onNavigate(route);
   };
@@ -295,12 +371,61 @@ export function SearchOverlay({
   const runQuery = (q: string) => {
     addRecent(q);
     onQueryChange(q);
+    setCommitted(true);
+  };
+
+  // Typing after a commit returns to the suggestion panel (State B).
+  const handleQueryInput = (value: string) => {
+    if (committed) setCommitted(false);
+    onQueryChange(value);
+  };
+
+  // Commit a suggestion: fill the field with the entity name and go straight
+  // to its results (the entity always has results — suggestions are real).
+  const commitSuggestion = (s: SearchSuggestion) => {
+    addRecent(s.label);
+    onQueryChange(s.label);
+    setCommitted(true);
+    setActiveIndex(-1);
+  };
+
+  // Enter / Search-key submit: active suggestion wins, else commit the raw
+  // query. Records the query in recents (submit is a deliberate action).
+  const submit = () => {
+    if (!committed && suggestions.length > 0 && activeIndex >= 0) {
+      commitSuggestion(suggestions[activeIndex]);
+      return;
+    }
+    const q = query.trim();
+    if (q) addRecent(q);
+    setCommitted(true);
+    setActiveIndex(-1);
+  };
+
+  // Combobox keyboard contract: ↓/↑ move through suggestions (focus stays in
+  // the input, aria-activedescendant tracks it), Enter submits, Escape closes
+  // via the document handler below.
+  const onInputKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!committed && suggestions.length > 0) {
+        e.preventDefault();
+        setActiveIndex((prev) => {
+          const n = suggestions.length;
+          if (prev === -1) return e.key === 'ArrowDown' ? 0 : n - 1;
+          return (prev + (e.key === 'ArrowDown' ? 1 : -1) + n) % n;
+        });
+      }
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submit();
+    }
   };
 
   // Trap Tab focus inside the sheet while the overlay is open (input, close
   // button, result/snippet buttons), wrapping at both ends. Escape handling
-  // and the input's own behavior stay untouched (Phase 2 adds the combobox
-  // arrow-key contract).
+  // and the input's own combobox key contract stay untouched.
   const onOverlayKeyDown = (e: KeyboardEvent) => {
     if (e.key !== 'Tab') return;
     const container = rootRef.current;
@@ -341,14 +466,73 @@ export function SearchOverlay({
               <CloseIcon size={16} />
             </button>
           </div>
-          <input
-            ref={inputRef}
-            type="text"
-            class="search-input"
-            placeholder="Search rides, stops, notes…"
-            value={query}
-            onInput={(e) => onQueryChange((e.target as HTMLInputElement).value)}
-          />
+          <div class="search-field">
+            <SearchIcon size={16} class="search-field-icon" />
+            <input
+              ref={inputRef}
+              type="search"
+              name="q"
+              class="search-input"
+              role="combobox"
+              aria-expanded={panelOpen}
+              aria-controls="search-suggest-listbox"
+              aria-autocomplete="list"
+              aria-activedescendant={
+                activeIndex >= 0 ? `search-suggest-option-${activeIndex}` : undefined
+              }
+              aria-label="Search rides, stops and notes"
+              enterkeyhint="search"
+              autocomplete="off"
+              spellcheck={false}
+              placeholder="Search rides, stops and notes…"
+              value={query}
+              onInput={(e) => handleQueryInput((e.target as HTMLInputElement).value)}
+              onKeyDown={onInputKeyDown}
+            />
+            {query !== '' && (
+              <button
+                type="button"
+                class="search-clear"
+                aria-label="Clear search"
+                onClick={() => {
+                  handleQueryInput('');
+                  inputRef.current?.focus();
+                }}
+              >
+                <CloseIcon size={16} />
+              </button>
+            )}
+          </div>
+          {panelOpen && (
+            <div
+              class="search-suggest"
+              id="search-suggest-listbox"
+              role="listbox"
+              aria-label="Suggestions"
+            >
+              {suggestions.length === 0 ? (
+                <p class="search-suggest-none">
+                  No suggestions yet — press the Search key to see all matches.
+                </p>
+              ) : (
+                suggestions.map((s, i) => (
+                  <div
+                    id={`search-suggest-option-${i}`}
+                    role="option"
+                    aria-selected={i === activeIndex}
+                    class={`search-suggest-row${i === activeIndex ? ' is-active' : ''}`}
+                    onClick={() => commitSuggestion(s)}
+                    onMouseEnter={() => setActiveIndex(i)}
+                  >
+                    <span class="search-suggest-name">
+                      <SuggestionLabel label={s.label} query={query} />
+                    </span>
+                    <span class="search-suggest-scope">{s.scope}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {loading && results.length === 0 ? (
@@ -363,7 +547,7 @@ export function SearchOverlay({
               </div>
             ))}
           </div>
-        ) : deferredQuery.trim() === '' ? (
+        ) : query.trim() === '' ? (
           <div class="search-journal">
             <div class="search-journal-section">
               <div class="search-section-head">
@@ -399,13 +583,13 @@ export function SearchOverlay({
               )}
             </div>
 
-            {suggestions.length > 0 && (
+            {journalSuggestions.length > 0 && (
               <div class="search-journal-section">
                 <div class="search-section-head">
                   <span class="search-section-title">Suggested</span>
                 </div>
                 <div class="search-journal-rows">
-                  {suggestions.map((s) => (
+                  {journalSuggestions.map((s) => (
                     <button
                       type="button"
                       class="search-journal-row search-journal-row--suggested"
@@ -423,8 +607,10 @@ export function SearchOverlay({
               Your Log · {ridesData.length} Rides
             </p>
           </div>
+        ) : !committed ? (
+          null
         ) : results.length === 0 ? (
-          <p class="search-empty">No rides match “{deferredQuery.trim()}”.</p>
+          <p class="search-empty">No rides match “{resultsQuery.trim()}”.</p>
         ) : (
           <>
             <p class="search-count">
@@ -440,7 +626,7 @@ export function SearchOverlay({
                   >
                     <SearchThumb blob={entry.firstPhotoBlob} coverKey={entry.coverKey} />
                     <span class="search-result-body">
-                      <span class="search-result-title">{highlight(entry.ride.title, deferredQuery)}</span>
+                      <span class="search-result-title">{highlight(entry.ride.title, resultsQuery)}</span>
                       <span class="search-result-meta">
                         {entry.dateRange}
                         {entry.totalKm > 0 ? ` · ${formatDistance(entry.totalKm)}` : ''}
@@ -461,7 +647,7 @@ export function SearchOverlay({
                       }}
                     >
                       <span class="search-snippet-label">{s.label}</span>
-                      <span class="search-snippet-text">{highlight(s.text, deferredQuery)}</span>
+                      <span class="search-snippet-text">{highlight(s.text, resultsQuery)}</span>
                     </button>
                   ))}
                 </div>
