@@ -93,14 +93,16 @@ export function App() {
   const prevHashRef = useRef(window.location.hash || HASH_HOME);
 
   // Shared ride-book data (rides + legs + covers) for both home and search.
-  const ridesData = useRideBook();
+  // The status variant also reports the initial Dexie live-query load so the
+  // search overlay can show a skeleton instead of flashing its empty state.
+  const { rides, loading } = useRideBook({ withStatus: true });
 
   // Search lives at the shell level so it survives navigation: navigating to a
   // result closes it, and returning to home reopens it with the same query.
   const search = useSearchSession();
   // Shared gallery photo list + shell overlay session (survives navigation and
   // restores the exact photo after "View ride" -> Back).
-  const galleryPhotos = useGalleryPhotos(ridesData);
+  const galleryPhotos = useGalleryPhotos(rides);
   const gallery = useGallerySession();
   const scrollCacheRef = useRef(new Map<string, number>());
   const revealTimerRef = useRef<number | null>(null);
@@ -309,7 +311,7 @@ export function App() {
   //    running; matching and typed params are wouter's, fed by the controlled
   //    location so the 120ms fade-out swap still gates rendering.
   const homeElement = (
-    <Home ridesData={ridesData} onNavigate={navigateTo} onOpenSearch={search.openSearch} onReady={finishTransition} />
+    <Home ridesData={rides} onNavigate={navigateTo} onOpenSearch={search.openSearch} onReady={finishTransition} />
   );
 
   const renderRide = (id: string) => {
@@ -336,7 +338,7 @@ export function App() {
         <Route path="/todo">{() => <Todo onNavigateBack={navigateBack} />}</Route>
         <Route path="/photos">{() => (
           <Photos
-            ridesData={ridesData}
+            ridesData={rides}
             photos={galleryPhotos}
             onOpenPhoto={gallery.open}
             onNavigate={navigateTo}
@@ -389,7 +391,8 @@ export function App() {
           navigation (open it, tap a result, come back, it's still here). */}
       <SearchOverlay
         isOpen={search.isOpen}
-        ridesData={ridesData ?? []}
+        ridesData={rides ?? []}
+        loading={loading}
         query={search.query}
         onQueryChange={search.setQuery}
         onNavigate={search.navigateFromSearch}

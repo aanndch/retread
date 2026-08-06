@@ -1331,7 +1331,8 @@ button:focus,
 
 .search-input:focus {
   outline: none;
-  box-shadow: 3px 3px 0px var(--color-shadow);
+  border-color: var(--color-green);
+  box-shadow: 3px 3px 0px var(--color-green-light);
 }
 
 .search-count {
@@ -1349,6 +1350,52 @@ button:focus,
   color: var(--color-ink-muted);
   text-align: center;
   padding: var(--spacing-xl) 0;
+}
+
+/* Initial book load: minimal skeleton rows (paper-dim blocks) matching the
+   result-row geometry so nothing flashes empty while the Dexie live query
+   resolves. Visual refinement (pulse, hairlines) lands in Phase 3. */
+.search-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-sm);
+}
+
+.search-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.search-skeleton-thumb {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: var(--border-radius-sm);
+  background-color: var(--color-paper-dim);
+}
+
+.search-skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
+  min-width: 0;
+}
+
+.search-skeleton-block {
+  height: 12px;
+  border-radius: var(--border-radius-sm);
+  background-color: var(--color-paper-dim);
+}
+
+.search-skeleton-title {
+  width: 60%;
+}
+
+.search-skeleton-meta {
+  width: 40%;
 }
 
 .search-results {
@@ -1457,8 +1504,8 @@ button:focus,
 }
 
 .search-hit {
-  background-color: var(--color-paper-dim);
-  color: var(--color-ink);
+  background-color: var(--color-green);
+  color: var(--color-paper);
   font-weight: bold;
   padding: 0 2px;
   border-radius: var(--border-radius-sm);

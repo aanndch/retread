@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { coverUrlCache, type HomeRideEntry } from './use-ride-book';
 import { CloseIcon } from '../components/icons';
@@ -9,6 +9,7 @@ import { useExitFade } from '../components/use-exit-fade';
 interface SearchOverlayProps {
   isOpen: boolean;
   ridesData: HomeRideEntry[];
+  loading: boolean;
   query: string;
   onQueryChange: (q: string) => void;
   onNavigate: (route: string) => void;
@@ -57,6 +58,18 @@ function windowed(text: string, query: string): string {
   return `${before}${text.slice(start, end)}${after}`;
 }
 
+// React 18's useDeferredValue never made it into preact/hooks, so emulate it:
+// render with the previous value immediately (typing stays snappy) and let an
+// effect-triggered update catch up with the new value on the next render — the
+// expensive buildSearchResults scan runs against this lagging value.
+function useDeferredValue<T>(value: T): T {
+  const [deferred, setDeferred] = useState(value);
+  useEffect(() => {
+    setDeferred(value);
+  }, [value]);
+  return deferred;
+}
+
 function buildSearchResults(query: string, ridesData: HomeRideEntry[]): SearchResult[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
@@ -65,36 +78,44 @@ function buildSearchResults(query: string, ridesData: HomeRideEntry[]): SearchRe
 
   for (const entry of ridesData) {
     const snippets: Snippet[] = [];
-    const add = (s: Snippet) => {
+    // Dedupe by (legId, matched field, text) so one match source yields one
+    // snippet: a leg's location name used to appear twice — as a plain STOP
+    // snippet from the stops scan and again as a STOP·leg snippet below.
+    const seen = new Set<string>();
+    const add = (s: Snippet, field: string) => {
+      const key = `${s.legId ?? 'root'}|${field}|${s.text}`;
+      if (seen.has(key)) return;
+      seen.add(key);
       if (snippets.length < 2) snippets.push(s);
     };
 
     if (entry.ride.title && entry.ride.title.toLowerCase().includes(q)) {
-      add({ label: 'RIDE', text: entry.ride.title });
+      add({ label: 'RIDE', text: entry.ride.title }, 'title');
     }
 
-    // Stop names (start location + leg locations)
-    const stops: string[] = [];
-    if (entry.ride.startLocation?.name) stops.push(entry.ride.startLocation.name);
+    // Stop names (start location + leg locations). Each stop remembers its leg
+    // so the key above collides with the matching STOP·leg snippet.
+    const stops: { name: string; legId?: number }[] = [];
+    if (entry.ride.startLocation?.name) stops.push({ name: entry.ride.startLocation.name });
     for (const leg of entry.legs) {
-      if (leg.location?.name) stops.push(leg.location.name);
+      if (leg.location?.name) stops.push({ name: leg.location.name, legId: leg.id });
     }
     for (const stop of stops) {
-      if (stop.toLowerCase().includes(q)) {
-        add({ label: 'STOP', text: stop });
+      if (stop.name.toLowerCase().includes(q)) {
+        add({ label: 'STOP', text: stop.name, legId: stop.legId }, 'stop');
       }
     }
 
     // Leg titles, locations and notes (deep-link to the specific leg)
     for (const leg of entry.legs) {
       if (leg.title && leg.title.toLowerCase().includes(q)) {
-        add({ label: 'LEG', text: leg.title, legId: leg.id });
+        add({ label: 'LEG', text: leg.title, legId: leg.id }, 'leg-title');
       }
       if (leg.location?.name && leg.location.name.toLowerCase().includes(q)) {
-        add({ label: `STOP · ${leg.title || 'Leg'}`, text: leg.location.name, legId: leg.id });
+        add({ label: `STOP · ${leg.title || 'Leg'}`, text: leg.location.name, legId: leg.id }, 'stop');
       }
       if (leg.note && leg.note.toLowerCase().includes(q)) {
-        add({ label: `NOTE · ${leg.title || 'Leg'}`, text: windowed(leg.note, q), legId: leg.id });
+        add({ label: `NOTE · ${leg.title || 'Leg'}`, text: windowed(leg.note, q), legId: leg.id }, 'note');
       }
     }
 
@@ -139,12 +160,13 @@ function SearchThumb({ blob, coverKey }: { blob: Blob | null; coverKey: string }
       </div>
     );
   }
-  return <img src={url} alt="" class="search-thumb" />;
+  return <img src={url} alt="" loading="lazy" class="search-thumb" />;
 }
 
 export function SearchOverlay({
   isOpen,
   ridesData,
+  loading,
   query,
   onQueryChange,
   onNavigate,
@@ -153,6 +175,7 @@ export function SearchOverlay({
 }: SearchOverlayProps) {
   const [closing, setClosing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const handledCloseRequestRef = useRef(0);
   const closePhaseRef = useRef<ClosePhase>('idle');
   // Play a short fade-out whenever the overlay closes (including navigation)
@@ -210,9 +233,20 @@ export function SearchOverlay({
     handleClose(false);
   }, [closeRequest, isOpen, closing, onClose]);
 
-  if (!visible) return null;
+  // Deferred + memoized results: the input keeps the live query (typing stays
+  // snappy) while the full-book scan runs against the lagging deferred value,
+  // so intermediate keystrokes reuse the cached result list instead of
+  // re-scanning every ride.
+  const deferredQuery = useDeferredValue(query);
+  const results = useMemo(
+    () => buildSearchResults(deferredQuery, ridesData),
+    [deferredQuery, ridesData],
+  );
+  // Count every match (result rows + snippet rows), not matched rides — the
+  // truthful intermediate number; Phase 3 replaces this line with section counts.
+  const matchCount = results.reduce((n, r) => n + 1 + r.snippets.length, 0);
 
-  const results = buildSearchResults(query, ridesData);
+  if (!visible) return null;
 
   // Navigate to a result: leave the query intact so App can reopen search
   // with it when the user returns (tapping the wrong ride shouldn't lose it).
@@ -220,8 +254,42 @@ export function SearchOverlay({
     onNavigate(route);
   };
 
+  // Trap Tab focus inside the sheet while the overlay is open (input, close
+  // button, result/snippet buttons), wrapping at both ends. Escape handling
+  // and the input's own behavior stay untouched (Phase 2 adds the combobox
+  // arrow-key contract).
+  const onOverlayKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== 'Tab') return;
+    const container = rootRef.current;
+    if (!container) return;
+    const focusables = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        'input, button, [href], select, textarea, [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const activeIndex = focusables.indexOf(document.activeElement as HTMLElement);
+    if (e.shiftKey && (activeIndex <= 0 || activeIndex === -1)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (activeIndex === -1 || activeIndex === focusables.length - 1)) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
-    <div class={`modal-backdrop search-backdrop${closing || exitClosing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Search rides" onClick={() => handleClose()}>
+    <div
+      ref={rootRef}
+      class={`modal-backdrop search-backdrop${closing || exitClosing ? ' closing' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search rides"
+      onClick={() => handleClose()}
+      onKeyDown={onOverlayKeyDown}
+    >
       <div class="search-sheet" onClick={(e) => e.stopPropagation()}>
         <div class="search-top">
           <div class="search-header">
@@ -240,14 +308,26 @@ export function SearchOverlay({
           />
         </div>
 
-        {query.trim() === '' ? (
+        {loading && results.length === 0 ? (
+          <div class="search-skeleton" aria-hidden="true">
+            {[0, 1, 2].map((i) => (
+              <div class="search-skeleton-row" key={i}>
+                <span class="search-skeleton-thumb" />
+                <span class="search-skeleton-lines">
+                  <span class="search-skeleton-block search-skeleton-title" />
+                  <span class="search-skeleton-block search-skeleton-meta" />
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : deferredQuery.trim() === '' ? (
           <p class="search-empty">Type to search rides, stops and notes.</p>
         ) : results.length === 0 ? (
-          <p class="search-empty">No rides match “{query.trim()}”.</p>
+          <p class="search-empty">No rides match “{deferredQuery.trim()}”.</p>
         ) : (
           <>
             <p class="search-count">
-              {results.length} {results.length === 1 ? 'ride' : 'rides'}
+              {matchCount} {matchCount === 1 ? 'match' : 'matches'}
             </p>
             <div class="search-results">
               {results.map(({ entry, snippets }) => (
@@ -259,7 +339,7 @@ export function SearchOverlay({
                   >
                     <SearchThumb blob={entry.firstPhotoBlob} coverKey={entry.coverKey} />
                     <span class="search-result-body">
-                      <span class="search-result-title">{highlight(entry.ride.title, query)}</span>
+                      <span class="search-result-title">{highlight(entry.ride.title, deferredQuery)}</span>
                       <span class="search-result-meta">
                         {entry.dateRange}
                         {entry.totalKm > 0 ? ` · ${formatDistance(entry.totalKm)}` : ''}
@@ -280,7 +360,7 @@ export function SearchOverlay({
                       }}
                     >
                       <span class="search-snippet-label">{s.label}</span>
-                      <span class="search-snippet-text">{highlight(s.text, query)}</span>
+                      <span class="search-snippet-text">{highlight(s.text, deferredQuery)}</span>
                     </button>
                   ))}
                 </div>

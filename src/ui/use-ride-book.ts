@@ -18,6 +18,15 @@ export interface HomeRideEntry {
   legs: Leg[];
 }
 
+// Status form returned by useRideBook({ withStatus: true }): the same live data
+// plus whether the initial Dexie live query is still resolving. useLiveQuery
+// returns undefined only before its first emit, so this flags exactly the
+// initial book load (later re-emits keep the previous value).
+export interface RideBookStatus {
+  rides: HomeRideEntry[] | undefined;
+  loading: boolean;
+}
+
 // Object URLs for ride cover images, cached by the cover slot (leg + photo
 // index). Live-query re-emits hand back fresh Blob references for identical
 // bytes, so without this the cover would re-decode and flicker on every emit.
@@ -41,8 +50,10 @@ async function blobFingerprint(blob: Blob): Promise<string> {
 // Shared ride-book query: every ride + its legs, with cover, trail, and month
 // bucket. Lives above the router so both the home page and the global search
 // overlay can read the same live data.
-export function useRideBook(): HomeRideEntry[] | undefined {
-  return useLiveQuery(async () => {
+export function useRideBook(): HomeRideEntry[] | undefined;
+export function useRideBook(options: { withStatus: true }): RideBookStatus;
+export function useRideBook(options?: { withStatus?: boolean }): HomeRideEntry[] | undefined | RideBookStatus {
+  const rides = useLiveQuery(async () => {
     const allRides = await db.rides.orderBy('createdAt').reverse().toArray();
     const allLegs = await db.legs.toArray();
     const legsByRide = new Map<number, typeof allLegs>();
@@ -103,4 +114,6 @@ export function useRideBook(): HomeRideEntry[] | undefined {
 
     return list;
   });
+  if (options?.withStatus) return { rides, loading: rides === undefined };
+  return rides;
 }
