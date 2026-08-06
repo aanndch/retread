@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import type { JSX } from 'preact';
 import { Button } from '../../components/button';
 import { FieldCard } from '../../components/field-card';
-import { DetailRow, PlaceRow } from './fields';
+import { DetailRow, PlaceRow, TextInput, StepActions } from './fields';
 import { formatDistance } from '../../lib';
 import type { LocationUnion } from '../../types';
 
@@ -101,17 +101,13 @@ export function LegStep({
         onToggle={() => setOpenRow(openRow === 'title' ? null : 'title')}
       >
         <div class="form-group">
-          <input
-            type="text"
-            class={`form-input ${titleError ? 'input-error' : ''}`}
+          <TextInput
             placeholder="e.g. Manali to Jispa"
             value={legTitle}
-            onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
-              setLegTitle((e.target as HTMLInputElement).value);
-              if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
-            }}
+            onInput={setLegTitle}
+            error={titleError}
+            onClearError={() => setTitleError('')}
           />
-          {titleError && <span class="error-text">{titleError}</span>}
         </div>
       </DetailRow>
 
@@ -224,20 +220,14 @@ export function LegStep({
         </div>
       </DetailRow>
 
-      <div class="form-actions">
-        {step > 1 ? (
-          <Button variant="secondary" onClick={() => handleStepJump((step - 1) as 1 | 2 | 3 | 4)} disabled={saving}>
-            ← Back
-          </Button>
-        ) : (
-          <Button variant="secondary" onClick={handleCancel} disabled={saving}>
-            Cancel
-          </Button>
-        )}
-        <Button variant="primary" onClick={() => handleStepJump((step + 1) as 1 | 2 | 3 | 4)} disabled={saving}>
-          Next: Photos →
-        </Button>
-      </div>
+      <StepActions
+        onBack={step > 1 ? () => handleStepJump((step - 1) as 1 | 2 | 3 | 4) : handleCancel}
+        backLabel={step > 1 ? '← Back' : 'Cancel'}
+        backDisabled={saving}
+        onNext={() => handleStepJump((step + 1) as 1 | 2 | 3 | 4)}
+        nextLabel="Next: Photos →"
+        nextDisabled={saving}
+      />
     </div>
   );
 }

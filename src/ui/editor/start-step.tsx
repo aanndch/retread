@@ -1,7 +1,5 @@
-import type { JSX } from 'preact';
-import { Button } from '../../components/button';
 import { FieldCard } from '../../components/field-card';
-import { PlaceRow } from './fields';
+import { PlaceRow, TextInput, StepActions } from './fields';
 import type { LocationUnion } from '../../types';
 
 interface StartStepProps {
@@ -43,17 +41,13 @@ export function StartStep({
     <div class="wizard-step-content">
       <div class="ride-create-body">
         <FieldCard label="Name your ride">
-          <input
-            type="text"
-            class={`form-input ${titleError ? 'input-error' : ''}`}
+          <TextInput
             placeholder="e.g. Spiti Valley Odyssey"
             value={rideTitle || autoRideTitle}
-            onInput={(e: JSX.TargetedEvent<HTMLInputElement>) => {
-              setRideTitle((e.target as HTMLInputElement).value);
-              if ((e.target as HTMLInputElement).value.trim()) setTitleError('');
-            }}
+            onInput={setRideTitle}
+            error={titleError}
+            onClearError={() => setTitleError('')}
           />
-          {titleError && <span class="error-text">{titleError}</span>}
         </FieldCard>
 
         <FieldCard label="Starting From">
@@ -71,14 +65,14 @@ export function StartStep({
         </FieldCard>
       </div>
 
-      <div class="form-actions">
-        <Button variant="secondary" onClick={handleCancel} disabled={saving}>
-          Cancel
-        </Button>
-        <Button variant="primary" onClick={() => handleStepJump(2)} disabled={saving}>
-          Next: Stop →
-        </Button>
-      </div>
+      <StepActions
+        onBack={handleCancel}
+        backLabel="Cancel"
+        backDisabled={saving}
+        onNext={() => handleStepJump(2)}
+        nextLabel="Next: Stop →"
+        nextDisabled={saving}
+      />
     </div>
   );
 }

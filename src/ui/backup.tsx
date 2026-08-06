@@ -3,7 +3,7 @@ import { db } from '../db';
 import { createThumbnail } from '../images';
 import { Button } from '../components/button';
 import { ConfirmModal } from '../components/confirm-modal';
-import { Toast, useToast } from '../components/toast';
+import { ToastHost, useToast } from '../components/toast';
 import { PageHeader } from '../components/page-header';
 import { FieldCard } from '../components/field-card';
 import { HASH_HOME, GDRIVE_AUTOSYNC_FILENAME } from '../constants';
@@ -23,6 +23,8 @@ import {
   setAutoSyncEnabled,
   getLastSyncTime,
   scheduleAutoSync,
+  blobToBase64,
+  base64ToBlob,
   type DriveBackupFile,
 } from '../gdrive';
 
@@ -103,22 +105,6 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
     return () => window.removeEventListener('retread-gdrive-connected', onConnected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Helper: Convert Blob to Base64 Data URL
-  const blobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  };
-
-  // Helper: Convert Base64 Data URL back to Blob
-  const base64ToBlob = async (base64Url: string): Promise<Blob> => {
-    const res = await fetch(base64Url);
-    return await res.blob();
-  };
 
   // ── Local Export ──────────────────────────────────────────────────────────
 
@@ -621,11 +607,7 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
         />
       )}
 
-      <div class="toast-container">
-        {toasts.map(t => (
-          <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
-        ))}
-      </div>
+      <ToastHost toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

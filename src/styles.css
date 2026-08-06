@@ -2488,10 +2488,6 @@ input[type=number] {
   overflow-wrap: break-word;
 }
 
-.leg-trail .trail-name {
-  max-width: 150px;
-}
-
 /* Ride map hero */
 .ride-map-hero {
   margin-bottom: var(--spacing-md);

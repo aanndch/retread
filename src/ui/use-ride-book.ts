@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { computeTotalDistance, formatDateRange, buildStopTrail } from '../lib';
+import { computeTotalDistance, formatDateRange, buildStopTrail, sortLegs } from '../lib';
 import type { Ride, Leg } from '../types';
 
 // Sentinel month key for rides that have no legs yet (undated drafts).
@@ -57,13 +57,7 @@ export function useRideBook(): HomeRideEntry[] | undefined {
     for (const ride of allRides) {
       const legs = legsByRide.get(ride.id!) || [];
 
-      const sortedLegs = [...legs].sort((a, b) => {
-        const dComp = a.date.localeCompare(b.date);
-        if (dComp !== 0) return dComp;
-        const tA = a.time || '00:00';
-        const tB = b.time || '00:00';
-        return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
-      });
+      const sortedLegs = sortLegs(legs);
 
       const legWithPhoto = sortedLegs.find(l => l.photos && l.photos.length > 0);
       const customCover = ride.coverBlob ? ride.coverBlob : null;

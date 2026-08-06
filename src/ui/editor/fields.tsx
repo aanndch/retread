@@ -30,6 +30,57 @@ export function DetailRow({ label, value, open, onToggle, children }: {
   );
 }
 
+// The canonical free-text input with inline error state, shared by every step's
+// title field. Typing clears the error once the value is non-empty.
+export function TextInput({ value, onInput, placeholder, error, onClearError }: {
+  value: string;
+  onInput: (v: string) => void;
+  placeholder?: string;
+  error?: string;
+  onClearError?: () => void;
+}) {
+  return (
+    <>
+      <input
+        type="text"
+        class={`form-input ${error ? 'input-error' : ''}`}
+        placeholder={placeholder}
+        value={value}
+        onInput={(e) => {
+          const v = (e.target as HTMLInputElement).value;
+          onInput(v);
+          if (v.trim() && onClearError) onClearError();
+        }}
+      />
+      {error && <span class="error-text">{error}</span>}
+    </>
+  );
+}
+
+// The wizard nav bar: secondary action (back/cancel) on the left, primary
+// action (next/submit) on the right. `submit` renders the primary as a submit
+// button so it drives the enclosing form.
+export function StepActions({ onBack, backLabel = '← Back', backDisabled, onNext, nextLabel = 'Next →', nextDisabled, submit }: {
+  onBack?: () => void;
+  backLabel?: string;
+  backDisabled?: boolean;
+  onNext?: () => void;
+  nextLabel?: string;
+  nextDisabled?: boolean;
+  submit?: boolean;
+}) {
+  return (
+    <div class="form-actions">
+      <Button variant="secondary" onClick={onBack} disabled={backDisabled}>
+        {backLabel}
+      </Button>
+      <Button type={submit ? 'submit' : 'button'} variant="primary" onClick={submit ? undefined : onNext} disabled={nextDisabled}>
+        {nextLabel}
+      </Button>
+    </div>
+  );
+}
+
 // A single, tappable place control: shows the stop once on one line (name or a
 // hint), opens the place picker on tap, and keeps "My location" one tap away.
 export function PlaceRow({ emptyLabel, location, gpsLoading, onOpen, onUseLocation, onClear }: {

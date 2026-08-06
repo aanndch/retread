@@ -3,12 +3,15 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Fragment } from "preact";
 import { db } from "../db";
 import { Button } from "../components/button";
-import { Toast, useToast } from "../components/toast";
+import { ToastHost, useToast } from "../components/toast";
 import { ConfirmModal } from "../components/confirm-modal";
 import { PageHeader } from "../components/page-header";
-import { SquiggleMap, DAY_COLORS } from "./squiggle";
+import { StatPlate } from "../components/stat-plate";
+import { useHistoryModal } from "../components/use-history-modal";
+import { SquiggleEmptyState, DAY_COLORS } from "./squiggle";
 import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
+import { MapHero } from "../components/map-hero";
 import { PhotoOverlay } from "../components/photo-overlay";
 import { LegCard } from "./ride-detail/leg-card";
 import { HASH_HOME } from "../constants";
@@ -19,6 +22,7 @@ import {
   buildTrailStops,
   computeDayDistances,
   stopLabel,
+  sortLegs,
 } from "../lib";
 import type { TrailStop } from "../lib";
 import type { Ride, Leg } from "../types";
@@ -238,25 +242,14 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
 
-  // Fullscreen Photo Overlay state and handlers
-  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  // Fullscreen Photo Overlay: history-aware open/close (pushes and pops its own
+  // history entry so browser back closes it without leaving phantom entries).
   const [photoActiveIdx, setPhotoActiveIdx] = useState(0);
+  const [showPhotoModal, openPhoto, closePhotoModal] = useHistoryModal("photo");
 
   const openPhotoModal = (globalIdx: number) => {
     setPhotoActiveIdx(globalIdx);
-    setShowPhotoModal(true);
-    history.pushState({ modalOpen: "photo" }, "");
-  };
-
-  const closePhotoModal = () => {
-    // Popping the modal's own pushState entry keeps the browser history free of
-    // phantom entries; otherwise the next in-app back would silently consume it
-    // and look like a dead press.
-    if (history.state && history.state.modalOpen) {
-      history.back();
-      return;
-    }
-    setShowPhotoModal(false);
+    openPhoto();
   };
 
   // Snapshot the current photo as the ride's home cover (immediate persist).
@@ -270,35 +263,20 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
     showToast("Set as ride cover.");
   };
 
-  // Fullscreen Map Modal state and handlers
-  const [showMapModal, setShowMapModal] = useState(false);
+  // Fullscreen Map Modal (history-aware, same lifecycle as the photo overlay).
+  const [showMapModal, openMap, closeMapModal] = useHistoryModal("map");
 
-  const openMapModal = () => {
-    setShowMapModal(true);
-    history.pushState({ modalOpen: "map" }, "");
-  };
+  const openMapModal = () => openMap();
 
-  const closeMapModal = () => {
-    // Popping the modal's own pushState entry keeps the browser history free of
-    // phantom entries; otherwise the next in-app back would silently consume it
-    // and look like a dead press.
-    if (history.state && history.state.modalOpen) {
-      history.back();
-      return;
-    }
-    setShowMapModal(false);
-  };
-
-  // Close modals on browser back button
+  // The delete confirmation isn't a history entry, so browser back just closes
+  // it as a courtesy; route changes unmount it anyway.
   useEffect(() => {
     const handlePopState = () => {
-      if (showPhotoModal) setShowPhotoModal(false);
-      if (showMapModal) setShowMapModal(false);
       if (showDeleteModal) setShowDeleteModal(false);
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [showPhotoModal, showMapModal, showDeleteModal]);
+  }, [showDeleteModal]);
 
   const onNavigateRef = useRef(onNavigate);
   onNavigateRef.current = onNavigate;
@@ -323,13 +301,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
         .where("rideId")
         .equals(rideId)
         .toArray();
-      const sortedLegs = [...legsRecords].sort((a, b) => {
-        const dComp = a.date.localeCompare(b.date);
-        if (dComp !== 0) return dComp;
-        const tA = a.time || '00:00';
-        const tB = b.time || '00:00';
-        return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
-      });
+      const sortedLegs = sortLegs(legsRecords);
       return { ride: rideRecord, legs: sortedLegs };
     },
     [rideId]
@@ -477,42 +449,15 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
         </section>
 
         {/* Cumulative Squiggle route map */}
-        <section class="ride-map-hero">
-          {segments.length > 0 || mapStops.length > 0 ? (
-            <div class="map-interactive-trigger" onClick={openMapModal} style={{ position: 'relative' }}>
-              <SquiggleMap
-                segments={segments}
-                stops={mapStops}
-                width={430}
-                height={300}
-                compass
-                caption={mapCaption}
-                revealIntermediateLabels={crowded}
-              />
-              {routesPending && (
-                <div class="map-loading-overlay" aria-live="polite">
-                  <span class="map-loading-spinner" aria-hidden="true" />
-                  <span>Drawing route…</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div class="squiggle-map-empty">
-              <svg
-                width="30"
-                height="30"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M3 17 L7 9 L11 14 L17 5 L21 10" stroke-dasharray="2 3" />
-                <circle cx="3" cy="17" r="1.6" fill="currentColor" />
-                <circle cx="21" cy="10" r="1.6" fill="currentColor" />
-              </svg>
-              <p>Add GPS pins to draw your ride route map.</p>
+        <MapHero
+          segments={segments}
+          stops={mapStops}
+          caption={mapCaption}
+          revealIntermediateLabels={crowded}
+          pending={routesPending}
+          onOpen={openMapModal}
+          empty={
+            <SquiggleEmptyState message="Add GPS pins to draw your ride route map.">
               <Button
                 variant="secondary"
                 size="sm"
@@ -521,27 +466,18 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
               >
                 ＋ Add a leg with GPS
               </Button>
-            </div>
-          )}
-        </section>
+            </SquiggleEmptyState>
+          }
+        />
 
         {/* Ride statistics spec plate */}
-        <section class="ride-stats-card">
-          <div class="stat-item">
-            <span class="stat-label">Days</span>
-            <span class="stat-value">{totalDays}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Legs</span>
-            <span class="stat-value">{legs.length}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Distance</span>
-            <span class="stat-value">
-              {hasKm ? formatDistance(totalKm) : "—"}
-            </span>
-          </div>
-        </section>
+        <StatPlate
+          items={[
+            { label: "Days", value: totalDays },
+            { label: "Legs", value: legs.length },
+            { label: "Distance", value: hasKm ? formatDistance(totalKm) : "—" },
+          ]}
+        />
 
         {/* Day-grouped Timeline */}
         <section class="ride-timeline">
@@ -653,11 +589,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
         onSetCover={handleSetCover}
       />
 
-      <div class="toast-container">
-        {toasts.map(t => (
-          <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
-        ))}
-      </div>
+      <ToastHost toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

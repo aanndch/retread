@@ -187,6 +187,21 @@ export function computeDayDistances(legs: Leg[]): Map<string, number> {
 }
 
 /**
+ * Sorts legs chronologically: by date, then time (missing time sorts first),
+ * then insertion id as a stable tiebreaker. The canonical leg ordering used
+ * across the app — road snapping, ride/leg pages, and the editor all rely on it.
+ */
+export function sortLegs(legs: Leg[]): Leg[] {
+  return [...legs].sort((a, b) => {
+    const dComp = a.date.localeCompare(b.date);
+    if (dComp !== 0) return dComp;
+    const tA = a.time || '00:00';
+    const tB = b.time || '00:00';
+    return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
+  });
+}
+
+/**
  * Formats a YYYY-MM-DD string to DD-MM-YYYY.
  */
 export function formatIsoDateToDMY(dateStr: string): string {

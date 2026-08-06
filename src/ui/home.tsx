@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { Button } from '../components/button';
 import { Dropdown } from '../components/dropdown';
-import { Toast, useToast } from '../components/toast';
+import { ToastHost, useToast } from '../components/toast';
 import { CloseIcon, GearIcon, SearchIcon } from '../components/icons';
 import { FieldCard } from '../components/field-card';
 import { formatDistance } from '../lib';
@@ -441,11 +441,7 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
         </Button>
       </div>
 
-      <div class="toast-container">
-        {toasts.map(t => (
-          <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
-        ))}
-      </div>
+      <ToastHost toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

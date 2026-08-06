@@ -240,13 +240,18 @@ export function disconnect(): void {
 // Serialization — read IndexedDB and build backup payload
 // ---------------------------------------------------------------------------
 
-function blobToBase64(blob: Blob): Promise<string> {
+export function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result as string);
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+export async function base64ToBlob(base64Url: string): Promise<Blob> {
+  const res = await fetch(base64Url);
+  return await res.blob();
 }
 
 export async function buildBackupPayload(): Promise<BackupPayload> {
@@ -409,11 +414,6 @@ export async function performRestore(
   if (payload.version !== 1 || !Array.isArray(payload.rides) || !Array.isArray(payload.legs)) {
     throw new Error('Unsupported or corrupted backup schema.');
   }
-
-  const base64ToBlob = async (base64Url: string): Promise<Blob> => {
-    const res = await fetch(base64Url);
-    return await res.blob();
-  };
 
   // Prepare every record BEFORE the transaction: Dexie cannot track the
   // non-Dexie awaits inside a transaction (fetch/blob/thumbnail), so doing

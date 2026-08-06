@@ -1,7 +1,7 @@
 import { db } from '../../db';
 import { backfillRideRoutes } from '../../road';
 import { scheduleAutoSync } from '../../gdrive';
-import { deriveRideTitle } from '../../lib';
+import { deriveRideTitle, sortLegs } from '../../lib';
 import type { LocationUnion, Leg } from '../../types';
 
 interface SaveData {
@@ -136,11 +136,7 @@ export async function saveEditorDetails(
     if (data.legTitle.trim()) return data.legTitle.trim();
     if (data.location?.name?.trim()) return data.location.name.trim();
     const all = await db.legs.where('rideId').equals(rideIdToUse).toArray();
-    const sorted = [...all].sort((a, b) => {
-      const d = a.date.localeCompare(b.date);
-      if (d !== 0) return d;
-      return (a.time || '00:00').localeCompare(b.time || '00:00') || (a.id || 0) - (b.id || 0);
-    });
+    const sorted = sortLegs(all);
     let n: number;
     if (existingLeg && existingLeg.id != null) {
       const idx = sorted.findIndex((l) => l.id === existingLeg.id);

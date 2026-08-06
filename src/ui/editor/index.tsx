@@ -1,19 +1,19 @@
 import { useReducer, useEffect, useRef, useCallback, useState } from 'preact/hooks';
 import { db } from '../../db';
 import { compressImage, createThumbnail } from '../../images';
-import { Toast, useToast } from '../../components/toast';
+import { ToastHost, useToast } from '../../components/toast';
 import { StartStep } from './start-step';
 import { LegStep } from './leg-step';
 import { EditRideStep } from './edit-ride-step';
 import { PhotosStep } from './photos-step';
 import { StoryStep } from './story-step';
-import { Button } from '../../components/button';
+import { StepActions } from './fields';
 import { PageHeader } from '../../components/page-header';
 import { MapPicker } from '../../components/map-picker';
 import { CoordinatePasteModal } from '../../components/coordinate-paste-modal';
 import { saveEditorDetails } from './save-helper';
 import { snapLeg, haversineDistance } from '../../road';
-import { deriveRideTitle } from '../../lib';
+import { deriveRideTitle, sortLegs } from '../../lib';
 import { reverseGeocode } from './utils';
 import type { LocationUnion } from '../../types';
 // ==========================================
@@ -266,11 +266,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       try {
         const rideRecord = await db.rides.get(resolvedRideId);
         const legs = await db.legs.where('rideId').equals(resolvedRideId).toArray();
-        const sorted = [...legs].sort((a, b) => {
-          const dComp = a.date.localeCompare(b.date);
-          if (dComp !== 0) return dComp;
-          return (a.time || '00:00').localeCompare(b.time || '00:00') || (a.id || 0) - (b.id || 0);
-        });
+        const sorted = sortLegs(legs);
 
         let foundCenter: [number, number] | null = null;
         let fromLabel: string | null = null;
@@ -343,26 +339,43 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     }
   }, [location?.name, legTitle, mode]);
 
-  // Geolocation Handler
-  const handleDropPin = useCallback(() => {
+  // Geolocation detect shared by the leg and ride-start pins: moves the pin (or
+  // start) to the device position, keeping any name the user already typed, and
+  // reverse-geocodes a name only when the pin is still nameless. Error handling
+  // differs per target, so the caller supplies onError.
+  const gpsDetect = useCallback((target: 'start' | 'location', timeout: number, onError?: (err: GeolocationPositionError) => void) => {
     if (!navigator.geolocation) {
       showToast('Geolocation is not supported by your device.');
       return;
     }
-    dispatch({ gpsLoading: true });
+    if (target === 'start') dispatch({ startGpsLoading: true });
+    else dispatch({ gpsLoading: true });
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        // Keep any name the user already typed; GPS auto-detect only moves the pin.
-        dispatch({ gpsLoading: false, mapNote: false, location: { kind: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude, name: location?.name || '' } });
-        suggestNameForPin(pos.coords.latitude, pos.coords.longitude, 'location');
+        const name = (target === 'start' ? startLocation?.name : location?.name) || '';
+        if (target === 'start') {
+          dispatch({ startGpsLoading: false, mapNote: false, startLocation: { kind: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude, name } });
+        } else {
+          dispatch({ gpsLoading: false, mapNote: false, location: { kind: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude, name } });
+        }
+        suggestNameForPin(pos.coords.latitude, pos.coords.longitude, target);
       },
       (err) => {
-        console.warn('Geolocation failed:', err);
-        dispatch({ gpsLoading: false, location: null });
+        if (target === 'start') {
+          dispatch({ startGpsLoading: false });
+        } else {
+          console.warn('Geolocation failed:', err);
+          dispatch({ gpsLoading: false, location: null });
+        }
+        onError?.(err);
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout }
     );
-  }, [location]);
+  }, [location, startLocation]);
+
+  const handleDropPin = useCallback(() => {
+    gpsDetect('location', 8000);
+  }, [gpsDetect]);
 
   const handleClearLocation = useCallback(() => {
     dispatch({
@@ -377,23 +390,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   };
 
   const onRetryStartGps = () => {
-    if (!navigator.geolocation) {
-      showToast('Geolocation is not supported by your device.');
-      return;
-    }
-    dispatch({ startGpsLoading: true });
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        // Keep any name the user already typed; GPS auto-detect only moves the pin.
-        dispatch({ startGpsLoading: false, mapNote: false, startLocation: { kind: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude, name: startLocation?.name || '' } });
-        suggestNameForPin(pos.coords.latitude, pos.coords.longitude, 'start');
-      },
-      () => {
-        dispatch({ startGpsLoading: false });
-        showToast('GPS auto-detect failed.');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    gpsDetect('start', 10000, () => showToast('GPS auto-detect failed.'));
   };
 
   // The "from" point for measuring a leg's distance. On a new ride the ride
@@ -522,13 +519,20 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     dispatch({ coverPhotoIndex: coverPhotoIndex === index ? null : index });
   };
 
+  // Advancing (or finally saving) without a pin is the implicit "save without a
+  // map" bypass; flag it so the form shows the consequence instead of hiding it.
+  // `final` covers the whole-form save, where the step check is irrelevant.
+  const flagPinNote = (final = false) => {
+    if (mode === 'new-ride' && step === 1 && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
+    if (mode === 'new-ride' && step === 2 && location?.kind !== 'gps') dispatch({ mapNote: true });
+    if ((mode === 'new-leg' || mode === 'edit') && (final || step === 1) && location?.kind !== 'gps') dispatch({ mapNote: true });
+  };
+
   const handleStepJump = (targetStep: WizardStep) => {
     // Advancing without a pin is the implicit "save without a map" bypass; flag
     // it so the form shows the consequence instead of hiding it. The pin that
     // matters depends on which step is being left.
-    if (mode === 'new-ride' && step === 1 && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
-    if (mode === 'new-ride' && step === 2 && location?.kind !== 'gps') dispatch({ mapNote: true });
-    if ((mode === 'new-leg' || mode === 'edit') && step === 1 && location?.kind !== 'gps') dispatch({ mapNote: true });
+    flagPinNote();
     dispatch({ titleError: '', step: targetStep });
   };
 
@@ -591,17 +595,13 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       return;
     } else if (step < lastStep) {
       // Advance the wizard; flag the pin note for the step being left.
-      if (mode === 'new-ride' && step === 1 && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
-      if (mode === 'new-ride' && step === 2 && location?.kind !== 'gps') dispatch({ mapNote: true });
-      if ((mode === 'new-leg' || mode === 'edit') && step === 1 && location?.kind !== 'gps') dispatch({ mapNote: true });
+      flagPinNote();
       dispatch({ step: (step + 1) as WizardStep });
       return;
     }
 
     // Final save without a pin is the implicit bypass; flag it for the note.
-    if (mode === 'new-ride' && step === 1 && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
-    if (mode === 'new-ride' && step === 2 && location?.kind !== 'gps') dispatch({ mapNote: true });
-    if ((mode === 'new-leg' || mode === 'edit') && location?.kind !== 'gps') dispatch({ mapNote: true });
+    flagPinNote(true);
 
     setSaving(true);
     try {
@@ -657,12 +657,13 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
           <div style={{ padding: '60px 0', textAlign: 'center', flex: 1 }}>
             <p class="loading-text" style={{ margin: 0 }}>Loading details...</p>
           </div>
-          <div class="form-actions">
-            <Button variant="secondary" onClick={handleCancel} disabled>Cancel</Button>
-            <Button variant="primary" disabled>
-              {mode === 'edit-ride' ? 'Save Changes' : 'Next →'}
-            </Button>
-          </div>
+          <StepActions
+            onBack={handleCancel}
+            backLabel="Cancel"
+            backDisabled
+            nextLabel={mode === 'edit-ride' ? 'Save Changes' : 'Next →'}
+            nextDisabled
+          />
         </div>
       ) : (
         <form onSubmit={handleSave} class="editor-form">
@@ -774,11 +775,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
         onClose={() => dispatch({ showPasteModal: false })}
       />
 
-      <div class="toast-container">
-        {toasts.map(t => (
-          <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
-        ))}
-      </div>
+      <ToastHost toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

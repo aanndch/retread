@@ -1,4 +1,5 @@
 import { db } from './db';
+import { sortLegs } from './lib';
 import { 
   SNAP_THRESHOLD_KM, 
   OSRM_DRIVING_BASE_URL, 
@@ -153,13 +154,7 @@ export async function snapLeg(
 export async function backfillRideRoutes(rideId: number): Promise<void> {
   // Query all legs for the ride sorted chronologically
   const legs = await db.legs.where('rideId').equals(rideId).toArray();
-  const sortedLegs = [...legs].sort((a, b) => {
-    const dComp = a.date.localeCompare(b.date);
-    if (dComp !== 0) return dComp;
-    const tA = a.time || '00:00';
-    const tB = b.time || '00:00';
-    return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
-  });
+  const sortedLegs = sortLegs(legs);
 
   // Load the ride record to get the departure pin
   const rideRecord = await db.rides.get(rideId);

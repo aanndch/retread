@@ -2,17 +2,20 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db";
 import { Button } from "../components/button";
-import { Toast, useToast } from "../components/toast";
+import { ToastHost, useToast } from "../components/toast";
 import { ConfirmModal } from "../components/confirm-modal";
 import { ArrowLeft, ArrowRight } from "../components/icons";
 import { PageHeader } from "../components/page-header";
-import { SquiggleMap, DAY_COLORS } from "./squiggle";
+import { StatPlate } from "../components/stat-plate";
+import { useHistoryModal } from "../components/use-history-modal";
+import { SquiggleEmptyState, DAY_COLORS } from "./squiggle";
 import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
+import { MapHero } from "../components/map-hero";
 import { PhotoOverlay } from "../components/photo-overlay";
 import { PhotoArrangeSheet } from "../components/photo-arrange-sheet";
 import { backfillRideRoutes } from "../road";
-import { formatIsoDateToDMY, formatDistance, stopLabel } from "../lib";
+import { formatIsoDateToDMY, formatDistance, stopLabel, sortLegs } from "../lib";
 import type { Leg, LocationUnion } from "../types";
 
 interface LegDetailProps {
@@ -22,22 +25,6 @@ interface LegDetailProps {
   onReady?: () => void;
 }
 
-function LegTrail({ start, end }: { start: string; end: string }) {
-  return (
-    <div class="ride-trail leg-trail" role="img" aria-label={`Route: ${start} to ${end}`}>
-      <span class="trail-stop is-start">
-        <span class="trail-dot" aria-hidden="true" />
-        <span class="trail-name">{start}</span>
-      </span>
-      <span class="trail-line" aria-hidden="true" />
-      <span class="trail-stop is-end">
-        <span class="trail-dot" aria-hidden="true" />
-        <span class="trail-name">{end}</span>
-      </span>
-    </div>
-  );
-}
-
 export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDetailProps) {
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
@@ -45,43 +32,19 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
   const [showArrange, setShowArrange] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
 
-  // Fullscreen Photo Modal states & handlers
-  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  // Fullscreen Photo Modal: history-aware open/close (pushes and pops its own
+  // history entry so browser back closes it without leaving phantom entries).
+  const [showPhotoModal, openPhoto, closePhotoModal] = useHistoryModal("photo");
 
   const openPhotoModal = (idx: number) => {
     setActivePhotoIdx(idx);
-    setShowPhotoModal(true);
-    history.pushState({ modalOpen: "photo" }, "");
+    openPhoto();
   };
 
-  const closePhotoModal = () => {
-    // Pop the modal's own pushState entry so the browser history stays free of
-    // phantom entries (see closeMapModal below).
-    if (history.state && history.state.modalOpen) {
-      history.back();
-      return;
-    }
-    setShowPhotoModal(false);
-  };
+  // Fullscreen Map Modal (history-aware, same lifecycle as the photo overlay).
+  const [showMapModal, openMap, closeMapModal] = useHistoryModal("map");
 
-  // Fullscreen Map Modal states & handlers
-  const [showMapModal, setShowMapModal] = useState(false);
-
-  const openMapModal = () => {
-    setShowMapModal(true);
-    history.pushState({ modalOpen: "map" }, "");
-  };
-
-  const closeMapModal = () => {
-    // Pop the modal's own pushState entry so the browser history stays free of
-    // phantom entries; otherwise the next in-app back would silently consume it
-    // and look like a dead press.
-    if (history.state && history.state.modalOpen) {
-      history.back();
-      return;
-    }
-    setShowMapModal(false);
-  };
+  const openMapModal = () => openMap();
 
   // Open the photo-arrange sheet (draft is managed inside the shared sheet).
   const openArrange = () => {
@@ -110,15 +73,6 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
     showToast("Set as ride cover.");
   };
 
-  useEffect(() => {
-    const handlePopState = () => {
-      if (showPhotoModal) setShowPhotoModal(false);
-      if (showMapModal) setShowMapModal(false);
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [showPhotoModal, showMapModal]);
-
   const photoUrlsRef = useRef<string[]>([]);
   const touchStartX = useRef(0);
 
@@ -133,13 +87,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
         .where("rideId")
         .equals(legRecord.rideId)
         .toArray();
-      const sorted = [...allLegs].sort((a, b) => {
-        const dComp = a.date.localeCompare(b.date);
-        if (dComp !== 0) return dComp;
-        const tA = a.time || '00:00';
-        const tB = b.time || '00:00';
-        return tA.localeCompare(tB) || (a.id || 0) - (b.id || 0);
-      });
+      const sorted = sortLegs(allLegs);
       return { leg: legRecord, ride: rideRecord, sorted };
     },
     [legId]
@@ -187,19 +135,10 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
   const legNum = myIdx + 1;
   const totalLegs = sorted.length;
 
-  // Trail: start = ride departure (first leg) or previous leg's end point.
-  // Labels fall back to positional names: the departure is "Start", an unnamed
-  // previous leg is "Stop N", and this leg's destination is its own stop number.
   const startLoc =
     myIdx === 0 ? liveData?.ride?.startLocation : myIdx > 0 ? sorted[myIdx - 1]?.location : undefined;
   const fromLoc: LocationUnion | null | undefined = startLoc;
   const toLoc: LocationUnion | null | undefined = leg?.location;
-  const trailStart = fromLoc
-    ? myIdx === 0
-      ? fromLoc.name || "Start"
-      : stopLabel(fromLoc, myIdx)
-    : "";
-  const trailEnd = toLoc ? stopLabel(toLoc, legNum) : "";
 
   const prevLeg = myIdx > 0 ? sorted[myIdx - 1] : null;
   const nextLeg = myIdx >= 0 && myIdx < sorted.length - 1 ? sorted[myIdx + 1] : null;
@@ -299,53 +238,22 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
       />
 
       <main class="leg-detail-content">
-        {/* Hero: kicker, title, leg route trail */}
+        {/* Hero: kicker, title */}
         <section class="ride-hero">
           <span class="ride-hero-kicker">
             {rideTitle}{dayNum > 0 ? ` · Day ${dayNum}` : ""} · {shortDate}
           </span>
           <h1 class="ride-hero-title">{leg.title || "Untitled Leg"}</h1>
-          {trailStart && trailEnd && (
-            <LegTrail start={trailStart} end={trailEnd} />
-          )}
         </section>
 
-        {/* Segment route map */}
-        <section class="ride-map-hero">
-          {mapSegments || mapStops.length > 0 ? (
-            <div class="map-interactive-trigger" onClick={openMapModal} style={{ position: 'relative' }}>
-              <SquiggleMap
-                segments={mapSegments}
-                stops={mapStops}
-                caption={mapCaption}
-                compass
-                width={430}
-                height={300}
-              />
-              {routePending && (
-                <div class="map-loading-overlay" aria-live="polite">
-                  <span class="map-loading-spinner" aria-hidden="true" />
-                  <span>Drawing route…</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div class="squiggle-map-empty">
-              <svg
-                width="30"
-                height="30"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M3 17 L7 9 L11 14 L17 5 L21 10" stroke-dasharray="2 3" />
-                <circle cx="3" cy="17" r="1.6" fill="currentColor" />
-                <circle cx="21" cy="10" r="1.6" fill="currentColor" />
-              </svg>
-              <p>This stop has no exact location — set its pin to draw it here.</p>
+        <MapHero
+          segments={mapSegments}
+          stops={mapStops}
+          caption={mapCaption}
+          pending={routePending}
+          onOpen={openMapModal}
+          empty={
+            <SquiggleEmptyState message="This stop has no exact location — set its pin to draw it here.">
               <Button
                 variant="secondary"
                 size="sm"
@@ -354,25 +262,17 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
               >
                 📍 Set this stop's pin
               </Button>
-            </div>
-          )}
-        </section>
+            </SquiggleEmptyState>
+          }
+        />
 
         {/* Leg stats spec plate */}
-        <section class="ride-stats-card">
-          <div class="stat-item">
-            <span class="stat-label">Distance</span>
-            <span class="stat-value">
-              {legDistance !== null && legDistance !== undefined
-                ? formatDistance(legDistance)
-                : "—"}
-            </span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Time</span>
-            <span class="stat-value">{leg.time ? leg.time : "—"}</span>
-          </div>
-        </section>
+        <StatPlate
+          items={[
+            { label: "Distance", value: legDistance !== null && legDistance !== undefined ? formatDistance(legDistance) : "—" },
+            { label: "Time", value: leg.time ? leg.time : "—" },
+          ]}
+        />
 
         {photoUrls.length > 0 && (
           <section class="gallery-carousel">
@@ -521,11 +421,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
         onClose={closeMapModal}
       />
 
-      <div class="toast-container">
-        {toasts.map(t => (
-          <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
-        ))}
-      </div>
+      <ToastHost toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

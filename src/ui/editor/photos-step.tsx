@@ -1,8 +1,8 @@
 import type { RefObject } from 'preact';
 import type { JSX } from 'preact';
-import { Button } from '../../components/button';
 import { FieldCard } from '../../components/field-card';
 import { PhotoArrangeSheet } from '../../components/photo-arrange-sheet';
+import { StepActions } from './fields';
 
 interface PhotosStepProps {
   photoPreviews: string[];
@@ -87,15 +87,13 @@ export function PhotosStep({
         onClose={() => setShowArrange(false)}
       />
 
-      {/* Step 2 Actions */}
-      <div class="form-actions">
-        <Button variant="secondary" onClick={() => handleStepJump((step - 1) as 1 | 2 | 3 | 4)} disabled={compressing}>
-          ← Back
-        </Button>
-        <Button variant="primary" onClick={() => handleStepJump((step + 1) as 1 | 2 | 3 | 4)} disabled={compressing}>
-          Next: Story →
-        </Button>
-      </div>
+      <StepActions
+        onBack={() => handleStepJump((step - 1) as 1 | 2 | 3 | 4)}
+        backDisabled={compressing}
+        onNext={() => handleStepJump((step + 1) as 1 | 2 | 3 | 4)}
+        nextLabel="Next: Story →"
+        nextDisabled={compressing}
+      />
     </div>
   );
 }

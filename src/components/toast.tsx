@@ -53,3 +53,20 @@ export function useToast() {
 
   return { toasts, showToast, removeToast };
 }
+
+interface ToastHostProps {
+  toasts: ToastItem[];
+  removeToast: (id: number) => void;
+}
+
+// Shared toast stack host: renders the fixed container every page used to
+// duplicate. Consumers keep their own useToast() state and hand it down.
+export function ToastHost({ toasts, removeToast }: ToastHostProps) {
+  return (
+    <div class="toast-container">
+      {toasts.map(t => (
+        <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
+      ))}
+    </div>
+  );
+}

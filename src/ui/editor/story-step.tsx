@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import type { JSX } from 'preact';
-import { Button } from '../../components/button';
 import { FieldCard } from '../../components/field-card';
+import { StepActions } from './fields';
 
 interface StoryStepProps {
   note: string;
@@ -46,15 +46,13 @@ export function StoryStep({
         ></textarea>
       </FieldCard>
 
-      {/* Step 3 Actions */}
-      <div class="form-actions">
-        <Button variant="secondary" onClick={() => handleStepJump((step - 1) as 1 | 2 | 3 | 4)} disabled={saving}>
-          ← Back
-        </Button>
-        <Button type="submit" variant="primary" disabled={saving}>
-          {saving ? 'Saving…' : saveLabel}
-        </Button>
-      </div>
+      <StepActions
+        onBack={() => handleStepJump((step - 1) as 1 | 2 | 3 | 4)}
+        backDisabled={saving}
+        submit
+        nextLabel={saving ? 'Saving…' : saveLabel}
+        nextDisabled={saving}
+      />
     </div>
   );
 }
