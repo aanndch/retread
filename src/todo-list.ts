@@ -80,10 +80,15 @@ export const TODO_SECTIONS: TodoSection[] = [
     label: 'Roadmap',
     kind: 'planned',
     description:
-      'Three clusters rather than unrelated ideas: browse polish (how you find a ride), geo "wow" (maps worth showing off), and route shaping (picking the road a leg actually took). Most ideas are rough — not all have solid plans yet.',
+      'A few clusters rather than unrelated ideas: browse polish (how you find a ride), geo "wow" (maps worth showing off), route shaping (picking the road a leg actually took), sharing the book, and capturing richer memories. Most ideas are rough — not all have solid plans yet.',
     items: [
       { id: 'rm-tags', title: 'Tags & filters', status: 'open', badge: 'FINDING RIDES', note: 'Semantic recall — "the monsoon ride". Schema bump (backup is at v1), editor chip input, filter UI.' },
       { id: 'rm-gallery', title: 'Photo gallery tab', status: 'open', badge: 'BROWSE', note: 'Global all-photos view (already flatten per-ride for the overlay). Best "show my friends" screen.' },
+      { id: 'rm-share-card', title: 'Shareable ride cards', status: 'open', badge: 'SHARE', note: 'On-device share image per ride — cover, squiggle route, dates, km, stop trail — as a downloadable/copyable PNG. No server, keeps the privacy promise.' },
+      { id: 'rm-print-pdf', title: 'Print a ride as a logbook page / PDF', status: 'open', badge: 'SHARE', note: 'Print CSS for a ride page so it saves to paper or PDF, matching the typewriter album look.' },
+      { id: 'rm-year-review', title: 'Year-in-review recap card', status: 'open', badge: 'SHARE', note: 'Auto-generated "2026 in rides" image — total km, days, rides, photos. A shareable end-of-year moment.' },
+      { id: 'rm-stats', title: 'Stats dashboard', status: 'open', badge: 'DATA', note: 'Total km, days on the road, longest leg, most-photographed ride, busiest month — all derivable from stored data.' },
+      { id: 'rm-voice-notes', title: 'Voice notes per leg', status: 'open', badge: 'JOURNAL', note: 'One-tap voice memo via MediaRecorder, played back on the leg page. Dictate while riding.' },
       { id: 'rm-borders', title: 'State boundaries + realistic grid', status: 'open', badge: 'GEO', note: 'Bundle simplified state GeoJSON (~150–300KB), true lat/lng graticule, keep the hand-drawn look.' },
       { id: 'rm-country-map', title: 'Country map of all trips on home', status: 'open', badge: 'GEO', note: 'The hero and riskiest — depends on boundary data + a fixed projection. Build last.' },
       { id: 'rm-countries', title: 'Other countries in setup', status: 'open', badge: 'SETUP', note: 'Unlock the hardcoded dropdown, add km↔mi conversion, anchor the geo features.' },
