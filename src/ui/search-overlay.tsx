@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { coverUrlCache, type HomeRideEntry } from './use-ride-book';
-import { CloseIcon } from '../components/icons';
+import { CloseIcon, SearchIcon } from '../components/icons';
 import { formatDistance } from '../lib';
+import { useSearchRecents } from './use-search-recents';
 import { useBodyScrollLock } from '../components/use-body-scroll-lock';
 import { useExitFade } from '../components/use-exit-fade';
 
@@ -56,6 +57,32 @@ function windowed(text: string, query: string): string {
   const before = start > 0 ? '…' : '';
   const after = end < text.length ? '…' : '';
   return `${before}${text.slice(start, end)}${after}`;
+}
+
+// Derived example searches for the pre-search journal: the most recent ride
+// titles and stop names from the book (never static copy). Cap at 3.
+function deriveSuggestions(ridesData: HomeRideEntry[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (name: string | null | undefined) => {
+    const trimmed = name?.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(trimmed);
+  };
+  for (const entry of ridesData) {
+    push(entry.ride.title);
+    push(entry.ride.startLocation?.name);
+    for (const leg of entry.legs) {
+      push(leg.title);
+      push(leg.location?.name);
+      if (out.length >= 3) break;
+    }
+    if (out.length >= 3) break;
+  }
+  return out.slice(0, 3);
 }
 
 // React 18's useDeferredValue never made it into preact/hooks, so emulate it:
@@ -182,6 +209,12 @@ export function SearchOverlay({
   // so it never cuts away; keep the page scroll locked until the fade ends.
   const { visible, closing: exitClosing } = useExitFade(isOpen);
   useBodyScrollLock(visible);
+  // Recents live in localStorage; refresh on each open so a second tab's
+  // writes are picked up. addRecent is called on submit/selection only.
+  const { recents, addRecent, clearRecents, reload } = useSearchRecents();
+  useEffect(() => {
+    if (isOpen) reload();
+  }, [isOpen, reload]);
 
   // User-initiated close (× / Escape / backdrop): clear the query so the next
   // open starts fresh. Navigation to a result goes through goTo() instead,
@@ -245,13 +278,23 @@ export function SearchOverlay({
   // Count every match (result rows + snippet rows), not matched rides — the
   // truthful intermediate number; Phase 3 replaces this line with section counts.
   const matchCount = results.reduce((n, r) => n + 1 + r.snippets.length, 0);
+  // Derived example searches for the pre-search journal.
+  const suggestions = useMemo(() => deriveSuggestions(ridesData), [ridesData]);
 
   if (!visible) return null;
 
   // Navigate to a result: leave the query intact so App can reopen search
   // with it when the user returns (tapping the wrong ride shouldn't lose it).
   const goTo = (route: string) => {
+    const q = deferredQuery.trim();
+    if (q) addRecent(q);
     onNavigate(route);
+  };
+
+  // Re-run a journal entry (recent or suggested) as a search query.
+  const runQuery = (q: string) => {
+    addRecent(q);
+    onQueryChange(q);
   };
 
   // Trap Tab focus inside the sheet while the overlay is open (input, close
@@ -321,7 +364,65 @@ export function SearchOverlay({
             ))}
           </div>
         ) : deferredQuery.trim() === '' ? (
-          <p class="search-empty">Type to search rides, stops and notes.</p>
+          <div class="search-journal">
+            <div class="search-journal-section">
+              <div class="search-section-head">
+                <span class="search-section-title">Recent Searches</span>
+                {recents.length > 0 && (
+                  <button
+                    type="button"
+                    class="search-margin-action"
+                    onClick={clearRecents}
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+              {recents.length === 0 ? (
+                <p class="search-journal-note">
+                  No recent searches yet — try one of the suggestions below.
+                </p>
+              ) : (
+                <div class="search-journal-rows">
+                  {recents.map((recent) => (
+                    <button
+                      type="button"
+                      class="search-journal-row"
+                      key={recent}
+                      onClick={() => runQuery(recent)}
+                    >
+                      <SearchIcon size={14} class="search-journal-icon" />
+                      <span class="search-journal-row-text">{recent}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {suggestions.length > 0 && (
+              <div class="search-journal-section">
+                <div class="search-section-head">
+                  <span class="search-section-title">Suggested</span>
+                </div>
+                <div class="search-journal-rows">
+                  {suggestions.map((s) => (
+                    <button
+                      type="button"
+                      class="search-journal-row search-journal-row--suggested"
+                      key={s}
+                      onClick={() => runQuery(s)}
+                    >
+                      <span class="search-journal-row-text">{s}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p class="search-log-count">
+              Your Log · {ridesData.length} Rides
+            </p>
+          </div>
         ) : results.length === 0 ? (
           <p class="search-empty">No rides match “{deferredQuery.trim()}”.</p>
         ) : (

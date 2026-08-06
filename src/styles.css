@@ -1352,6 +1352,128 @@ button:focus,
   padding: var(--spacing-xl) 0;
 }
 
+/* Pre-search journal (State A): recents, derived suggestions, log marginalia.
+   Index rows separated by dashed hairlines — the catalog language, not cards. */
+.search-journal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xs);
+}
+
+.search-journal-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.search-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.search-section-title {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mechanical-uppercase margin action (CLEAR ALL) with a full 44px hit target */
+.search-margin-action {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--spacing-sm);
+  margin-right: calc(-1 * var(--spacing-sm));
+}
+
+.search-margin-action:hover,
+.search-margin-action:focus-visible {
+  color: var(--color-ink);
+}
+
+.search-journal-note {
+  font-family: var(--font-typewriter);
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+  margin: var(--spacing-xs) 0;
+}
+
+.search-journal-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.search-journal-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--spacing-xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-typewriter);
+  font-size: 13px;
+  color: var(--color-ink);
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.search-journal-row + .search-journal-row {
+  border-top: 1px dashed var(--color-paper-dim);
+}
+
+.search-journal-row:hover {
+  background-color: var(--color-paper-dim);
+}
+
+.search-journal-row:active {
+  transform: translateY(1px);
+}
+
+.search-journal-icon {
+  color: var(--color-ink-muted);
+  flex-shrink: 0;
+}
+
+.search-journal-row-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Derived suggestions read as underlined index links */
+.search-journal-row--suggested .search-journal-row-text {
+  text-decoration: underline;
+}
+
+.search-log-count {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--spacing-xs);
+}
+
 /* Initial book load: minimal skeleton rows (paper-dim blocks) matching the
    result-row geometry so nothing flashes empty while the Dexie live query
    resolves. Visual refinement (pulse, hairlines) lands in Phase 3. */
