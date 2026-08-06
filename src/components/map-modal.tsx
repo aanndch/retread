@@ -2,6 +2,9 @@ import { useState, useRef, useEffect, useCallback } from 'preact/hooks';
 import { SquiggleMap } from '../ui/squiggle';
 import type { SquiggleSegment, SquiggleStop } from '../ui/squiggle';
 import { CloseIcon } from './icons';
+import { useBodyScrollLock } from './use-body-scroll-lock';
+import { useExitFade } from './use-exit-fade';
+import { useOverlayFocus } from './use-overlay-focus';
 
 interface MapModalProps {
   isOpen: boolean;
@@ -16,7 +19,6 @@ interface MapModalProps {
 export function MapModal({ isOpen, path, segments, stops, compass, caption, onClose }: MapModalProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
-  const [closing, setClosing] = useState(false);
   const zoomInnerRef = useRef<HTMLDivElement>(null);
   const scaleRef = useRef(1);
   const offsetRef = useRef({ x: 0, y: 0 });
@@ -24,27 +26,24 @@ export function MapModal({ isOpen, path, segments, stops, compass, caption, onCl
   const mapLastTouchDistance = useRef<number | null>(null);
   const isDraggingRef = useRef(false);
 
-  const handleClose = (action: () => void) => {
-    setClosing(true);
-    setTimeout(() => {
-      setClosing(false);
-      action();
-    }, 250);
-  };
+  // Overlay envelope: the URL owns open/close (isOpen), so closing is a plain
+  // onClose() — useExitFade keeps us mounted through the --motion-base fade-out.
+  const { visible, closing } = useExitFade(isOpen);
+  useBodyScrollLock(visible);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  useOverlayFocus(visible, backdropRef);
 
-  // Dialog semantics: Escape closes, and focus moves to the close button so
-  // keyboard users land inside the dialog instead of losing focus to the page.
-  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  // Dialog semantics: Escape closes (focus lands on the close button via
+  // useOverlayFocus so keyboard users stay inside the dialog).
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        handleClose(onClose);
+        onClose();
       }
     };
     document.addEventListener('keydown', handleKeyDown);
-    closeBtnRef.current?.focus();
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
@@ -146,16 +145,15 @@ export function MapModal({ isOpen, path, segments, stops, compass, caption, onCl
     document.addEventListener('mouseup', handleMapMouseUp);
   };
 
-  if (!isOpen) return null;
+  if (!visible) return null;
 
   return (
-    <div class={`modal-backdrop map-overlay-backdrop${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Route map" onClick={() => handleClose(onClose)}>
+    <div ref={backdropRef} class={`modal-backdrop map-overlay-backdrop${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Route map" onClick={onClose}>
       <button 
         type="button" 
-        ref={closeBtnRef}
         class="btn-close-overlay" 
         aria-label="Close map" 
-        onClick={(e) => { e.stopPropagation(); handleClose(onClose); }}
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
       >
         <CloseIcon size={16} />
       </button>

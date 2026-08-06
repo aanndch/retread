@@ -2,6 +2,8 @@ import { useRef, useEffect, useState } from 'preact/hooks';
 import { Button } from './button';
 import { CloseIcon } from './icons';
 import { useBodyScrollLock } from './use-body-scroll-lock';
+import { useExitFade } from './use-exit-fade';
+import { useOverlayFocus } from './use-overlay-focus';
 
 interface ConfirmModalProps {
   title: string;
@@ -14,50 +16,42 @@ interface ConfirmModalProps {
 }
 
 export function ConfirmModal({ title, message, confirmLabel = 'Confirm', danger = false, onConfirm, onCancel }: ConfirmModalProps) {
-  const [closing, setClosing] = useState(false);
-  const previousFocus = useRef<HTMLElement | null>(null);
   // Confirms mount only while visible — lock the page scroll behind them.
   useBodyScrollLock(true);
+  const contentRef = useRef<HTMLDivElement>(null);
+  // A close is a fade-then-act: the envelope's exit fade (--motion-base) plays
+  // first, and the pending action — which unmounts us — runs when it completes.
+  const pendingRef = useRef<(() => void) | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const { visible, closing } = useExitFade(!leaving);
+  useOverlayFocus(visible, contentRef);
 
   const handleClose = (action: () => void) => {
-    setClosing(true);
-    setTimeout(action, 250);
+    if (pendingRef.current) return;
+    pendingRef.current = action;
+    setLeaving(true);
+  };
+
+  // When the exit fade finishes, run the pending action (which unmounts us).
+  useEffect(() => {
+    if (!visible && pendingRef.current) pendingRef.current();
+  }, [visible]);
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') handleClose(onCancel);
   };
 
   useEffect(() => {
-    previousFocus.current = document.activeElement as HTMLElement;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleClose(onCancel);
-        return;
-      }
-      if (e.key === 'Tab') {
-        const modal = document.querySelector('.modal-content');
-        if (!modal) return;
-        const focusable = modal.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-
     document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      previousFocus.current?.focus();
-    };
+    return () => document.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (!visible) return null;
 
   return (
     <div class={`modal-backdrop${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label={title} onClick={() => handleClose(onCancel)}>
-      <div class={`modal-content${closing ? ' closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+      <div ref={contentRef} class={`modal-content${closing ? ' closing' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div class="modal-header">
           <h3>{title}</h3>
           <Button variant="icon" aria-label="Close" onClick={() => handleClose(onCancel)}>

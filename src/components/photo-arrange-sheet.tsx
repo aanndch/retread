@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { Button } from './button';
+import { useExitFade } from './use-exit-fade';
+import { useOverlayFocus } from './use-overlay-focus';
 
 interface PhotoArrangeSheetProps {
   isOpen: boolean;
@@ -14,11 +16,14 @@ interface PhotoArrangeSheetProps {
 export function PhotoArrangeSheet({ isOpen, photoUrls, onSave, onClose }: PhotoArrangeSheetProps) {
   const [draft, setDraft] = useState<number[]>([]);
   const sheetRef = useRef<HTMLDivElement>(null);
+  // Overlay envelope: the URL owns open/close (isOpen), so closing is a plain
+  // onClose() — useExitFade keeps us mounted through the --motion-base fade-out.
+  const { visible, closing } = useExitFade(isOpen);
+  useOverlayFocus(visible, sheetRef);
 
-  // Escape closes the sheet; focus moves into it when it opens.
+  // Escape closes the sheet (focus lands inside via useOverlayFocus).
   useEffect(() => {
     if (!isOpen) return;
-    sheetRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -27,11 +32,11 @@ export function PhotoArrangeSheet({ isOpen, photoUrls, onSave, onClose }: PhotoA
   }, [isOpen, onClose]);
 
   // Seed the draft when the sheet opens (photoUrls is the current order).
-  if (isOpen && draft.length === 0) {
+  if (visible && draft.length === 0) {
     setDraft(photoUrls.map((_, i) => i));
   }
 
-  if (!isOpen) return null;
+  if (!visible) return null;
 
   const move = (position: number, direction: -1 | 1) => {
     const target = position + direction;
@@ -44,11 +49,11 @@ export function PhotoArrangeSheet({ isOpen, photoUrls, onSave, onClose }: PhotoA
   };
 
   return (
-    <div class="modal-backdrop arrange-backdrop" onClick={onClose}>
+    <div class={`modal-backdrop arrange-backdrop${closing ? ' closing' : ''}`} onClick={onClose}>
       <div
         ref={sheetRef}
         tabIndex={-1}
-        class="arrange-sheet"
+        class={`arrange-sheet${closing ? ' closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div class="arrange-sheet-header">

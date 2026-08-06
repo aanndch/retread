@@ -3,6 +3,7 @@ import { Button } from '../components/button';
 import { CloseIcon } from '../components/icons';
 import { useBodyScrollLock } from '../components/use-body-scroll-lock';
 import { useExitFade } from '../components/use-exit-fade';
+import { useOverlayFocus } from '../components/use-overlay-focus';
 import { galleryPhotoId, type GalleryPhoto } from './use-gallery-photos';
 
 interface PhotosOverlayProps {
@@ -27,12 +28,15 @@ export function PhotosOverlay({
   onViewRide,
 }: PhotosOverlayProps) {
   const touchStartX = useRef(0);
-  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
   // The ?photo= param is the single source of truth for "open": removing it
   // plays a short fade-out so the lightbox never cuts to a blank frame, and
-  // the page scroll stays locked until the fade completes.
-  const { visible, closing } = useExitFade(photoId !== null);
+  // the page scroll stays locked until the fade completes. The lightbox's
+  // closing fade is --motion-fast (150ms), so the unmount timer matches that
+  // rather than the default --motion-base.
+  const { visible, closing } = useExitFade(photoId !== null, 150);
   useBodyScrollLock(visible);
+  useOverlayFocus(visible, backdropRef);
 
   // Keep the last non-null photo on screen through the exit fade — photoId
   // goes null the moment the param is popped, but the fade must show the photo
@@ -70,7 +74,8 @@ export function PhotosOverlay({
     return () => URL.revokeObjectURL(url);
   }, [visible, activeIdx, photos, active]);
 
-  // Dialog semantics: Escape closes, and focus moves to the close button.
+  // Dialog semantics: Escape closes. Focus handling (move into the backdrop on
+  // open, trap Tab, restore on close) lives in useOverlayFocus.
   useEffect(() => {
     if (!visible) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -80,7 +85,6 @@ export function PhotosOverlay({
       }
     };
     document.addEventListener('keydown', handleKeyDown);
-    closeBtnRef.current?.focus();
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [visible, onClose]);
 
@@ -92,10 +96,9 @@ export function PhotosOverlay({
   };
 
   return (
-    <div class={`photo-paper-backdrop${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={onClose}>
+    <div ref={backdropRef} class={`photo-paper-backdrop${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={onClose}>
       <button
         type="button"
-        ref={closeBtnRef}
         class="btn-close-overlay"
         aria-label="Close photo"
         onClick={(e) => {

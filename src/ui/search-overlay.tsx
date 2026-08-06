@@ -456,6 +456,19 @@ export function SearchOverlay({
     setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
 
+  // Restore focus on unmount: the page opens from the home-page search icon
+  // (or a deep link, where the active element is body) and closes via Back /
+  // the × button / a result tap. Remember what had focus on mount and give it
+  // back in the cleanup so focus never falls through to <body>.
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    restoreFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    return () => {
+      restoreFocusRef.current?.focus();
+    };
+  }, []);
+
   // Close on Escape — same as the × button: history.back() returns to the
   // previous page; the route transition fades the sheet out.
   useEffect(() => {

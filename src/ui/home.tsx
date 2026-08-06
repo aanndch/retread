@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { Link } from 'wouter-preact';
 import { Button } from '../components/button';
 import { useBodyScrollLock } from '../components/use-body-scroll-lock';
+import { useExitFade } from '../components/use-exit-fade';
+import { useOverlayFocus } from '../components/use-overlay-focus';
 import { closeModal, openModal, useRouteQuery } from '../components/use-route-query';
 import { Dropdown } from '../components/dropdown';
 import { ToastHost, useToast } from '../components/toast';
@@ -89,15 +91,25 @@ interface HomeProps {
 }
 
 export function Home({ ridesData, onNavigate, onReady }: HomeProps) {
-  const [settingsClosing, setSettingsClosing] = useState(false);
   // The settings panel's open state lives in the URL (#/?modal=settings):
-  // opening pushes the param, closing pops it back to #/.
+  // opening pushes the param, closing pops it back to #/. The exit fade keeps
+  // the panel mounted through the --motion-base fade-out after the param pops.
   const { modal } = useRouteQuery();
   const settingsOpen = modal === 'settings';
-  useBodyScrollLock(settingsOpen);
+  const { visible, closing } = useExitFade(settingsOpen);
+  useBodyScrollLock(visible);
   const openSettings = () => openModal('settings');
   const closeSettingsSession = () => closeModal('settings');
   const settingsRef = useRef<HTMLDivElement>(null);
+  // useOverlayFocus keys off `visible` (not settingsOpen): the panel only
+  // exists in the DOM once useExitFade mounts it, and the effect must run on
+  // that render — keying off settingsOpen would fire a render early with a
+  // null container and never re-run (deps unchanged), leaving focus on the
+  // trigger instead of moving it into the panel.
+  useOverlayFocus(visible, settingsRef);
+  // afterClose callbacks (ride reveal + toast after seeding) run only once the
+  // exit fade has completed, so the new card reveals beneath a cleared panel.
+  const pendingAfterCloseRef = useRef<(() => void) | null>(null);
   const [themeMode, setThemeMode] = useState<'system' | Theme>('system');
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [seedingDemo, setSeedingDemo] = useState(false);
@@ -132,35 +144,38 @@ export function Home({ ridesData, onNavigate, onReady }: HomeProps) {
     saveTheme(theme);
   };
 
-  // Close the settings sheet (dismiss): play the exit animation, then pop the
-  // modal's own URL entry (history.back) so system Back also dismisses it.
+  // Close the settings sheet (dismiss): pop the modal's own URL entry
+  // (history.back) — useExitFade plays the exit animation, then the deferred
+  // afterClose (if any) runs once the fade completes.
   const dismissSettings = useCallback((afterClose?: () => void) => {
-    if (settingsClosing) return;
     if (!settingsOpen) {
       afterClose?.();
       return;
     }
-    setSettingsClosing(true);
-    setTimeout(() => {
-      setSettingsClosing(false);
-      closeSettingsSession();
-      afterClose?.();
-    }, 250);
-  }, [settingsClosing, settingsOpen, closeSettingsSession]);
+    if (afterClose) pendingAfterCloseRef.current = afterClose;
+    closeSettingsSession();
+  }, [settingsOpen, closeSettingsSession]);
+
+  // Run any deferred afterClose once the exit fade has fully completed.
+  useEffect(() => {
+    if (!visible && pendingAfterCloseRef.current) {
+      pendingAfterCloseRef.current();
+      pendingAfterCloseRef.current = null;
+    }
+  }, [visible]);
 
   // Leave settings for another page: swap the modal's URL entry (#/?modal=
   // settings) for the destination with replace, so Back from that page returns
   // to the bare home route — no phantom modal entry and no back()/navigate
   // race. Navigates immediately (no fade delay needed).
   const leaveSettings = useCallback((route: string) => {
-    if (settingsClosing) return;
+    if (!settingsOpen) return;
     window.location.replace(route);
-  }, [settingsClosing]);
+  }, [settingsOpen]);
 
-  // Escape closes the sheet; focus moves into it when it opens.
+  // Escape closes the sheet (focus moves into it via useOverlayFocus).
   useEffect(() => {
     if (!settingsOpen) return;
-    settingsRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') dismissSettings();
     };
@@ -299,12 +314,12 @@ export function Home({ ridesData, onNavigate, onReady }: HomeProps) {
       )}
 
       {/* Settings Panel Overlay */}
-      {settingsOpen && (
-        <div class={`modal-backdrop${settingsClosing ? ' closing' : ''}`} onClick={() => dismissSettings()}>
+      {visible && (
+        <div class={`modal-backdrop${closing ? ' closing' : ''}`} onClick={() => dismissSettings()}>
           <div
             ref={settingsRef}
             tabIndex={-1}
-            class={`modal-content settings-modal${settingsClosing ? ' closing' : ''}`}
+            class={`modal-content settings-modal${closing ? ' closing' : ''}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div class="modal-header">

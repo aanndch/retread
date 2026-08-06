@@ -1,14 +1,23 @@
 import { useEffect } from 'preact/hooks';
 
-// Lock the page scroll while an overlay/sheet is open so content behind a
-// dialog can't keep scrolling (the "nothing moves behind the modal" practice).
+// Ref-counted body scroll lock: overlapping locks (a modal over a routed page,
+// a prompt over a modal) must not unlock early. Each active lock increments a
+// module-level counter; the body stays locked until the LAST lock releases.
+// (The old snapshot-per-lock approach let a second lock capture 'hidden' and
+// then restore it while the first lock was still open.)
+let lockCount = 0;
+
 export function useBodyScrollLock(active: boolean): void {
   useEffect(() => {
     if (!active) return;
-    const previous = document.body.style.overflow;
+    lockCount += 1;
     document.body.style.overflow = 'hidden';
     return () => {
-      document.body.style.overflow = previous;
+      lockCount -= 1;
+      if (lockCount <= 0) {
+        lockCount = 0;
+        document.body.style.overflow = '';
+      }
     };
   }, [active]);
 }

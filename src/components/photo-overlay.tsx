@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'preact/hooks';
 import { CloseIcon } from './icons';
+import { useBodyScrollLock } from './use-body-scroll-lock';
+import { useExitFade } from './use-exit-fade';
+import { useOverlayFocus } from './use-overlay-focus';
 
 interface PhotoOverlayProps {
   isOpen: boolean;
@@ -27,6 +30,13 @@ export function PhotoOverlay({
   const isPhotoDraggingRef = useRef(false);
   const imgScaleRef = useRef(1);
 
+  // Overlay envelope: the URL owns open/close (isOpen), so closing is a plain
+  // onClose() — useExitFade keeps us mounted through the --motion-base fade-out.
+  const { visible, closing } = useExitFade(isOpen);
+  useBodyScrollLock(visible);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  useOverlayFocus(visible, backdropRef);
+
   // Reset zoom state when overlay opens
   useEffect(() => {
     if (isOpen) {
@@ -38,8 +48,8 @@ export function PhotoOverlay({
     }
   }, [isOpen]);
 
-  // Dialog semantics: Escape closes, and focus moves to the close button.
-  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  // Dialog semantics: Escape closes (focus lands on the close button via
+  // useOverlayFocus so keyboard users stay inside the dialog).
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -49,11 +59,10 @@ export function PhotoOverlay({
       }
     };
     document.addEventListener('keydown', handleKeyDown);
-    closeBtnRef.current?.focus();
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen || photoUrls.length === 0) return null;
+  if (!visible || photoUrls.length === 0) return null;
 
   const togglePhotoZoom = (e: MouseEvent) => {
     e.stopPropagation();
@@ -150,10 +159,9 @@ export function PhotoOverlay({
   };
 
   return (
-    <div class="modal-backdrop photo-overlay-backdrop" role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={onClose}>
+    <div ref={backdropRef} class={`modal-backdrop photo-overlay-backdrop${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={onClose}>
       <button
         type="button"
-        ref={closeBtnRef}
         class="btn-close-overlay"
         aria-label="Close photo"
         onClick={(e) => {

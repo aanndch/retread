@@ -27,6 +27,15 @@
   --sticky-topbar-inset: 12px; /* where the page topbar rests and sticks (pulled up from the 24px viewport padding) */
   --sticky-topbar-offset: 43px; /* page-header height (36px icon button + 6px padding + 1px border) */
   --border-radius-sm: 2px;
+
+  /* Motion durations — the single source for every open/close/route animation.
+     No magic numbers for motion: overlays reference these tokens, and the JS
+     exit-fade timers (useExitFade) must match the token values they pair with. */
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 300ms;
+  --motion-route: 180ms;      /* viewport route fade (unchanged feel) */
+  --motion-route-fast: 120ms; /* viewport "preparing" fade (unchanged feel) */
 }
 
 /* Kill the browser's blue tap flash so touches feel like paper, not a glow.
@@ -222,14 +231,14 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
-  transition: opacity 0.18s ease-out;
+  transition: opacity var(--motion-route) ease-out;
 }
 
 /* Content-gated route transition: the outgoing route fades out, the routed
    view stays invisible until it reports its data is rendered, then fades in. */
 .viewport.preparing {
   opacity: 0;
-  transition: opacity 0.12s ease-out;
+  transition: opacity var(--motion-route-fast) ease-out;
 }
 
 /* Lock viewport height while the editor is open: it fits the screen but
@@ -594,11 +603,11 @@ button:focus,
   display: flex;
   justify-content: center;
   align-items: flex-end; /* Mobile drawer style */
-  animation: fade-in 0.15s ease-out forwards; /* Instantaneous background fade */
+  animation: fade-in var(--motion-fast) ease-out forwards; /* Instantaneous background fade */
 }
 
 .modal-backdrop.closing {
-  animation: fade-out 0.22s ease-in forwards !important;
+  animation: fade-out var(--motion-base) ease-in forwards !important;
 }
 
 .modal-content {
@@ -611,12 +620,12 @@ button:focus,
   border-top-left-radius: var(--border-radius);
   border-top-right-radius: var(--border-radius);
   padding: 16px 20px 20px 20px; /* Reduced bottom padding */
-  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slide-up var(--motion-slow) cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 -8px 24px rgba(0,0,0,0.15);
 }
 
 .modal-content.closing {
-  animation: slide-down 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: slide-down var(--motion-base) cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
 @keyframes slide-up {
@@ -1889,7 +1898,7 @@ button:focus,
 }
 
 .search-section-head--catalog {
-  animation: search-head-in 150ms ease-out both;
+  animation: search-head-in var(--motion-fast) ease-out both;
 }
 
 .search-section:nth-child(2) .search-section-head--catalog {
@@ -1920,22 +1929,6 @@ button:focus,
 .search-margin-note,
 .search-stub-link {
   touch-action: manipulation;
-}
-
-/* Kill every search transition/animation under prefers-reduced-motion: section
-   headers appear instantly and the skeleton pulse becomes a static dim block. */
-@media (prefers-reduced-motion: reduce) {
-  .search-clear,
-  .search-suggest-row,
-  .search-journal-row,
-  .search-row,
-  .search-margin-note,
-  .search-section-head--catalog,
-  .search-skeleton-thumb,
-  .search-skeleton-block {
-    transition: none;
-    animation: none;
-  }
 }
 
 .editor-form {
@@ -3452,11 +3445,16 @@ input[type=number] {
   background-color: var(--color-paper);
   border: 1px solid var(--color-ink);
   border-radius: var(--border-radius) var(--border-radius) 0 0;
+  animation: slide-up var(--motion-slow) cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 -4px 0 var(--color-shadow);
   padding: var(--spacing-md);
   max-height: 75vh;
   display: flex;
   flex-direction: column;
+}
+
+.arrange-sheet.closing {
+  animation: slide-down var(--motion-base) cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
 .arrange-sheet-header {
@@ -3812,7 +3810,9 @@ input[type=number] {
   }
 }
 
-/* Reduced motion preference */
+/* Reduced motion preference — the single global gate. This block zeroes every
+   animation/transition duration app-wide; the old per-feature duplicates
+   (search, lightbox) were consolidated here. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -3820,9 +3820,11 @@ input[type=number] {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
   .map-route-path {
     animation: none !important;
+    stroke-dasharray: none !important;
     stroke-dashoffset: 0 !important;
   }
 }
@@ -4224,7 +4226,7 @@ input[type=number] {
 }
 
 .photo-paper-backdrop.closing {
-  animation: fade-out 0.15s ease-in forwards;
+  animation: fade-out var(--motion-fast) ease-in forwards;
 }
 
 .photo-paper-stage {
@@ -4273,28 +4275,6 @@ input[type=number] {
   letter-spacing: 1px;
   color: var(--color-ink-muted);
   text-transform: uppercase;
-}
-
-/* ==========================================================================
-   REDUCED MOTION
-   ========================================================================== */
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-
-  /* The 4.5s route-draw animation becomes an instant reveal */
-  .map-route-path {
-    animation: none;
-    stroke-dasharray: none;
-    stroke-dashoffset: 0;
-  }
 }
 
 

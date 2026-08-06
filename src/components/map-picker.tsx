@@ -4,6 +4,7 @@ import { FieldCard } from './field-card';
 import { loadLeaflet, geocodePlace, reverseGeocode, type GeocodePlace } from '../ui/editor/utils';
 import { getActiveTheme, Theme } from '../theme';
 import type { LocationUnion } from '../types';
+import { useExitFade } from './use-exit-fade';
 
 interface MapPickerProps {
   isOpen: boolean;
@@ -47,7 +48,10 @@ export function MapPicker({
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [leafletFailed, setLeafletFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
-  const [closing, setClosing] = useState(false);
+  // Overlay envelope: the picker is plain component state (isOpen), so closing
+  // is a plain onClose() — useExitFade keeps us mounted through the
+  // --motion-base fade-out before the parent flips isOpen false.
+  const { visible, closing } = useExitFade(isOpen);
 
   const mapRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -78,14 +82,6 @@ export function MapPicker({
   const fallbackCenterRef = useRef(fallbackCenter);
   initialLocationRef.current = initialLocation;
   fallbackCenterRef.current = fallbackCenter;
-
-  const handleClose = (action: () => void) => {
-    setClosing(true);
-    setTimeout(() => {
-      setClosing(false);
-      action();
-    }, 250);
-  };
 
   // Load Leaflet once on mount; bumping loadAttempt retries after a failure.
   useEffect(() => {
@@ -141,9 +137,11 @@ export function MapPicker({
   }, []);
 
   // Create the map when open + Leaflet ready; tear it down when closed so the
-  // next open always gets a fresh, correctly-centered instance.
+  // next open always gets a fresh, correctly-centered instance. Keyed on
+  // `visible` (not isOpen) so the map survives the exit fade and doesn't blank
+  // out mid-close.
   useEffect(() => {
-    if (!isOpen || !leafletLoaded || !containerRef.current) return;
+    if (!visible || !leafletLoaded || !containerRef.current) return;
     const L = (window as any).L;
     const initLoc = initialLocationRef.current;
     const fbCenter = fallbackCenterRef.current;
@@ -205,7 +203,7 @@ export function MapPicker({
     // showToast is stable for the picker's lifetime; recreating the map on a
     // toast identity change would be wrong, so it is intentionally excluded.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, leafletLoaded]);
+  }, [visible, leafletLoaded]);
 
   // Focus search when the picker opens with the map ready.
   useEffect(() => {
@@ -216,7 +214,7 @@ export function MapPicker({
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.stopPropagation(); handleClose(onClose); }
+      if (e.key === 'Escape') { e.stopPropagation(); onClose(); }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -288,7 +286,7 @@ export function MapPicker({
     lastSearchedRef.current = '';
   };
 
-  if (!isOpen) return null;
+  if (!visible) return null;
 
   const handleConfirm = (e: MouseEvent) => {
     if (e) { e.preventDefault(); e.stopPropagation(); }
@@ -296,21 +294,21 @@ export function MapPicker({
       if (!mapRef.current) return;
       if (!pinnedRef.current) return;
       onConfirm(pinnedRef.current, nameValue.trim());
-      handleClose(onClose);
+      onClose();
     } catch (err) {
       console.error('Failed to confirm map picker pin:', err);
       showToast('Error setting coordinates from map.');
-      handleClose(onClose);
+      onClose();
     }
   };
 
   const handleKeepAsLabel = () => {
     onConfirm(null, nameValue.trim());
-    handleClose(onClose);
+    onClose();
   };
 
   return (
-    <div class={`modal-backdrop${closing ? ' closing' : ''}`} style={{ zIndex: 3000 }} onClick={() => handleClose(onClose)}>
+    <div class={`modal-backdrop${closing ? ' closing' : ''}`} style={{ zIndex: 3000 }} onClick={onClose}>
       <div
         class={`modal-content${closing ? ' closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
@@ -331,7 +329,7 @@ export function MapPicker({
           <button
             type="button"
             class="btn-clear"
-            onClick={() => handleClose(onClose)}
+            onClick={onClose}
             style={{ fontSize: '20px', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--color-ink)' }}
           >
             &times;
@@ -515,7 +513,7 @@ export function MapPicker({
           )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap', marginTop: 'var(--spacing-md)' }}>
-            <Button variant="secondary" size="sm" onClick={() => handleClose(onClose)}>
+            <Button variant="secondary" size="sm" onClick={onClose}>
               Cancel
             </Button>
             {!pinnedNow && nameValue.trim() && (
