@@ -70,15 +70,6 @@ export function setAccessToken(token: string | null): void {
   else sessionStorage.removeItem(OAUTH_TOKEN_KEY);
 }
 
-// Re-read the persisted token after a bfcache restore. The restored page keeps
-// its frozen JS heap (stale cachedToken), but sessionStorage is shared with the
-// OAuth-return document, so the freshly stored token is still readable here.
-export function syncTokenFromStorage(): string | null {
-  const stored = sessionStorage.getItem(OAUTH_TOKEN_KEY);
-  cachedToken = stored;
-  return stored;
-}
-
 export function isConnected(): boolean {
   return cachedToken !== null;
 }
@@ -97,10 +88,6 @@ export function isConnected(): boolean {
 
 const OAUTH_STATE_KEY = 'retread-gdrive-oauth-state';
 const OAUTH_RESULT_KEY = 'retread-gdrive-oauth-result';
-// Browser history.length at the moment we navigate away to Google. On the way
-// back, handleOAuthRedirect() walks back past the Google pages to this entry
-// so Android back never re-traverses the OAuth flow.
-const OAUTH_HISTORY_BASELINE_KEY = 'retread-gdrive-oauth-history-baseline';
 
 function oauthRedirectUri(): string {
   const base = `${window.location.origin}${window.location.pathname}`;
@@ -136,9 +123,6 @@ export function requestAccessToken(): Promise<string> {
     });
 
     try {
-      // Record where we are before leaving, so the return can collapse the
-      // Google pages out of the back stack (see handleOAuthRedirect).
-      sessionStorage.setItem(OAUTH_HISTORY_BASELINE_KEY, String(window.history.length));
       window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
     } catch (err) {
       reject(new Error(describeOAuthError(err)));
@@ -179,22 +163,6 @@ export function handleOAuthRedirect(): boolean {
   }
 
   history.replaceState(null, '', `${window.location.pathname}${window.location.search}${HASH_BACKUP}`);
-
-  // Collapse the Google pages out of the back stack so Android back from the
-  // backup page goes to the app's previous page instead of re-walking the whole
-  // OAuth flow. depth is how many history entries were added since we recorded
-  // the baseline in requestAccessToken(); landing on the pre-OAuth entry reloads
-  // the app there, where consumeOAuthResult() surfaces the outcome and the token
-  // (persisted in sessionStorage) keeps the connection alive.
-  const baselineRaw = sessionStorage.getItem(OAUTH_HISTORY_BASELINE_KEY);
-  sessionStorage.removeItem(OAUTH_HISTORY_BASELINE_KEY);
-  if (baselineRaw !== null) {
-    const baseline = parseInt(baselineRaw, 10);
-    const depth = window.history.length - baseline;
-    if (depth > 0) {
-      window.history.go(-depth);
-    }
-  }
   return true;
 }
 

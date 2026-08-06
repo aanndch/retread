@@ -14,7 +14,6 @@ import {
   getAccessToken,
   disconnect,
   isConnected,
-  syncTokenFromStorage,
   consumeOAuthResult,
   performBackup,
   performRestore,
@@ -89,31 +88,7 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
       else showToast(`Connection failed: ${result.error}`);
     }
     window.addEventListener('retread-gdrive-connected', onConnected);
-
-    // The OAuth return collapses history back to this page, which the browser
-    // often restores from bfcache instead of reloading. That keeps the frozen
-    // "Connecting..." state and skips the mount effect above. Re-finalize on a
-    // bfcache restore so the connect state lands instead of hanging forever.
-    const onPageshow = (e: PageTransitionEvent) => {
-      if (!e.persisted) return;
-      // The restored heap's module-level token cache is stale (null from before
-      // the OAuth round-trip); sessionStorage has the fresh token, so sync it
-      // back into the cache before asking whether we're connected.
-      syncTokenFromStorage();
-      setGdriveConnected(isConnected());
-      setGdriveConnecting(false);
-      const pending = consumeOAuthResult();
-      if (pending) {
-        if (pending.ok) showToast('Connected to Google Drive.', 'success');
-        else showToast(`Connection failed: ${pending.error}`);
-      }
-    };
-    window.addEventListener('pageshow', onPageshow);
-
-    return () => {
-      window.removeEventListener('retread-gdrive-connected', onConnected);
-      window.removeEventListener('pageshow', onPageshow);
-    };
+    return () => window.removeEventListener('retread-gdrive-connected', onConnected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
