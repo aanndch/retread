@@ -276,16 +276,16 @@ function buildSearchCatalog(query: string, ridesData: HomeRideEntry[]): SearchCa
   return { rides, legs };
 }
 
-// The predictive/unique tail of a suggestion renders in green — the part of
-// the entity name beyond what the user has already typed.
+// The typed prefix of a suggestion renders in green — the part of the entity
+// name the user has already typed; the predictive tail stays plain ink.
 function SuggestionLabel({ label, query }: { label: string; query: string }) {
   const q = query.trim().toLowerCase();
   const lower = label.toLowerCase();
   if (q && lower.startsWith(q)) {
     return (
       <>
-        {label.slice(0, q.length)}
-        <span class="search-suggest-tail">{label.slice(q.length)}</span>
+        <span class="search-suggest-prefix">{label.slice(0, q.length)}</span>
+        {label.slice(q.length)}
       </>
     );
   }

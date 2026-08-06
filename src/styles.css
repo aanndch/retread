@@ -1459,8 +1459,10 @@ button:focus,
   white-space: nowrap;
 }
 
-/* The predictive tail — the part of the entity name beyond what was typed */
-.search-suggest-tail {
+/* The typed prefix — the part of the entity name the user has already typed.
+   Green mirrors .search-hit in the results (green = what you typed/active);
+   the predictive tail inherits the row's plain ink. */
+.search-suggest-prefix {
   color: var(--color-green);
 }
 
