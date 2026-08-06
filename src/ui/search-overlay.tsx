@@ -276,20 +276,25 @@ function buildSearchCatalog(query: string, ridesData: HomeRideEntry[]): SearchCa
   return { rides, legs };
 }
 
-// The typed prefix of a suggestion renders in green — the part of the entity
-// name the user has already typed; the predictive tail stays plain ink.
+// The first occurrence of the typed term in a suggestion renders in green —
+// the part of the entity name the user has already typed; the rest stays
+// plain ink. Matching is normalized (lowercase, accents stripped) but the
+// span slices the ORIGINAL text, so the visible characters keep their case
+// and diacritics. A prefix match (index 0) renders exactly as before. When
+// the suggestion only matched tolerantly and doesn't literally contain the
+// term, the whole label stays plain.
 function SuggestionLabel({ label, query }: { label: string; query: string }) {
-  const q = query.trim().toLowerCase();
-  const lower = label.toLowerCase();
-  if (q && lower.startsWith(q)) {
-    return (
-      <>
-        <span class="search-suggest-prefix">{label.slice(0, q.length)}</span>
-        {label.slice(q.length)}
-      </>
-    );
-  }
-  return <>{label}</>;
+  const normLabel = normalize(label);
+  const normQ = normalize(query).trim();
+  const idx = normQ ? normLabel.indexOf(normQ) : -1;
+  if (idx === -1) return <>{label}</>;
+  return (
+    <>
+      {label.slice(0, idx)}
+      <span class="search-suggest-prefix">{label.slice(idx, idx + normQ.length)}</span>
+      {label.slice(idx + normQ.length)}
+    </>
+  );
 }
 
 function SearchThumb({ blob, coverKey }: { blob: Blob | null; coverKey: string }) {
