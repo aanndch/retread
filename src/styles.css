@@ -3666,6 +3666,138 @@ input[type=number] {
 }
 
 /* ==========================================================================
+   PHOTOS GALLERY
+   ========================================================================== */
+
+.photos-container {
+  display: flex;
+  flex-direction: column;
+  margin-top: calc(var(--sticky-topbar-inset) - var(--spacing-lg));
+}
+
+.photos-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.photos-sub {
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin: 0;
+}
+
+.photos-empty {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-xl) var(--spacing-md);
+  text-align: center;
+  color: var(--color-ink-muted);
+  border: 1px dashed var(--color-ink-muted);
+  border-radius: var(--border-radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* Masonry wall: CSS columns flow photos into a waterfall. Column-major order
+   is fine because the wall is deliberately shuffled, not chronological. */
+.photos-masonry {
+  column-width: 120px;
+  column-gap: var(--spacing-sm);
+}
+
+.photo-tile {
+  display: block;
+  width: 100%;
+  margin-bottom: var(--spacing-sm);
+  padding: 0;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-paper);
+  overflow: hidden;
+  cursor: pointer;
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  transition: opacity 0.1s ease;
+}
+
+.photo-tile img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.photo-tile:active {
+  opacity: 0.85;
+}
+
+/* Paper-styled lightbox: the photo is the hero on a paper ground, framed like
+   a mounted print, with a minimal caption and two actions. */
+.photo-paper-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-paper);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+}
+
+.photo-paper-stage {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  min-height: 0;
+  touch-action: pan-y;
+}
+
+.photo-paper-frame {
+  max-width: 100%;
+  max-height: 100%;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  box-shadow: 4px 4px 0 var(--color-shadow);
+  background-color: var(--color-paper);
+  padding: 8px;
+}
+
+.photo-paper-img {
+  display: block;
+  max-width: 100%;
+  max-height: 62vh;
+  object-fit: contain;
+  border-radius: var(--border-radius-sm);
+}
+
+.photo-paper-footer {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg) calc(var(--spacing-lg) + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.photo-paper-counter {
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
    REDUCED MOTION
    ========================================================================== */
 

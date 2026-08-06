@@ -2,9 +2,10 @@ import { useState, useEffect } from 'preact/hooks';
 import { Button } from '../components/button';
 import { Dropdown } from '../components/dropdown';
 import { ToastHost, useToast } from '../components/toast';
-import { CloseIcon, GearIcon, SearchIcon } from '../components/icons';
+import { CloseIcon, GearIcon, PhotoIcon, SearchIcon } from '../components/icons';
 import { FieldCard } from '../components/field-card';
 import { formatDistance } from '../lib';
+import { HASH_PHOTOS } from '../constants';
 import { getSavedTheme, saveTheme, Theme } from '../theme';
 import { seedDemoRide, seedPhantomDemoRide } from './seed-demo';
 import { coverUrlCache, DRAFT_MONTH_KEY, type HomeRideEntry } from './use-ride-book';
@@ -232,6 +233,13 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
           </div>
         </div>
         <div class="home-actions">
+          <Button
+            variant="icon"
+            aria-label="Photos"
+            onClick={() => onNavigate(HASH_PHOTOS)}
+          >
+            <PhotoIcon size={18} />
+          </Button>
           <Button
             variant="icon"
             aria-label="Search"

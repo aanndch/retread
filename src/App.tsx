@@ -10,11 +10,13 @@ import { Backup } from './ui/backup';
 import { Todo } from './ui/todo';
 import { RideDetail } from './ui/ride-detail';
 import { LegDetail } from './ui/leg-detail';
+import { Photos } from './ui/photos';
 import {
   HASH_HOME,
   HASH_BACKUP,
   HASH_EDIT,
   HASH_TODO,
+  HASH_PHOTOS,
   HASH_RIDE_PREFIX,
   HASH_LEG_PREFIX,
 } from './constants';
@@ -378,6 +380,10 @@ export function App() {
 
     if (hash === HASH_TODO) {
       return <Todo onNavigateBack={navigateBack} />;
+    }
+
+    if (hash === HASH_PHOTOS) {
+      return <Photos ridesData={ridesData} onNavigate={navigateTo} onNavigateBack={navigateBack} />;
     }
 
     // Fallback 404
