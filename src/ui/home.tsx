@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { Link } from 'wouter-preact';
 import { Button } from '../components/button';
+import { useHistoryModal } from '../components/use-history-modal';
 import { Dropdown } from '../components/dropdown';
 import { ToastHost, useToast } from '../components/toast';
 import { CloseIcon, GearIcon, PhotoIcon, SearchIcon } from '../components/icons';
@@ -88,8 +89,9 @@ interface HomeProps {
 }
 
 export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps) {
-  const [showSettings, setShowSettings] = useState(false);
   const [settingsClosing, setSettingsClosing] = useState(false);
+  const [settingsOpen, openSettings, closeSettingsSession] = useHistoryModal('settings');
+  const settingsRef = useRef<HTMLDivElement>(null);
   const [themeMode, setThemeMode] = useState<'system' | Theme>('system');
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [seedingDemo, setSeedingDemo] = useState(false);
@@ -124,19 +126,45 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
     saveTheme(theme);
   };
 
-  const closeSettings = (afterClose?: () => void) => {
+  // Close the settings sheet (dismiss): play the exit animation, then pop the
+  // modal's own history entry so system Back also dismisses it cleanly.
+  const dismissSettings = useCallback((afterClose?: () => void) => {
     if (settingsClosing) return;
-    if (!showSettings) {
+    if (!settingsOpen) {
       afterClose?.();
       return;
     }
     setSettingsClosing(true);
     setTimeout(() => {
-      setShowSettings(false);
       setSettingsClosing(false);
+      closeSettingsSession();
       afterClose?.();
     }, 250);
-  };
+  }, [settingsClosing, settingsOpen, closeSettingsSession]);
+
+  // Leave settings for another page: replace the modal's history entry with the
+  // destination so Back from that page returns home — no phantom modal entry,
+  // and no back()/navigate race. (replace keeps history.length constant, so the
+  // router treats it as a pop; home sits at depth 0, so the miscount is benign.)
+  const leaveSettings = useCallback((route: string) => {
+    if (settingsClosing) return;
+    setSettingsClosing(true);
+    setTimeout(() => {
+      setSettingsClosing(false);
+      window.location.replace(route);
+    }, 250);
+  }, [settingsClosing]);
+
+  // Escape closes the sheet; focus moves into it when it opens.
+  useEffect(() => {
+    if (!settingsOpen) return;
+    settingsRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dismissSettings();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [settingsOpen, dismissSettings]);
 
   const seedRide = async (seedFn: () => Promise<number>, successMsg: string) => {
     if (seedingDemo) return;
@@ -145,7 +173,7 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
       const newRideId = await seedFn();
       // Sequence the reveal: the settings sheet animates out first, letting
       // the freshly added ride card fade in beneath it before the toast lands.
-      closeSettings(() => {
+      dismissSettings(() => {
         setRevealRideId(newRideId);
         showToast(successMsg, "success");
       });
@@ -251,7 +279,7 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
           <Button
             variant="icon"
             aria-label="Settings"
-            onClick={() => setShowSettings(true)}
+            onClick={openSettings}
           >
             <GearIcon size={20} />
           </Button>
@@ -269,12 +297,17 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
       )}
 
       {/* Settings Panel Overlay */}
-      {showSettings && (
-        <div class={`modal-backdrop${settingsClosing ? ' closing' : ''}`} onClick={() => closeSettings()}>
-          <div class={`modal-content settings-modal${settingsClosing ? ' closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+      {settingsOpen && (
+        <div class={`modal-backdrop${settingsClosing ? ' closing' : ''}`} onClick={() => dismissSettings()}>
+          <div
+            ref={settingsRef}
+            tabIndex={-1}
+            class={`modal-content settings-modal${settingsClosing ? ' closing' : ''}`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div class="modal-header">
               <h3>Settings</h3>
-              <button type="button" class="btn-close" aria-label="Close settings" onClick={() => closeSettings()}>
+              <button type="button" class="btn-close" aria-label="Close settings" onClick={() => dismissSettings()}>
                 <CloseIcon size={16} />
               </button>
             </div>
@@ -305,7 +338,7 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
                   <Button 
                     variant="secondary" 
                     size="sm"
-                    onClick={() => closeSettings(() => onNavigate('#/backup'))}
+                    onClick={() => leaveSettings('#/backup')}
                   >
                     Backup & Restore
                   </Button>
@@ -340,7 +373,7 @@ export function Home({ ridesData, onNavigate, onOpenSearch, onReady }: HomeProps
                   <Button 
                     variant="secondary" 
                     size="sm"
-                    onClick={() => closeSettings(() => onNavigate('#/todo'))}
+                    onClick={() => leaveSettings('#/todo')}
                   >
                     View Build Log
                   </Button>
