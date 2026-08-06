@@ -70,6 +70,15 @@ export function setAccessToken(token: string | null): void {
   else sessionStorage.removeItem(OAUTH_TOKEN_KEY);
 }
 
+// Re-read the persisted token after a bfcache restore. The restored page keeps
+// its frozen JS heap (stale cachedToken), but sessionStorage is shared with the
+// OAuth-return document, so the freshly stored token is still readable here.
+export function syncTokenFromStorage(): string | null {
+  const stored = sessionStorage.getItem(OAUTH_TOKEN_KEY);
+  cachedToken = stored;
+  return stored;
+}
+
 export function isConnected(): boolean {
   return cachedToken !== null;
 }

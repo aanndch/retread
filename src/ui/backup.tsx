@@ -14,6 +14,7 @@ import {
   getAccessToken,
   disconnect,
   isConnected,
+  syncTokenFromStorage,
   consumeOAuthResult,
   performBackup,
   performRestore,
@@ -110,6 +111,10 @@ export function Backup({ onNavigate, onNavigateBack }: BackupProps) {
     // bfcache restore so the connect state lands instead of hanging forever.
     const onPageshow = (e: PageTransitionEvent) => {
       if (!e.persisted) return;
+      // The restored heap's module-level token cache is stale (null from before
+      // the OAuth round-trip); sessionStorage has the fresh token, so sync it
+      // back into the cache before asking whether we're connected.
+      syncTokenFromStorage();
       setGdriveConnected(isConnected());
       setGdriveConnecting(false);
       const pending = consumeOAuthResult();
