@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
+import { Router, Switch, Route, Redirect } from 'wouter-preact';
 import { Setup } from './ui/setup';
 import { PWAInstallPrompt, IOSBackupReminder, useAppPrompts } from './components/app-prompts';
 import { Home } from './ui/home';
@@ -13,10 +14,6 @@ import { LegDetail } from './ui/leg-detail';
 import { Photos } from './ui/photos';
 import {
   HASH_HOME,
-  HASH_BACKUP,
-  HASH_EDIT,
-  HASH_TODO,
-  HASH_PHOTOS,
   HASH_RIDE_PREFIX,
   HASH_LEG_PREFIX,
 } from './constants';
@@ -30,9 +27,67 @@ function isSearchHistoryEntry(state: unknown): boolean {
   );
 }
 
+// Normalize a raw location.hash ("#/ride/3", "#/edit?mode=x", "#/", "") to
+// wouter's path-only location ("/ride/3", "/edit", "/"). The query is read
+// separately by useHashSearch so useSearchParams works with in-hash queries.
+function normalizeRoute(hash: string): string {
+  const path = hash.replace(/^#?\/?/, '');
+  return '/' + path.split('?')[0];
+}
+
+// Tiny external store so the Router renders a route only after the 120ms
+// fade-out swap completes — preserving the app's exact transition feel while
+// wouter owns matching.
+let routeSnapshot = normalizeRoute(window.location.hash);
+const routeListeners = new Set<() => void>();
+function getRouteSnapshot() {
+  return routeSnapshot;
+}
+function setRouteSnapshot(hash: string) {
+  routeSnapshot = normalizeRoute(hash);
+  routeListeners.forEach((l) => l());
+}
+
+// Controlled location hook fed to wouter's <Router>: navigation still goes
+// through window.location.hash so the app's hashchange handler (fade, scroll
+// cache, back-depth) keeps running; the rendered location is the delayed swap.
+const useControlledHashLocation = (): [
+  string,
+  (to: string, opts?: { replace?: boolean; state?: unknown; transition?: boolean }) => void,
+] => {
+  const [location, setLocation] = useState(getRouteSnapshot);
+  useEffect(() => {
+    const listener = () => setLocation(getRouteSnapshot());
+    routeListeners.add(listener);
+    return () => {
+      routeListeners.delete(listener);
+    };
+  }, []);
+  const navigate = useCallback(
+    (to: string, opts?: { replace?: boolean; state?: unknown; transition?: boolean }) => {
+      if (opts?.replace) {
+        window.location.replace(to);
+      } else {
+        window.location.hash = to;
+      }
+    },
+    []
+  );
+  return [location, navigate];
+};
+// <Link href="/ride/3"> renders href="#/ride/3".
+useControlledHashLocation.hrefs = (href: string) => '#' + href;
+// wouter's default useSearch reads location.search, which is empty for our
+// in-hash queries (`#/edit?mode=x`), so extract the query from the fragment.
+const useHashSearch = () => {
+  const hash = window.location.hash;
+  const i = hash.indexOf('?');
+  return i >= 0 ? hash.slice(i + 1) : '';
+};
+useControlledHashLocation.searchHook = useHashSearch;
+
 export function App() {
   const [setupComplete, setSetupComplete] = useState(false);
-  const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [showContent, setShowContent] = useState(true);
   const [hasSWUpdate, setHasSWUpdate] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -196,7 +251,7 @@ export function App() {
       setShowContent(false);
       if (swapTimerRef.current !== null) clearTimeout(swapTimerRef.current);
       swapTimerRef.current = window.setTimeout(() => {
-        setCurrentHash(nextHash);
+        setRouteSnapshot(nextHash);
 
         // Resolve search at the swap, after the new route has mounted. A
         // marked search entry restores the mounted overlay and its query when
@@ -341,65 +396,52 @@ export function App() {
     );
   }
 
-  // 2. Hash Route Router
-  const renderRoute = () => {
-    const hash = currentHash || HASH_HOME;
+  // 2. Hash Route Router (wouter). Forward navigation still goes through
+  //    navigateTo (window.location.hash) so the app's hashchange handler keeps
+  //    running; matching and typed params are wouter's, fed by the controlled
+  //    location so the 120ms fade-out swap still gates rendering.
+  const homeElement = (
+    <Home ridesData={ridesData} onNavigate={navigateTo} onOpenSearch={openSearch} onReady={finishTransition} />
+  );
 
-    if (hash === HASH_HOME || hash === '') {
-      return <Home ridesData={ridesData} onNavigate={navigateTo} onOpenSearch={openSearch} onReady={finishTransition} />;
-    }
-    
-    if (hash === '#/test') {
-      if (import.meta.env.DEV) {
-        return <TestRunner />;
-      }
-      return <Home ridesData={ridesData} onNavigate={navigateTo} onOpenSearch={openSearch} onReady={finishTransition} />;
-    }
-    
-    if (hash.startsWith(HASH_RIDE_PREFIX)) {
-      const rideId = hash.split('/').pop();
-      const parsedId = rideId ? parseInt(rideId, 10) : NaN;
-      if (isNaN(parsedId)) return <Home ridesData={ridesData} onNavigate={navigateTo} onOpenSearch={openSearch} onReady={finishTransition} />;
-      return <RideDetail rideId={parsedId} onNavigate={navigateTo} onNavigateBack={navigateBack} onReady={finishTransition} />;
-    }
-
-    if (hash.startsWith(HASH_LEG_PREFIX)) {
-      const legId = hash.split('/').pop();
-      const parsedId = legId ? parseInt(legId, 10) : NaN;
-      if (isNaN(parsedId)) return <Home ridesData={ridesData} onNavigate={navigateTo} onOpenSearch={openSearch} onReady={finishTransition} />;
-      return <LegDetail legId={parsedId} onNavigate={navigateTo} onNavigateBack={navigateBack} onReady={finishTransition} />;
-    }
-
-    if (hash.startsWith(HASH_EDIT)) {
-      return <Editor onNavigate={navigateTo} onNavigateBack={navigateBack} />;
-    }
-
-    if (hash === HASH_BACKUP) {
-      return <Backup onNavigate={navigateTo} onNavigateBack={navigateBack} />;
-    }
-
-    if (hash === HASH_TODO) {
-      return <Todo onNavigateBack={navigateBack} />;
-    }
-
-    if (hash === HASH_PHOTOS) {
-      return <Photos ridesData={ridesData} onNavigate={navigateTo} onNavigateBack={navigateBack} />;
-    }
-
-    // Fallback 404
-    return (
-      <div class="placeholder-view">
-        <h3>Page Not Found</h3>
-        <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo(HASH_HOME)}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="22" y1="12" x2="2" y2="12"></line>
-              <polyline points="9 19 2 12 9 5"></polyline>
-            </svg>
-            <span>Back Home</span>
-          </button>
-      </div>
-    );
+  const renderRide = (id: string) => {
+    const rideId = parseInt(id, 10);
+    if (Number.isNaN(rideId)) return <Redirect to="/" />;
+    return <RideDetail rideId={rideId} onNavigate={navigateTo} onNavigateBack={navigateBack} onReady={finishTransition} />;
   };
+
+  const renderLeg = (id: string) => {
+    const legId = parseInt(id, 10);
+    if (Number.isNaN(legId)) return <Redirect to="/" />;
+    return <LegDetail legId={legId} onNavigate={navigateTo} onNavigateBack={navigateBack} onReady={finishTransition} />;
+  };
+
+  const router = (
+    <Router hook={useControlledHashLocation}>
+      <Switch>
+        <Route path="/">{() => homeElement}</Route>
+        {import.meta.env.DEV && <Route path="/test">{() => <TestRunner />}</Route>}
+        <Route path="/ride/:id">{({ id }) => renderRide(id!)}</Route>
+        <Route path="/leg/:id">{({ id }) => renderLeg(id!)}</Route>
+        <Route path="/edit">{() => <Editor onNavigate={navigateTo} onNavigateBack={navigateBack} />}</Route>
+        <Route path="/backup">{() => <Backup onNavigate={navigateTo} onNavigateBack={navigateBack} />}</Route>
+        <Route path="/todo">{() => <Todo onNavigateBack={navigateBack} />}</Route>
+        <Route path="/photos">{() => <Photos ridesData={ridesData} onNavigate={navigateTo} onNavigateBack={navigateBack} />}</Route>
+        <Route>
+          <div class="placeholder-view">
+            <h3>Page Not Found</h3>
+            <button class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;" onClick={() => navigateTo(HASH_HOME)}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="12" x2="2" y2="12"></line>
+                <polyline points="9 19 2 12 9 5"></polyline>
+              </svg>
+              <span>Back Home</span>
+            </button>
+          </div>
+        </Route>
+      </Switch>
+    </Router>
+  );
 
   return (
     <div class="app-container">
@@ -410,7 +452,7 @@ export function App() {
         </div>
       )}
       <main class={`viewport${showContent ? '' : ' preparing'}`}>
-        {renderRoute()}
+        {router}
       </main>
 
       {showScrollTop && (

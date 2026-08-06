@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'preact/hooks';
+import { Link } from 'wouter-preact';
 import { ArrowLeft } from '../components/icons';
 import { computeTotalDistance } from '../lib';
 import { db } from '../db';
@@ -236,10 +237,10 @@ export function TestRunner() {
           ))}
         </ul>
       )}
-      <a href="#/" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '20px', color: 'var(--color-green)', textDecoration: 'underline' }}>
+      <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '20px', color: 'var(--color-green)', textDecoration: 'underline' }}>
         <ArrowLeft size={12} />
         <span>Back to Home</span>
-      </a>
+      </Link>
     </div>
   );
 }

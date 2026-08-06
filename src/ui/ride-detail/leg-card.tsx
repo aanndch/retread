@@ -1,3 +1,4 @@
+import { Link } from 'wouter-preact';
 import type { Leg } from '../../types';
 import { formatDistance, stopLabel } from '../../lib';
 
@@ -10,7 +11,7 @@ interface LegCardProps {
 
 export function LegCard({ leg, index, label, id }: LegCardProps) {
   return (
-    <a id={id} href={`#/leg/${leg.id}`} class="timeline-card-item">
+    <Link id={id} href={`/leg/${leg.id}`} className="timeline-card-item">
       <div class="timeline-card-body">
         <div class="card-title-row">
           <div
@@ -63,6 +64,6 @@ export function LegCard({ leg, index, label, id }: LegCardProps) {
           </p>
         )}
       </div>
-    </a>
+    </Link>
   );
 }

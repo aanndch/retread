@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'preact/hooks';
+import { Link } from 'wouter-preact';
 import { Button } from '../components/button';
 import { Dropdown } from '../components/dropdown';
 import { ToastHost, useToast } from '../components/toast';
@@ -483,9 +484,9 @@ export function RideCard({ ride, totalKm, firstPhotoBlob, coverKey, dateRange, s
   }, [firstPhotoBlob, coverKey]);
 
   return (
-    <a
-      href={`#/ride/${ride.id}`}
-      class={`ride-card-link${reveal ? ' ride-card-reveal' : ''}`}
+    <Link
+      href={`/ride/${ride.id}`}
+      className={`ride-card-link${reveal ? ' ride-card-reveal' : ''}`}
       onAnimationEnd={(e) => {
         if (reveal && e.animationName === 'fade-in') onRevealEnd?.();
       }}
@@ -525,6 +526,6 @@ export function RideCard({ ride, totalKm, firstPhotoBlob, coverKey, dateRange, s
           </div>
         </div>
       </div>
-    </a>
+    </Link>
   );
 }

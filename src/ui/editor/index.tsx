@@ -1,4 +1,5 @@
 import { useReducer, useEffect, useRef, useCallback, useState } from 'preact/hooks';
+import { useSearchParams } from 'wouter-preact';
 import { db } from '../../db';
 import { compressImage, createThumbnail } from '../../images';
 import { ToastHost, useToast } from '../../components/toast';
@@ -103,16 +104,15 @@ interface EditorProps {
 }
 
 export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
-  // Parse routing parameters from hash
-  const hashParts = window.location.hash.split('?');
-  const params = new URLSearchParams(hashParts[1] || '');
-  const rawMode = params.get('mode');
+  // Parse routing parameters from the in-hash query (`#/edit?mode=...`).
+  const [searchParams] = useSearchParams();
+  const rawMode = searchParams.get('mode');
   const validModes = ['new-ride', 'edit-ride', 'new-leg', 'edit'] as const;
   type EditorMode = typeof validModes[number];
   const mode: EditorMode | null = validModes.includes(rawMode as EditorMode) ? (rawMode as EditorMode) : null;
-  
-  const rideIdParam = params.get('rideId');
-  const legIdParam = params.get('legId');
+
+  const rideIdParam = searchParams.get('rideId');
+  const legIdParam = searchParams.get('legId');
   const rideId = rideIdParam ? parseInt(rideIdParam, 10) : null;
   const legId = legIdParam ? parseInt(legIdParam, 10) : null;
 

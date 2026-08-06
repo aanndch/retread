@@ -15,7 +15,8 @@
   "dependencies": {
     "dexie": "^4.4.4",
     "dexie-react-hooks": "^4.4.0",
-    "preact": "^10.29.7"
+    "preact": "^10.29.7",
+    "wouter-preact": "^3.10.0"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",
