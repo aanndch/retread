@@ -4,7 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 // A modal's open state lives in the URL as ?modal=<key> on its host route
 // (#/ride/1?modal=map, #/leg/1?modal=arrange, #/edit?mode=…&modal=arrange).
 // Settings is a routed page now (#/settings), not a modal. See
-// NAV-REFACTOR-PLAN.md §2/§3.
+// docs/architecture/NAV-REFACTOR-PLAN.md §2/§3.
 export type ModalKey = 'map' | 'photo' | 'arrange';
 
 export interface RouteQuery {
