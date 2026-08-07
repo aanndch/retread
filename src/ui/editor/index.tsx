@@ -1,7 +1,7 @@
 import { useReducer, useEffect, useRef, useCallback, useState } from 'preact/hooks';
 import { useSearchParams } from 'wouter-preact';
 import { db } from '../../db';
-import { compressImage, createThumbnail } from '../../images';
+import { compressImage, createThumbnail, HEIC_CONVERT_ERROR } from '../../images';
 import { ToastHost, useToast } from '../../components/toast';
 import { StartStep } from './start-step';
 import { LegStep } from './leg-step';
@@ -488,7 +488,12 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
         newPreviews.push(URL.createObjectURL(compressedBlob));
       } catch (err) {
         console.error('Image compression failed:', err);
-        showToast(`Failed to upload ${files[i].name}: images must be valid format.`);
+        const isHeicError = err instanceof Error && err.message === HEIC_CONVERT_ERROR;
+        showToast(
+          isHeicError
+            ? `Failed to upload ${files[i].name}: ${err.message}`
+            : `Failed to upload ${files[i].name}: images must be valid format.`
+        );
       }
     }
 
