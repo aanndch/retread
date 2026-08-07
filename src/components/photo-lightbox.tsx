@@ -129,19 +129,23 @@ export function PhotoLightbox({
 
   return (
     <div ref={backdropRef} class={`photo-paper-backdrop${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label={ariaLabel} onClick={onClose}>
-      <button
-        type="button"
-        class="btn-close-overlay"
-        aria-label="Close photo"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-      >
-        <CloseIcon size={16} />
-      </button>
-
-      {meta && <span class="photo-paper-meta">{meta}</span>}
+      {/* Fixed-height top band: mechanical marginalia on the left, a quiet ghost
+          close on the right. One non-flexing flex row above the reflowing stage,
+          so the title and the close never shift when the mount resizes. */}
+      <div class="photo-paper-top">
+        {meta && <span class="photo-paper-meta">{meta}</span>}
+        <button
+          type="button"
+          class="photo-paper-close"
+          aria-label="Close photo"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+        >
+          <CloseIcon size={20} />
+        </button>
+      </div>
 
       <div
         class="photo-paper-stage"
@@ -165,34 +169,35 @@ export function PhotoLightbox({
       </div>
 
       <div class="photo-paper-footer" onClick={(e) => e.stopPropagation()}>
-        <span class="photo-paper-counter">
-          {String(activeIdx + 1).padStart(2, '0')} / {String(photos.length).padStart(2, '0')}
-        </span>
         {footerAction && <span class="photo-paper-action">{footerAction}</span>}
+        <div class="photo-paper-pager">
+          <button
+            type="button"
+            class="photo-paper-pager-btn photo-paper-pager-btn--prev"
+            aria-label="Previous photo"
+            onClick={(e) => {
+              e.stopPropagation();
+              step(-1);
+            }}
+          >
+            ‹
+          </button>
+          <span class="photo-paper-counter">
+            {String(activeIdx + 1).padStart(2, '0')} / {String(photos.length).padStart(2, '0')}
+          </span>
+          <button
+            type="button"
+            class="photo-paper-pager-btn photo-paper-pager-btn--next"
+            aria-label="Next photo"
+            onClick={(e) => {
+              e.stopPropagation();
+              step(1);
+            }}
+          >
+            ›
+          </button>
+        </div>
       </div>
-
-      <button
-        type="button"
-        class="photo-edge-arrow photo-edge-arrow--prev"
-        aria-label="Previous photo"
-        onClick={(e) => {
-          e.stopPropagation();
-          step(-1);
-        }}
-      >
-        ◀
-      </button>
-      <button
-        type="button"
-        class="photo-edge-arrow photo-edge-arrow--next"
-        aria-label="Next photo"
-        onClick={(e) => {
-          e.stopPropagation();
-          step(1);
-        }}
-      >
-        ▶
-      </button>
     </div>
   );
 }
