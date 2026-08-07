@@ -180,7 +180,7 @@ export function PhotoLightbox({
               step(-1);
             }}
           >
-            ‹
+            <span class="photo-paper-pager-btn__chevron photo-paper-pager-btn__chevron--prev" aria-hidden="true" />
           </button>
           <span class="photo-paper-counter">
             {String(activeIdx + 1).padStart(2, '0')} / {String(photos.length).padStart(2, '0')}
@@ -194,7 +194,7 @@ export function PhotoLightbox({
               step(1);
             }}
           >
-            ›
+            <span class="photo-paper-pager-btn__chevron photo-paper-pager-btn__chevron--next" aria-hidden="true" />
           </button>
         </div>
       </div>

@@ -4366,6 +4366,26 @@ input[type=number] {
   color: var(--color-green);
 }
 
+/* CSS-drawn chevrons — Space Mono's U+2039/U+203A glyphs sit off-baseline with
+   tall metrics that overflow the line box, so they clipped at the button edge.
+   A rotated bordered box centers deterministically via the button's flex. */
+.photo-paper-pager-btn__chevron {
+  width: 9px;
+  height: 9px;
+  box-sizing: border-box;
+  border-top: 2px solid currentColor;
+}
+
+.photo-paper-pager-btn__chevron--prev {
+  border-left: 2px solid currentColor;
+  transform: rotate(-45deg);
+}
+
+.photo-paper-pager-btn__chevron--next {
+  border-right: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
 .photo-paper-counter {
   font-family: var(--font-mechanical);
   font-size: 11px;
