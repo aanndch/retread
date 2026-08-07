@@ -1,6 +1,6 @@
 # Retread — Search Redesign Plan
 
-Companion to `UX-PLAN.md` (ride/leg flows) and `PLAN.md` (architecture). This document is the working plan for redesigning the search experience — the **function** side (what to build, why). The **form** side (what it should look like) lives in `SEARCH-UI-DESIGN-PLAN.md`, the lead-designer UI pass; its decisions (D1–D15) are folded into the phases here. The underlying best-practice research lives in the project skill `.agents/skills/mobile-search-ux/` (see the appendix).
+Companion to `UX-PLAN.md` (ride/leg flows) and `../architecture/PLAN.md` (architecture). This document is the working plan for redesigning the search experience — the **function** side (what to build, why). The **form** side (what it should look like) lives in `SEARCH-UI-DESIGN-PLAN.md`, the lead-designer UI pass; its decisions (D1–D15) are folded into the phases here. The underlying best-practice research lives in the project skill `.agents/skills/mobile-search-ux/` (see the appendix).
 
 Status: **approved for planning — implementation phases below are ready to dispatch.**
 
@@ -12,7 +12,7 @@ Status: **approved for planning — implementation phases below are ready to dis
 
 Search is a **shell-level overlay**, not a routed page:
 
-- `SearchOverlay` renders as a sibling of `<main class="viewport">` in `App.tsx` (`App.tsx:388–398`), per the AGENTS.md rule: overlays whose action leaves the host page (search results deep-link to `#/ride/{id}` / `#/leg/{id}`) must live at App shell level.
+- `SearchOverlay` renders as a sibling of `<main class="viewport">` in `App.tsx` (`App.tsx:388–398`), per the `../AGENTS.md` rule: overlays whose action leaves the host page (search results deep-link to `#/ride/{id}` / `#/leg/{id}`) must live at App shell level.
 - Driven by `useSearchSession` (`src/ui/use-search-session.ts`): open pushes a real history entry so Browser Back restores the overlay; navigating to a result keeps the query so Back reopens it.
 - Entry: magnifier icon button in the Home header (`src/ui/home.tsx:272–278`).
 
@@ -109,7 +109,7 @@ Replace `includes()` scanning with a lightweight scored token matcher, still in-
 - `type="search"` → labeled "Search" keyboard key on mobile.
 - **Submit affordance**: keyboard Search key + suggestion selection + explicit submit on the field (Baymard's strongest mobile finding; Apple + Baymard disagree in emphasis — implement both).
 - **Dismiss keyboard on navigation** to a result; restore query + sheet on Back (already partially handled — keep).
-- 44px touch targets on all rows; ≥4.5:1 contrast on muted scope text; visible `:focus-visible` states (repo already has the pattern per USER_JOURNEYS Journey 30).
+- 44px touch targets on all rows; ≥4.5:1 contrast on muted scope text; visible `:focus-visible` states (repo already has the pattern per `../journeys/USER_JOURNEYS.md` Journey 30).
 
 ---
 
@@ -181,13 +181,13 @@ Each phase lands, builds, and is verifiable independently.
 - No-results stub: dashed-border journal stub with fix-first copy + recovery ladder; tolerant matching (D8).
 
 **Files:** `src/ui/search-overlay.tsx` (+ matcher util), `src/styles.css`, day-color plumbing
-**Gate:** `npm run build` + Journey 22 walk (USER_JOURNEYS.md)
+**Gate:** `npm run build` + Journey 22 walk (`../journeys/USER_JOURNEYS.md`)
 
 ### Phase 4 — Motion, polish & verify (D11/D12)
 - `prefers-reduced-motion` block for all search animations; explicit transition property lists (no `transition: all`); section-header reveal (translateY 8px + fade, 150 ms, 30 ms stagger) (D11).
 - Touch: `touch-action: manipulation` on rows/suggestions, `overscroll-behavior: contain` on `.search-sheet`, `aria-live="polite"` on section-count header, 44px hit-target audit, contrast audit incl. all 7 themes (D12).
 - Keyboard-dismiss on navigate; autofocus/keyboard-fold check on State A.
-- Headless Chrome measurement at 390×844 — **only after user approval** (AGENTS.md requires asking before any browser session).
+- Headless Chrome measurement at 390×844 — **only after user approval** (`../AGENTS.md` requires asking before any browser session).
 - Optional: `web-design-guidelines` skill compliance pass.
 
 **Files:** CSS pass + probe script
@@ -199,7 +199,7 @@ Each phase lands, builds, and is verifiable independently.
 
 - `npm run build` (`tsc -b && vite build`) after each phase.
 - Manual walk at 390×844; keyboard-only walk for Phase 2+.
-- Headless measurement only with explicit user approval (AGENTS.md rule).
+- Headless measurement only with explicit user approval (`../AGENTS.md` rule).
 
 ---
 

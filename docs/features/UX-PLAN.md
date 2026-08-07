@@ -1,6 +1,6 @@
 # Retread — Ride & Leg UX Simplification Plan
 
-This document captures the agreed simplification of the ride/leg creation flows, the phantom-stop feature for the route map, and the supporting resilience fixes. It is the working plan for the next build round. The original architecture notes live in `PLAN.md`; this file is the UX-forward plan on top of it.
+This document captures the agreed simplification of the ride/leg creation flows, the phantom-stop feature for the route map, and the supporting resilience fixes. It is the working plan for the next build round. The original architecture notes live in `../architecture/PLAN.md`; this file is the UX-forward plan on top of it.
 
 ---
 

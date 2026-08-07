@@ -6,7 +6,8 @@
   <a href="https://aanndch.github.io/retread/">Try it live</a> ·
   <a href="#features">Features</a> ·
   <a href="#how-its-built">How it's built</a> ·
-  <a href="#getting-started">Getting Started</a>
+  <a href="#getting-started">Getting Started</a> ·
+  <a href="#docs">Docs</a>
 </p>
 
 ---
@@ -14,6 +15,10 @@
 Retread is a PWA for journaling motorcycle trips. You log daily entries with notes, photos, distances, and GPS coordinates. It connects them into a timeline and draws route maps by snapping your waypoints to real roads.
 
 There's no server. Everything is stored in IndexedDB on your device — photos included. No accounts, no tracking. You own your data as a compressed JSON file you can export anytime, and cloud backups to Google Drive are entirely optional.
+
+## Docs
+
+Planning, design, and convention docs live in the [`docs/`](docs/index.md) directory — see the [table of contents](docs/index.md) for the architecture, feature, journey, and convention notes.
 
 ## Why
 
