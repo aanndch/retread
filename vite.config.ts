@@ -6,7 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   base: process.env.NODE_ENV === 'production' ? (process.env.BASE_URL || '/retread/') : '/',
   server: {
-    host: '127.0.0.1',
+    host: '0.0.0.0',
   },
   plugins: [
     preact(),
