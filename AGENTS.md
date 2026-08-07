@@ -12,5 +12,15 @@ Single-source tokens in `:root`: `--motion-fast: 150ms; --motion-base: 220ms; --
 ## Sticky / scroll rules
 Chrome measures sticky offsets from the scroll container's padding edge. Use `padding-top: 0` on the scroll container and let the sticky threshold create the inset. Sticky elements get a paper-fill overhang (`box-shadow: 0 calc(-1 * gap) 0 0 var(--color-paper)`) so nothing bleeds through when scrolled.
 
+## Engineering lessons (learned the hard way)
+
+- **Verify before patching.** When a fix doesn't solve it, don't stack another hypothesis — find a discriminating signal (one case works, another fails) to isolate the variable first. Symptom-fixes on an unverified cause is how a bug survives multiple attempts.
+- **Headless pass ≠ real device.** Geometry/timing bugs live at size/timing boundaries your fixtures may not cover (a note taller than the viewport broke a reach-check that all-short fixtures never exercised). Seed diverse data: long content, tall elements, far targets.
+- **Pure predicates deserve tests.** `isInView` (a one-line geometry check) went unfixed for four cycles because it was untested. Extract scroll/focus/layout checks into small testable functions.
+- **One owner per shared resource.** Scroll (and scroll-lock, focus) must have a single controller. Two systems racing a resource is an architectural smell — consolidate ownership.
+- **Coordinate side-effects with the route lifecycle.** Content-gated pages stay invisible (`.preparing`) through the reveal; any post-arrival effect (deep-link scroll, focus) must wait for the reveal to complete, or it races the transition.
+- **`scrollIntoView` geometry:** `block:'center'` on an element taller than the viewport forces its top negative — a `top >= 0` "reached" check is unsatisfiable. Use overlap-aware checks (`top < vh && bottom > 0`).
+- **Temporary inline highlights:** never add `padding`/`font-weight` (footprint → reflow, text moves) and never fade `opacity` (text vanishes). Use `background-color` + `color` and cross-fade those. Deep-link scroll should land below pinned chrome (`scroll-margin-top`) and the flash must appear after the scroll settles so it's visible on arrival.
+
 ## Verification
-`npm run build` after every change. Chrome DevTools MCP for browser testing (slim, headless, 390×844 viewport). No puppeteer/headless sessions without explicit approval.
+`npm run build` after every change. **No browser/headless verification scripts unless the user explicitly asks** — build always, browser sessions only on request. Chrome DevTools MCP for browser testing when asked (slim, headless, 390×844 viewport).
