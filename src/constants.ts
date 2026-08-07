@@ -5,6 +5,7 @@
 // Routing URL Hashes
 export const HASH_HOME = '#/';
 export const HASH_BACKUP = '#/backup';
+export const HASH_SETTINGS = '#/settings';
 export const HASH_EDIT = '#/edit';
 export const HASH_TODO = '#/todo';
 export const HASH_PHOTOS = '#/photos';

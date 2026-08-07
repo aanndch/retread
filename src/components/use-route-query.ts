@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'preact/hooks';
 
-// Query-param modal keys for the page-level overlays (settings, map, photo,
-// arrange). A modal's open state lives in the URL as ?modal=<key> on its host
-// route (#/?modal=settings, #/ride/1?modal=map, #/leg/1?modal=arrange,
-// #/edit?mode=…&modal=arrange). See NAV-REFACTOR-PLAN.md §2/§3.
-export type ModalKey = 'settings' | 'map' | 'photo' | 'arrange';
+// Query-param modal keys for the page-level overlays (map, photo, arrange).
+// A modal's open state lives in the URL as ?modal=<key> on its host route
+// (#/ride/1?modal=map, #/leg/1?modal=arrange, #/edit?mode=…&modal=arrange).
+// Settings is a routed page now (#/settings), not a modal. See
+// NAV-REFACTOR-PLAN.md §2/§3.
+export type ModalKey = 'map' | 'photo' | 'arrange';
 
 export interface RouteQuery {
   // Which page-level modal is open on the current route (null = none).
@@ -26,7 +27,7 @@ export function readRouteQueryFromHash(hash: string): RouteQuery {
   const modal = params.get('modal');
   return {
     modal:
-      modal === 'settings' || modal === 'map' || modal === 'photo' || modal === 'arrange'
+      modal === 'map' || modal === 'photo' || modal === 'arrange'
         ? modal
         : null,
     photo: params.get('photo'),

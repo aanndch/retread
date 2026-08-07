@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { coverUrlCache, type HomeRideEntry } from './use-ride-book';
-import { ArrowLeft, CloseIcon, SearchIcon } from '../components/icons';
+import { CloseIcon, SearchIcon } from '../components/icons';
+import { PageHeader } from '../components/page-header';
 import { formatDistance, formatIsoDateToDMY } from '../lib';
 import { useSearchRecents } from './use-search-recents';
 import { DAY_COLORS } from './squiggle';
@@ -639,13 +640,10 @@ export function SearchOverlay({
       aria-label="Search rides"
       onKeyDown={onOverlayKeyDown}
     >
+      <PageHeader onBack={() => onClose()} />
+
       <div class="search-top">
-        <div class="search-header">
-          <span class="note-label">Search</span>
-          <button type="button" class="btn-close" aria-label="Back" onClick={() => onClose()}>
-            <ArrowLeft size={16} />
-          </button>
-        </div>
+        <span class="note-label">Search</span>
         <div class="search-field">
           <SearchIcon size={16} class="search-field-icon" />
           <input

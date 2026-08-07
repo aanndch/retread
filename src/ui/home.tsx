@@ -1,18 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { Link } from 'wouter-preact';
 import { Button } from '../components/button';
-import { useBodyScrollLock } from '../components/use-body-scroll-lock';
-import { useExitFade } from '../components/use-exit-fade';
-import { useOverlayFocus } from '../components/use-overlay-focus';
-import { closeModal, openModal, useRouteQuery } from '../components/use-route-query';
-import { Dropdown } from '../components/dropdown';
 import { ToastHost, useToast } from '../components/toast';
-import { CloseIcon, GearIcon, PhotoIcon, SearchIcon } from '../components/icons';
-import { FieldCard } from '../components/field-card';
+import { GearIcon, PhotoIcon, SearchIcon } from '../components/icons';
 import { formatDistance } from '../lib';
-import { HASH_PHOTOS, HASH_SEARCH } from '../constants';
-import { getSavedTheme, saveTheme, Theme } from '../theme';
-import { seedDemoRide, seedPhantomDemoRide } from './seed-demo';
+import { HASH_PHOTOS, HASH_SEARCH, HASH_SETTINGS } from '../constants';
+import { seedDemoRide } from './seed-demo';
 import { coverUrlCache, DRAFT_MONTH_KEY, type HomeRideEntry } from './use-ride-book';
 import type { Ride } from '../types';
 
@@ -91,40 +84,10 @@ interface HomeProps {
 }
 
 export function Home({ ridesData, onNavigate, onReady }: HomeProps) {
-  // The settings panel's open state lives in the URL (#/?modal=settings):
-  // opening pushes the param, closing pops it back to #/. The exit fade keeps
-  // the panel mounted through the --motion-base fade-out after the param pops.
-  const { modal } = useRouteQuery();
-  const settingsOpen = modal === 'settings';
-  const { visible, closing } = useExitFade(settingsOpen);
-  useBodyScrollLock(visible);
-  const openSettings = () => openModal('settings');
-  const closeSettingsSession = () => closeModal('settings');
-  const settingsRef = useRef<HTMLDivElement>(null);
-  // useOverlayFocus keys off `visible` (not settingsOpen): the panel only
-  // exists in the DOM once useExitFade mounts it, and the effect must run on
-  // that render — keying off settingsOpen would fire a render early with a
-  // null container and never re-run (deps unchanged), leaving focus on the
-  // trigger instead of moving it into the panel.
-  useOverlayFocus(visible, settingsRef);
-  // afterClose callbacks (ride reveal + toast after seeding) run only once the
-  // exit fade has completed, so the new card reveals beneath a cleared panel.
-  const pendingAfterCloseRef = useRef<(() => void) | null>(null);
-  const [themeMode, setThemeMode] = useState<'system' | Theme>('system');
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [seedingDemo, setSeedingDemo] = useState(false);
   const [revealRideId, setRevealRideId] = useState<number | null>(null);
   const { toasts, showToast, removeToast } = useToast();
-
-  // Load saved theme preference on mount
-  useEffect(() => {
-    const saved = getSavedTheme();
-    if (saved) {
-      setThemeMode(saved);
-    } else {
-      setThemeMode('system');
-    }
-  }, []);
 
   // Only show skeleton after a 200ms delay to avoid flash on fast loads
   useEffect(() => {
@@ -138,62 +101,13 @@ export function Home({ ridesData, onNavigate, onReady }: HomeProps) {
     if (ridesData !== undefined) onReady?.();
   }, [ridesData, onReady]);
 
-  const handleThemeChange = (mode: string) => {
-    const theme = mode as 'system' | Theme;
-    setThemeMode(theme);
-    saveTheme(theme);
-  };
-
-  // Close the settings sheet (dismiss): pop the modal's own URL entry
-  // (history.back) — useExitFade plays the exit animation, then the deferred
-  // afterClose (if any) runs once the fade completes.
-  const dismissSettings = useCallback((afterClose?: () => void) => {
-    if (!settingsOpen) {
-      afterClose?.();
-      return;
-    }
-    if (afterClose) pendingAfterCloseRef.current = afterClose;
-    closeSettingsSession();
-  }, [settingsOpen, closeSettingsSession]);
-
-  // Run any deferred afterClose once the exit fade has fully completed.
-  useEffect(() => {
-    if (!visible && pendingAfterCloseRef.current) {
-      pendingAfterCloseRef.current();
-      pendingAfterCloseRef.current = null;
-    }
-  }, [visible]);
-
-  // Leave settings for another page: swap the modal's URL entry (#/?modal=
-  // settings) for the destination with replace, so Back from that page returns
-  // to the bare home route — no phantom modal entry and no back()/navigate
-  // race. Navigates immediately (no fade delay needed).
-  const leaveSettings = useCallback((route: string) => {
-    if (!settingsOpen) return;
-    window.location.replace(route);
-  }, [settingsOpen]);
-
-  // Escape closes the sheet (focus moves into it via useOverlayFocus).
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') dismissSettings();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [settingsOpen, dismissSettings]);
-
   const seedRide = async (seedFn: () => Promise<number>, successMsg: string) => {
     if (seedingDemo) return;
     setSeedingDemo(true);
     try {
       const newRideId = await seedFn();
-      // Sequence the reveal: the settings sheet animates out first, letting
-      // the freshly added ride card fade in beneath it before the toast lands.
-      dismissSettings(() => {
-        setRevealRideId(newRideId);
-        showToast(successMsg, "success");
-      });
+      setRevealRideId(newRideId);
+      showToast(successMsg, "success");
     } catch (err) {
       console.error("Failed to seed demo data:", err);
       showToast("Error seeding demo data.");
@@ -203,7 +117,6 @@ export function Home({ ridesData, onNavigate, onReady }: HomeProps) {
   };
 
   const handleSeedDemoRide = () => seedRide(seedDemoRide, "Demo ride added.");
-  const handleSeedPhantomRide = () => seedRide(seedPhantomDemoRide, "Phantom demo ride added.");
 
   // Aggregate stats for the header (only when rides exist)
   const totalRides = ridesData?.length ?? 0;
@@ -296,7 +209,7 @@ export function Home({ ridesData, onNavigate, onReady }: HomeProps) {
           <Button
             variant="icon"
             aria-label="Settings"
-            onClick={openSettings}
+            onClick={() => onNavigate(HASH_SETTINGS)}
           >
             <GearIcon size={20} />
           </Button>
@@ -310,94 +223,6 @@ export function Home({ ridesData, onNavigate, onReady }: HomeProps) {
           <span class="book-summary-meta">
             {totalRides} {totalRides === 1 ? 'ride' : 'rides'} · {formatDistance(totalKm)}
           </span>
-        </div>
-      )}
-
-      {/* Settings Panel Overlay */}
-      {visible && (
-        <div class={`modal-backdrop${closing ? ' closing' : ''}`} onClick={() => dismissSettings()}>
-          <div
-            ref={settingsRef}
-            tabIndex={-1}
-            class={`modal-content settings-modal${closing ? ' closing' : ''}`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div class="modal-header">
-              <h3>Settings</h3>
-              <button type="button" class="btn-close" aria-label="Close settings" onClick={() => dismissSettings()}>
-                <CloseIcon size={16} />
-              </button>
-            </div>
-            
-            <div class="settings-body">
-              {/* Theme Toggle */}
-              <FieldCard label="Color Theme">
-                <Dropdown
-                  class="drop-up"
-                  value={themeMode}
-                  onChange={handleThemeChange}
-                  options={[
-                    { value: 'system', label: 'System Default' },
-                    { value: Theme.Daylight, label: 'Daylight (Cream Paper)' },
-                    { value: Theme.Nightfall, label: 'Nightfall (Dark Ink)' },
-                    { value: Theme.Sepia, label: 'Sepia (Aged Parchment)' },
-                    { value: Theme.Midnight, label: 'Midnight (Blue Night)' },
-                    { value: Theme.Slate, label: 'Slate (Warm Gray)' },
-                    { value: Theme.Monotone, label: 'Monotone (Grayscale)' },
-                    { value: Theme.Cyberpunk, label: 'Cyberpunk (Neon Noir)' },
-                  ]}
-                />
-              </FieldCard>
-
-              {/* Backup & Restore */}
-              <FieldCard label="Data Management">
-                <div class="settings-buttons">
-                  <Button 
-                    variant="secondary" 
-                    size="sm"
-                    onClick={() => leaveSettings('#/backup')}
-                  >
-                    Backup & Restore
-                  </Button>
-                </div>
-              </FieldCard>
-
-              {/* Seed Demo Data */}
-              <FieldCard label="Demo Content">
-                <div class="settings-buttons">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleSeedDemoRide}
-                    disabled={seedingDemo}
-                  >
-                    {seedingDemo ? 'Seeding demo ride…' : 'Seed Western Ghats Demo Ride'}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleSeedPhantomRide}
-                    disabled={seedingDemo}
-                  >
-                    {seedingDemo ? 'Seeding demo ride…' : 'Seed Spiti Phantom Demo Ride'}
-                  </Button>
-                </div>
-              </FieldCard>
-
-              {/* What's New (changelog + roadmap) */}
-              <FieldCard label="What's New">
-                <div class="settings-buttons">
-                  <Button 
-                    variant="secondary" 
-                    size="sm"
-                    onClick={() => leaveSettings('#/todo')}
-                  >
-                    View Build Log
-                  </Button>
-                </div>
-              </FieldCard>
-            </div>
-          </div>
         </div>
       )}
 

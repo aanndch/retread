@@ -3,6 +3,7 @@ import { Router, Switch, Route, Redirect } from 'wouter-preact';
 import { Setup } from './ui/setup';
 import { PWAInstallPrompt, IOSBackupReminder, useAppPrompts } from './components/app-prompts';
 import { Home } from './ui/home';
+import { Settings } from './ui/settings';
 import { SearchOverlay } from './ui/search-overlay';
 import { useRideBook } from './ui/use-ride-book';
 import { useGalleryPhotos } from './ui/use-gallery-photos';
@@ -219,9 +220,8 @@ export function App() {
       // Query-param-only changes on the same page do not re-transition the
       // viewport: the overlay renders over the static page and plays its own
       // fade. This covers the R1 lightbox ("#/photos" -> "#/photos?photo=1")
-      // and the R2 page modals ("#/" -> "#/?modal=settings", "#/ride/1" ->
-      // "#/ride/1?modal=map", "#/leg/1?modal=arrange", "#/edit?mode=…&modal=
-      // arrange").
+      // and the R2 page modals ("#/ride/1" -> "#/ride/1?modal=map", "#/leg/1"
+      // -> "#/leg/1?modal=arrange", "#/edit?mode=…&modal=arrange").
       if (normalizeRoute(prevHash) === normalizeRoute(nextHash)) return;
 
       // Content-gated transition (Option A): fade the outgoing route out,
@@ -377,6 +377,7 @@ export function App() {
         <Route path="/leg/:id">{({ id }) => renderLeg(id!)}</Route>
         <Route path="/edit">{() => <Editor onNavigate={navigateTo} onNavigateBack={navigateBack} />}</Route>
         <Route path="/backup">{() => <Backup onNavigate={navigateTo} onNavigateBack={navigateBack} />}</Route>
+        <Route path="/settings">{() => <Settings onNavigate={navigateTo} onNavigateBack={navigateBack} />}</Route>
         <Route path="/todo">{() => <Todo onNavigateBack={navigateBack} />}</Route>
         <Route path="/photos">{() => (
           <Photos
