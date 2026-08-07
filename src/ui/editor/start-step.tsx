@@ -42,8 +42,8 @@ export function StartStep({
       <div class="ride-create-body">
         <FieldCard label="Name your ride">
           <TextInput
-            placeholder="e.g. Spiti Valley Odyssey"
-            value={rideTitle || autoRideTitle}
+            placeholder={autoRideTitle || "e.g. Spiti Valley Odyssey"}
+            value={rideTitle}
             onInput={setRideTitle}
             error={titleError}
             onClearError={() => setTitleError('')}
