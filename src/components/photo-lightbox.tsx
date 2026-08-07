@@ -56,6 +56,10 @@ export function PhotoLightbox({
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const backdropRef = useRef<HTMLDivElement>(null);
+  // Direction of the last navigation, so the incoming photo slides in from the
+  // matching side: +1 (next) from the right, -1 (prev) from the left. Defaults
+  // to next so the lightbox opening slides in like a "next" advance.
+  const dirRef = useRef<1 | -1>(1);
   const { visible, closing } = useExitFade(open, 150);
   useBodyScrollLock(visible);
   useOverlayFocus(visible, backdropRef);
@@ -71,6 +75,7 @@ export function PhotoLightbox({
   const active = photos[activeIdx];
 
   const step = (dir: 1 | -1) => {
+    dirRef.current = dir;
     const next = (activeIdx + dir + photos.length) % photos.length;
     onNavigate(photos[next].id);
   };
@@ -163,7 +168,12 @@ export function PhotoLightbox({
       >
         <div class="photo-paper-frame">
           {fullUrl && (
-            <img src={fullUrl} alt={active?.alt || 'Ride photograph'} class="photo-paper-img" />
+            <img
+              key={fullUrl}
+              src={fullUrl}
+              alt={active?.alt || 'Ride photograph'}
+              class={`photo-paper-img photo-paper-img--${dirRef.current === 1 ? 'next' : 'prev'}`}
+            />
           )}
         </div>
       </div>

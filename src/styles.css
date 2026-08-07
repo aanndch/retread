@@ -4314,6 +4314,32 @@ input[type=number] {
   border-radius: var(--border-radius-sm);
 }
 
+/* Directional slide-in on photo change. One keyframe reads the slide offset
+   from --photo-slide-x so NEXT (from the right, +30px) and PREVIOUS (from the
+   left, -30px) share a single definition. Only transform + opacity animate —
+   no layout shift, so the mounted print never jumps. The reduced-motion gate
+   (~3851) collapses the duration to ~0, leaving an instant swap. */
+.photo-paper-img--next {
+  --photo-slide-x: 30px;
+  animation: photo-slide-in var(--motion-slow) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.photo-paper-img--prev {
+  --photo-slide-x: -30px;
+  animation: photo-slide-in var(--motion-slow) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes photo-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--photo-slide-x, 30px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Fixed-height footer band. Flex:0 sibling so it holds its place while the
    mount reflows above it; the whole footer is a fixed band so neither the
    action nor the pager moves as the photo aspect changes. Arranged
