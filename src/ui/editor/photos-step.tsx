@@ -15,8 +15,8 @@ interface PhotosStepProps {
   showArrange: boolean;
   setShowArrange: (open: boolean) => void;
   handleArrangeSave: (order: number[]) => void;
-  step: 1 | 2 | 3 | 4;
-  handleStepJump: (s: 1 | 2 | 3 | 4) => void;
+  step: 1 | 2 | 3 | 4 | 5;
+  handleStepJump: (s: 1 | 2 | 3 | 4 | 5) => void;
 }
 
 export function PhotosStep({
@@ -88,10 +88,10 @@ export function PhotosStep({
       />
 
       <StepActions
-        onBack={() => handleStepJump((step - 1) as 1 | 2 | 3 | 4)}
+        onBack={() => handleStepJump((step - 1) as 1 | 2 | 3 | 4 | 5)}
         backDisabled={compressing}
-        onNext={() => handleStepJump((step + 1) as 1 | 2 | 3 | 4)}
-        nextLabel="Next: Story →"
+        onNext={() => handleStepJump((step + 1) as 1 | 2 | 3 | 4 | 5)}
+        nextLabel="Next: Review →"
         nextDisabled={compressing}
       />
     </div>

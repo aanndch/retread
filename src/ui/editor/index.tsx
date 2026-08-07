@@ -7,6 +7,7 @@ import { StartStep } from './start-step';
 import { LegStep } from './leg-step';
 import { EditRideStep } from './edit-ride-step';
 import { PhotosStep } from './photos-step';
+import { ReviewStep, type ReviewLeg } from './review-step';
 import { StoryStep } from './story-step';
 import { StepActions } from './fields';
 import { useBodyScrollLock } from '../../components/use-body-scroll-lock';
@@ -14,7 +15,9 @@ import { closeModal, openModal, useRouteQuery } from '../../components/use-route
 import { PageHeader } from '../../components/page-header';
 import { MapPicker } from '../../components/map-picker';
 import { CoordinatePasteModal } from '../../components/coordinate-paste-modal';
-import { saveEditorDetails } from './save-helper';
+import { saveEditorDetails, saveBackfillTrip } from './save-helper';
+import { groupPhotos } from '../../images';
+import { suggestLegNames, pickCover } from '../../geocode';
 import { snapLeg, haversineDistance } from '../../road';
 import { deriveRideTitle, sortLegs } from '../../lib';
 import { reverseGeocode } from './utils';
@@ -23,7 +26,7 @@ import type { LocationUnion } from '../../types';
 // REDUCER STATE & MERGER TYPE DEFINITION
 // ==========================================
 
-export type WizardStep = 1 | 2 | 3 | 4;
+export type WizardStep = 1 | 2 | 3 | 4 | 5;
 
 interface EditorState {
   step: WizardStep;
@@ -59,6 +62,13 @@ interface EditorState {
   loading: boolean;
   // Index of the photo staged as this ride's home cover, or null for none.
   coverPhotoIndex: number | null;
+  // Original upload File objects (parallel to `photos`) kept for EXIF/GPS
+  // metadata reading when the Review step builds day-grouped legs.
+  pendingPhotoFiles: File[];
+  // Legs built from the photo dump for the new-ride Review step (backfill path).
+  reviewLegs: ReviewLeg[];
+  reviewBuilt: boolean;
+  reviewBuilding: boolean;
 }
 
 const initialEditorState: EditorState = {
@@ -88,6 +98,10 @@ const initialEditorState: EditorState = {
   compressing: false,
   loading: false,
   coverPhotoIndex: null,
+  pendingPhotoFiles: [],
+  reviewLegs: [],
+  reviewBuilt: false,
+  reviewBuilding: false,
 };
 
 // Simple merging reducer (acts like this.setState)
@@ -95,6 +109,13 @@ const formReducer = (state: EditorState, action: Partial<EditorState>) => {
   const filtered = Object.fromEntries(Object.entries(action).filter(([, v]) => v !== undefined));
   return { ...state, ...filtered };
 };
+
+/** Formats a Date as a local HH:MM string for a leg's time field. */
+function padTime(d: Date): string {
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+}
 
 // ==========================================
 // EDITOR VIEW COMPONENT
@@ -136,10 +157,11 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   const skipAutoOnMountRef = useRef(false);
 
   // Wizard length depends on mode: a new ride runs Start → Stop → Photos →
-  // Story (4 steps); a new leg / leg edit runs Stop → Photos → Story (3).
-  const lastStep: WizardStep = mode === 'new-ride' ? 4 : 3;
+  // Review → Story (5 steps, with the backfill Review center); a new leg / leg
+  // edit runs Stop → Photos → Story (3).
+  const lastStep: WizardStep = mode === 'new-ride' ? 5 : 3;
   const stepNames = mode === 'new-ride'
-    ? ['Start', 'Stop', 'Photos', 'Story']
+    ? ['Start', 'Stop', 'Photos', 'Review', 'Story']
     : ['Details', 'Photos', 'Note'];
 
   // Initialize unified merging state tree
@@ -175,6 +197,9 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     photos,
     photoThumbs,
     coverPhotoIndex,
+    pendingPhotoFiles,
+    reviewLegs,
+    reviewBuilding,
   } = state;
 
   const photosRef = useRef<Blob[]>([]);
@@ -183,6 +208,8 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   photoThumbsRef.current = photoThumbs;
   const photoPreviewsRef = useRef<string[]>([]);
   photoPreviewsRef.current = photoPreviews;
+  const pendingPhotoFilesRef = useRef<File[]>([]);
+  pendingPhotoFilesRef.current = pendingPhotoFiles;
 
   // Latest pin state readable inside async callbacks (reverse geocode, name to
   // pin) so a stale closure can never clobber a pin the user set meanwhile.
@@ -479,6 +506,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     const newBlobs: Blob[] = [];
     const newThumbs: Blob[] = [];
     const newPreviews: string[] = [];
+    const newOriginals: File[] = [];
 
     for (let i = 0; i < files.length; i++) {
       try {
@@ -486,6 +514,9 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
         newBlobs.push(compressedBlob);
         newThumbs.push(await createThumbnail(compressedBlob));
         newPreviews.push(URL.createObjectURL(compressedBlob));
+        // Keep the original File (parallel to the compressed blob) so the
+        // Review step can read EXIF date + GPS for day-grouping.
+        newOriginals.push(files[i]);
       } catch (err) {
         console.error('Image compression failed:', err);
         const isHeicError = err instanceof Error && err.message === HEIC_CONVERT_ERROR;
@@ -501,6 +532,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       photos: [...photosRef.current, ...newBlobs],
       photoThumbs: [...photoThumbsRef.current, ...newThumbs],
       photoPreviews: [...photoPreviewsRef.current, ...newPreviews],
+      pendingPhotoFiles: [...pendingPhotoFilesRef.current, ...newOriginals],
       compressing: false
     });
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -511,7 +543,11 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     dispatch({
       photos: photos.filter((_, i) => i !== index),
       photoThumbs: photoThumbs.filter((_, i) => i !== index),
-      photoPreviews: photoPreviews.filter((_, i) => i !== index)
+      photoPreviews: photoPreviews.filter((_, i) => i !== index),
+      pendingPhotoFiles: pendingPhotoFiles.filter((_, i) => i !== index),
+      // A removed photo invalidates the built review legs; rebuild on next visit.
+      reviewBuilt: false,
+      reviewLegs: [],
     });
   };
 
@@ -523,7 +559,11 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       photos: reorder(photos),
       photoThumbs: reorder(photoThumbs),
       photoPreviews: reorder(photoPreviews),
+      pendingPhotoFiles: reorder(pendingPhotoFiles),
       coverPhotoIndex: coverPhotoIndex === null ? null : order.indexOf(coverPhotoIndex),
+      // Reordering changes photo indices → the built review legs are stale.
+      reviewBuilt: false,
+      reviewLegs: [],
     });
     closeArrange();
   };
@@ -531,6 +571,145 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   // Stage a photo as the ride cover. Persisted on save via save-helper.
   const handleSetCover = (index: number) => {
     dispatch({ coverPhotoIndex: coverPhotoIndex === index ? null : index });
+  };
+
+  // Rebuild the backfill review legs whenever the Review step mounts for a
+  // photo set we haven't built yet. `lastBuildKeyRef` holds the photo-array
+  // reference the current `reviewLegs` were built from, so re-entering the step
+  // without changes stays put, while adding/removing/reordering photos triggers
+  // a fresh build. Errors (bad EXIF / grouping) degrade to a single leg holding
+  // all photos with today's date — the user can still review and split it.
+  const lastBuildKeyRef = useRef<object | null>(null);
+  useEffect(() => {
+    if (mode !== 'new-ride' || step !== 4) return;
+    const files = pendingPhotoFilesRef.current;
+    if (files === lastBuildKeyRef.current && reviewLegs.length > 0) return;
+    lastBuildKeyRef.current = files;
+    let cancelled = false;
+
+    if (files.length === 0) {
+      // No photos → an empty Review: the manual/Story path still works.
+      dispatch({ reviewLegs: [], reviewBuilt: true, reviewBuilding: false });
+      return;
+    }
+
+    dispatch({ reviewBuilding: true });
+    (async () => {
+      try {
+        const dayGroups = await groupPhotos(files);
+        const named = await suggestLegNames(dayGroups);
+        if (cancelled) return;
+        const built = flattenReviewLegs(named);
+        const coverId = pickCover(named);
+        const coverIdx = coverId !== null ? parseInt(coverId.split(':').pop() as string, 10) : null;
+        dispatch({
+          reviewLegs: built,
+          coverPhotoIndex: coverIdx != null && Number.isFinite(coverIdx) ? coverIdx : null,
+          reviewBuilt: true,
+          reviewBuilding: false,
+        });
+      } catch (err) {
+        console.warn('Photo grouping failed; falling back to a single leg:', err);
+        if (cancelled) return;
+        const fallback: ReviewLeg = {
+          id: 'leg-1',
+          title: 'Stop 1',
+          date: new Date().toISOString().split('T')[0],
+          time: new Date().toTimeString().slice(0, 5),
+          location: null,
+          photoIndices: photosRef.current.map((_, i) => i),
+        };
+        dispatch({ reviewLegs: [fallback], reviewBuilt: true, reviewBuilding: false });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [mode, step]);
+
+  // Flatten clustered DayGroups into the flat, editable ReviewLeg list the step
+  // renders. Each leg carries its photo indices (parallel to the editor's photo
+  // arrays) and a GPS pin / null derived from the stop cluster's median.
+  const flattenReviewLegs = (dayGroups: Awaited<ReturnType<typeof groupPhotos>>): ReviewLeg[] => {
+    const legs: ReviewLeg[] = [];
+    let stop = 0;
+    for (const group of dayGroups) {
+      for (const leg of group.legs) {
+        stop += 1;
+        const hasGps = leg.lat != null && leg.lng != null;
+        legs.push({
+          id: `leg-${stop}`,
+          title: leg.name || `Stop ${stop}`,
+          date: group.date,
+          time: padTime(leg.date),
+          location: hasGps
+            ? { kind: 'gps', lat: leg.lat as number, lng: leg.lng as number, name: leg.name }
+            : null,
+          photoIndices: leg.photos.map((p) => parseInt(p.id.split(':').pop() as string, 10)),
+        });
+      }
+    }
+    return legs;
+  };
+
+  const handleEditReviewLeg = (id: string, patch: Partial<ReviewLeg>) => {
+    dispatch({ reviewLegs: reviewLegs.map((l) => (l.id === id ? { ...l, ...patch } : l)) });
+  };
+
+  // Merge the photos of `fromId` into `intoId`, dropping `fromId` (recover from
+  // a stop split across a gap, or two stops caught together).
+  const handleMergeReviewLeg = (intoId: string, fromId: string) => {
+    if (intoId === fromId) return;
+    dispatch({
+      reviewLegs: reviewLegs.map((l) =>
+        l.id === intoId ? { ...l, photoIndices: [...l.photoIndices, ...reviewLegs.find((x) => x.id === fromId)?.photoIndices ?? []] } : l
+      ).filter((l) => l.id !== fromId),
+    });
+  };
+
+  // Split a leg's photos into two legs of roughly equal size (recover from a
+  // leg that caught two stops together). Both halves keep the source's date.
+  const handleSplitReviewLeg = (id: string) => {
+    const idx = reviewLegs.findIndex((l) => l.id === id);
+    if (idx < 0 || reviewLegs[idx].photoIndices.length < 2) return;
+    const leg = reviewLegs[idx];
+    const mid = Math.ceil(leg.photoIndices.length / 2);
+    const first = { ...leg, photoIndices: leg.photoIndices.slice(0, mid) };
+    const second = { ...leg, id: `${leg.id}-s${Date.now()}`, photoIndices: leg.photoIndices.slice(mid) };
+    const next = [...reviewLegs];
+    next.splice(idx, 1, first, second);
+    dispatch({ reviewLegs: next });
+  };
+
+  // The backfill save: build one leg input per review leg and write the whole
+  // trip (ride + N legs) atomically via saveBackfillTrip.
+  const handleCreateRideFromReview = async () => {
+    if (saving) return;
+    if (reviewLegs.length === 0) return;
+    setSaving(true);
+    try {
+      const legInputs = reviewLegs.map((leg) => ({
+        date: leg.date,
+        time: leg.time || '',
+        note: '',
+        photos: leg.photoIndices.map((i) => photos[i]),
+        photoThumbs: leg.photoIndices.map((i) => photoThumbs[i]),
+        km: null,
+        location: leg.location,
+        title: leg.title,
+      }));
+      const coverThumb =
+        coverPhotoIndex !== null ? photoThumbs[coverPhotoIndex] ?? photos[coverPhotoIndex] ?? null : null;
+      const redirectPath = await saveBackfillTrip({
+        rideTitle,
+        startLocation,
+        coverThumb,
+        legs: legInputs,
+      });
+      triggerClose(onNavigate, redirectPath);
+    } catch (err) {
+      showToast((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Advancing (or finally saving) without a pin is the implicit "save without a
@@ -619,7 +798,30 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
 
     setSaving(true);
     try {
-      const redirectPath = await saveEditorDetails(mode, rideId, legId, state);
+      let redirectPath: string;
+      if (mode === 'new-ride' && reviewLegs.length > 0) {
+        // Backfill path: the Story note lands on the first (chronological) leg.
+        const legInputs = reviewLegs.map((leg, li) => ({
+          date: leg.date,
+          time: leg.time || '',
+          note: li === 0 ? note.trim() : '',
+          photos: leg.photoIndices.map((i) => photos[i]),
+          photoThumbs: leg.photoIndices.map((i) => photoThumbs[i]),
+          km: null,
+          location: leg.location,
+          title: leg.title,
+        }));
+        const coverThumb =
+          coverPhotoIndex !== null ? photoThumbs[coverPhotoIndex] ?? photos[coverPhotoIndex] ?? null : null;
+        redirectPath = await saveBackfillTrip({
+          rideTitle,
+          startLocation,
+          coverThumb,
+          legs: legInputs,
+        });
+      } else {
+        redirectPath = await saveEditorDetails(mode, rideId, legId, state);
+      }
       triggerClose(onNavigate, redirectPath);
     } catch (err) {
       showToast((err as Error).message);
@@ -713,7 +915,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               handleStepJump={handleStepJump}
               saving={saving}
             />
-          ) : step === lastStep - 2 ? (
+          ) : (mode === 'new-ride' ? step === 2 : step === 1) ? (
             <LegStep
               date={date}
               setDate={(val) => dispatch({ date: val })}
@@ -743,7 +945,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               onAutoFillDistance={handleAutoFillDistance}
               saving={saving}
             />
-          ) : step === lastStep - 1 ? (
+          ) : (mode === 'new-ride' ? step === 3 : step === 2) ? (
             <PhotosStep
               photoPreviews={photoPreviews}
               fileInputRef={fileInputRef}
@@ -757,6 +959,21 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               handleArrangeSave={handleArrangeSave}
               step={step}
               handleStepJump={handleStepJump}
+            />
+          ) : mode === 'new-ride' && step === 4 ? (
+            <ReviewStep
+              legs={reviewLegs}
+              coverPhotoIndex={coverPhotoIndex}
+              photoPreviews={photoPreviews}
+              building={reviewBuilding}
+              onEditLeg={handleEditReviewLeg}
+              onMergeLeg={handleMergeReviewLeg}
+              onSplitLeg={handleSplitReviewLeg}
+              onSetCover={handleSetCover}
+              onCreateRide={handleCreateRideFromReview}
+              step={step}
+              handleStepJump={handleStepJump}
+              saving={saving}
             />
           ) : (
             <StoryStep

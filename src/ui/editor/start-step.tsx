@@ -16,7 +16,7 @@ interface StartStepProps {
   titleError: string;
   setTitleError: (e: string) => void;
   handleCancel: () => void;
-  handleStepJump: (s: 1 | 2 | 3 | 4) => void;
+  handleStepJump: (s: 1 | 2 | 3 | 4 | 5) => void;
   saving: boolean;
 }
 

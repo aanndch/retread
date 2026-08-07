@@ -28,9 +28,9 @@ interface LegStepProps {
   setDistanceMode: (m: 'auto' | 'manual') => void;
   titleError: string;
   setTitleError: (e: string) => void;
-  step: 1 | 2 | 3 | 4;
+  step: 1 | 2 | 3 | 4 | 5;
   handleCancel: () => void;
-  handleStepJump: (s: 1 | 2 | 3 | 4) => void;
+    handleStepJump: (s: 1 | 2 | 3 | 4 | 5) => void;
   onOpenMapPicker: (target: 'start' | 'location') => void;
   fallbackCenter: [number, number] | null;
   onAutoFillDistance: () => void;
@@ -221,10 +221,10 @@ export function LegStep({
       </DetailRow>
 
       <StepActions
-        onBack={step > 1 ? () => handleStepJump((step - 1) as 1 | 2 | 3 | 4) : handleCancel}
+        onBack={step > 1 ? () => handleStepJump((step - 1) as 1 | 2 | 3 | 4 | 5) : handleCancel}
         backLabel={step > 1 ? '← Back' : 'Cancel'}
         backDisabled={saving}
-        onNext={() => handleStepJump((step + 1) as 1 | 2 | 3 | 4)}
+        onNext={() => handleStepJump((step + 1) as 1 | 2 | 3 | 4 | 5)}
         nextLabel="Next: Photos →"
         nextDisabled={saving}
       />

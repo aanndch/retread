@@ -6,8 +6,8 @@ import { StepActions } from './fields';
 interface StoryStepProps {
   note: string;
   setNote: (n: string) => void;
-  step: 1 | 2 | 3 | 4;
-  handleStepJump: (s: 1 | 2 | 3 | 4) => void;
+  step: 1 | 2 | 3 | 4 | 5;
+  handleStepJump: (s: 1 | 2 | 3 | 4 | 5) => void;
   saveLabel: string;
   saving: boolean;
 }
@@ -47,7 +47,7 @@ export function StoryStep({
       </FieldCard>
 
       <StepActions
-        onBack={() => handleStepJump((step - 1) as 1 | 2 | 3 | 4)}
+        onBack={() => handleStepJump((step - 1) as 1 | 2 | 3 | 4 | 5)}
         backDisabled={saving}
         submit
         nextLabel={saving ? 'Saving…' : saveLabel}
