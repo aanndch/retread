@@ -54,6 +54,17 @@ export async function saveEditorDetails(
       distanceMode: data.distanceMode,
     });
 
+    // Ride-date write-through: an edited ride date also updates leg 1, so the
+    // (otherwise hidden) coupling stays in one editable place. Skipped when the
+    // ride has no legs — there is no first leg to write to.
+    if (data.date) {
+      const rideLegs = await db.legs.where('rideId').equals(rideId!).toArray();
+      const sorted = sortLegs(rideLegs);
+      if (sorted.length > 0) {
+        await db.legs.update(sorted[0].id!, { date: data.date });
+      }
+    }
+
     // Routes re-snap in the background; the ride page fills the map in live as
     // roadPaths land, so save returns immediately instead of blocking on OSRM.
     scheduleAutoSync();

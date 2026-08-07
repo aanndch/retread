@@ -3,7 +3,6 @@ import { useSearchParams } from 'wouter-preact';
 import { db } from '../../db';
 import { compressImage, createThumbnail, HEIC_CONVERT_ERROR } from '../../images';
 import { ToastHost, useToast } from '../../components/toast';
-import { StartStep } from './start-step';
 import { LegStep } from './leg-step';
 import { EditRideStep } from './edit-ride-step';
 import { PhotosStep } from './photos-step';
@@ -54,7 +53,15 @@ interface EditorState {
   showMapPicker: boolean;
   showPasteModal: boolean;
   mapPickerTarget: 'start' | 'location';
+  // When set, the map picker edits that review leg's destination pin (instead
+  // of the single-leg `location`); null → the ride-level/leg-level `location`.
+  mapPickerLegId: string | null;
+  // Review leg whose destination pin is being GPS-detected (spinner per row).
+  legGpsLoadingId: string | null;
   fallbackCenter: [number, number] | null;
+  // edit-ride only: whether the ride has at least one leg (rides the ride-date
+  // field write-through; disabled when there are no legs to write to).
+  hasLegs: boolean;
   photos: Blob[];
   photoThumbs: Blob[];
   photoPreviews: string[];
@@ -91,7 +98,10 @@ const initialEditorState: EditorState = {
   showMapPicker: false,
   showPasteModal: false,
   mapPickerTarget: 'location',
+  mapPickerLegId: null,
+  legGpsLoadingId: null,
   fallbackCenter: null,
+  hasLegs: false,
   photos: [],
   photoThumbs: [],
   photoPreviews: [],
@@ -156,12 +166,12 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   // still re-measures because the auto-fill key changes.
   const skipAutoOnMountRef = useRef(false);
 
-  // Wizard length depends on mode: a new ride runs Start → Stop → Photos →
-  // Review → Story (5 steps, with the backfill Review center); a new leg / leg
-  // edit runs Stop → Photos → Story (3).
-  const lastStep: WizardStep = mode === 'new-ride' ? 5 : 3;
+  // Wizard length depends on mode: a new ride is a photos-first flow — Photos →
+  // Review → Story (3 steps; Start/Stop fold into the Review step's ride-level
+  // and per-leg fields); a new leg / leg edit runs Details → Photos → Story (3).
+  const lastStep: WizardStep = 3;
   const stepNames = mode === 'new-ride'
-    ? ['Start', 'Stop', 'Photos', 'Review', 'Story']
+    ? ['Photos', 'Review', 'Story']
     : ['Details', 'Photos', 'Note'];
 
   // Initialize unified merging state tree
@@ -190,7 +200,10 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     showMapPicker,
     showPasteModal,
     mapPickerTarget,
+    mapPickerLegId,
+    legGpsLoadingId,
     fallbackCenter,
+    hasLegs,
     photoPreviews,
     compressing,
     loading,
@@ -274,6 +287,16 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
             update.rideTitle = rideRecord.title;
             update.startLocation = rideRecord.startLocation ?? null;
             update.loading = false;
+            // Ride date write-through: surface leg 1's date as the editable ride
+            // date. Empty/disabled when the ride has no legs to write to.
+            const rideLegs = await db.legs.where('rideId').equals(resolvedRideId).toArray();
+            const sorted = sortLegs(rideLegs);
+            if (sorted.length > 0) {
+              update.date = sorted[0].date;
+              update.hasLegs = true;
+            } else {
+              update.hasLegs = false;
+            }
           }
           dispatch(update);
         }
@@ -581,15 +604,25 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   // all photos with today's date — the user can still review and split it.
   const lastBuildKeyRef = useRef<object | null>(null);
   useEffect(() => {
-    if (mode !== 'new-ride' || step !== 4) return;
+    if (mode !== 'new-ride' || step !== 2) return;
     const files = pendingPhotoFilesRef.current;
     if (files === lastBuildKeyRef.current && reviewLegs.length > 0) return;
     lastBuildKeyRef.current = files;
     let cancelled = false;
 
     if (files.length === 0) {
-      // No photos → an empty Review: the manual/Story path still works.
-      dispatch({ reviewLegs: [], reviewBuilt: true, reviewBuilding: false });
+      // No photos → one empty manual leg the user fills (live logging). The
+      // ride is still saved through the same backfill path with a single leg.
+      const emptyLeg: ReviewLeg = {
+        id: 'leg-1',
+        title: '',
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toTimeString().slice(0, 5),
+        location: null,
+        photoIndices: [],
+        km: null,
+      };
+      dispatch({ reviewLegs: [emptyLeg], reviewBuilt: true, reviewBuilding: false });
       return;
     }
 
@@ -644,6 +677,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
             ? { kind: 'gps', lat: leg.lat as number, lng: leg.lng as number, name: leg.name }
             : null,
           photoIndices: leg.photos.map((p) => parseInt(p.id.split(':').pop() as string, 10)),
+          km: null,
         });
       }
     }
@@ -679,6 +713,91 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     dispatch({ reviewLegs: next });
   };
 
+  // Open the map picker targeting a specific review leg's destination pin. The
+  // single `location` state is untouched — the picked pin lands on that leg.
+  const handleOpenLegMapPicker = (id: string) => {
+    dispatch({ mapPickerTarget: 'location', mapPickerLegId: id });
+    if (!navigator.onLine) {
+      dispatch({ showPasteModal: true });
+      return;
+    }
+    dispatch({ showMapPicker: true });
+  };
+
+  // Clear a review leg's destination pin (becomes a phantom stop).
+  const handleClearLegLocation = (id: string) => {
+    handleEditReviewLeg(id, { location: null });
+  };
+
+  // GPS-detect a review leg's destination pin (same geolocation flow as the
+  // single-leg form, but patched onto the specific leg).
+  const handleRetryLegGps = (id: string) => {
+    if (!navigator.geolocation) {
+      showToast('Geolocation is not supported by your device.');
+      return;
+    }
+    dispatch({ legGpsLoadingId: id });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const name = reviewLegs.find((l) => l.id === id)?.location?.name || '';
+        handleEditReviewLeg(id, { location: { kind: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude, name } });
+        dispatch({ legGpsLoadingId: null });
+      },
+      (err) => {
+        console.warn('Geolocation failed:', err);
+        dispatch({ legGpsLoadingId: null });
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  // Auto-measure a review leg's distance along roads between the previous
+  // pinned leg (or the ride start) and this leg's destination pin. Falls back
+  // to a straight-line distance when OSRM fails.
+  const handleAutoFillLegDistance = async (id: string) => {
+    const idx = reviewLegs.findIndex((l) => l.id === id);
+    if (idx < 0) return;
+    const leg = reviewLegs[idx];
+    if (leg.location?.kind !== 'gps') return;
+
+    let from: { lat: number; lng: number } | null = null;
+    for (let j = idx - 1; j >= 0; j--) {
+      const p = reviewLegs[j].location;
+      if (p?.kind === 'gps') {
+        from = { lat: p.lat, lng: p.lng };
+        break;
+      }
+    }
+    if (!from && startLocation?.kind === 'gps') {
+      from = { lat: startLocation.lat, lng: startLocation.lng };
+    }
+    if (!from) {
+      showToast('No GPS start point before this leg — set the previous pin or type the distance.');
+      return;
+    }
+
+    dispatch({ legGpsLoadingId: id });
+    try {
+      const toGps = { lat: leg.location.lat, lng: leg.location.lng };
+      const snappedPath = await snapLeg(from, toGps, { timeoutMs: 8000, maxAttempts: 0 });
+      let totalKm = 0;
+      for (let i = 1; i < snappedPath.length; i++) {
+        totalKm += haversineDistance(snappedPath[i - 1], snappedPath[i]);
+      }
+      handleEditReviewLeg(id, { km: Math.round(totalKm * 10) / 10 });
+    } catch (err) {
+      console.error('Failed to calculate review leg road distance:', err);
+      try {
+        const directDist = Math.round(haversineDistance(from, { lat: leg.location.lat, lng: leg.location.lng }) * 10) / 10;
+        handleEditReviewLeg(id, { km: directDist });
+      } catch (innerErr) {
+        showToast('Error calculating route distance.');
+      }
+    } finally {
+      dispatch({ legGpsLoadingId: null });
+    }
+  };
+
   // The backfill save: build one leg input per review leg and write the whole
   // trip (ride + N legs) atomically via saveBackfillTrip.
   const handleCreateRideFromReview = async () => {
@@ -692,7 +811,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
         note: '',
         photos: leg.photoIndices.map((i) => photos[i]),
         photoThumbs: leg.photoIndices.map((i) => photoThumbs[i]),
-        km: null,
+        km: leg.km != null && !isNaN(leg.km) ? leg.km : null,
         location: leg.location,
         title: leg.title,
       }));
@@ -716,8 +835,9 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   // map" bypass; flag it so the form shows the consequence instead of hiding it.
   // `final` covers the whole-form save, where the step check is irrelevant.
   const flagPinNote = (final = false) => {
-    if (mode === 'new-ride' && step === 1 && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
-    if (mode === 'new-ride' && step === 2 && location?.kind !== 'gps') dispatch({ mapNote: true });
+    // New ride: flag a missing ride-start pin (legs surface their own "no pin"
+    // hint inline in the Review step).
+    if (mode === 'new-ride' && startLocation?.kind !== 'gps') dispatch({ mapNote: true });
     if ((mode === 'new-leg' || mode === 'edit') && (final || step === 1) && location?.kind !== 'gps') dispatch({ mapNote: true });
   };
 
@@ -744,6 +864,22 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   const handleConfirmPickerLocation = (pin: { lat: number; lng: number } | null, name: string) => {
     const target = mapPickerTarget;
     const existing = target === 'start' ? startLocation : location;
+    // A leg-targeted pick: patch that review leg's destination pin instead of
+    // the single-leg `location`.
+    if (mapPickerLegId) {
+      const legExisting = reviewLegs.find((l) => l.id === mapPickerLegId)?.location ?? null;
+      if (pin) {
+        handleEditReviewLeg(mapPickerLegId, {
+          location: { kind: 'gps', lat: pin.lat, lng: pin.lng, name: name || legExisting?.name || '' },
+        });
+      } else {
+        // "Keep as a label (no pin)" — a named phantom.
+        const named = name ? { kind: 'named' as const, name } : null;
+        handleEditReviewLeg(mapPickerLegId, { location: named });
+      }
+      dispatch({ mapPickerLegId: null });
+      return;
+    }
     if (pin) {
       if (target === 'start') {
         dispatch({ mapNote: false, startLocation: { kind: 'gps', lat: pin.lat, lng: pin.lng, name: name || existing?.name || '' } });
@@ -807,7 +943,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
           note: li === 0 ? note.trim() : '',
           photos: leg.photoIndices.map((i) => photos[i]),
           photoThumbs: leg.photoIndices.map((i) => photoThumbs[i]),
-          km: null,
+          km: leg.km != null && !isNaN(leg.km) ? leg.km : null,
           location: leg.location,
           title: leg.title,
         }));
@@ -895,27 +1031,13 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               mapNote={mapNote}
               titleError={titleError}
               setTitleError={(val) => dispatch({ titleError: val })}
+              date={date}
+              setDate={(val) => dispatch({ date: val })}
+              hasLegs={hasLegs}
               handleCancel={handleCancel}
               saving={saving}
             />
-          ) : mode === 'new-ride' && step === 1 ? (
-            <StartStep
-              rideTitle={rideTitle}
-              setRideTitle={(val) => dispatch({ rideTitle: val })}
-              autoRideTitle={deriveRideTitle(date)}
-              startLocation={startLocation}
-              startGpsLoading={startGpsLoading}
-              onClearStartLocation={onClearStartLocation}
-              onRetryStartGps={onRetryStartGps}
-              onOpenMapPicker={handleOpenMapPicker}
-              mapNote={mapNote}
-              titleError={titleError}
-              setTitleError={(val) => dispatch({ titleError: val })}
-              handleCancel={handleCancel}
-              handleStepJump={handleStepJump}
-              saving={saving}
-            />
-          ) : (mode === 'new-ride' ? step === 2 : step === 1) ? (
+          ) : (mode !== 'new-ride' && step === 1) ? (
             <LegStep
               date={date}
               setDate={(val) => dispatch({ date: val })}
@@ -945,7 +1067,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               onAutoFillDistance={handleAutoFillDistance}
               saving={saving}
             />
-          ) : (mode === 'new-ride' ? step === 3 : step === 2) ? (
+          ) : (mode === 'new-ride' ? step === 1 : step === 2) ? (
             <PhotosStep
               photoPreviews={photoPreviews}
               fileInputRef={fileInputRef}
@@ -959,8 +1081,9 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               handleArrangeSave={handleArrangeSave}
               step={step}
               handleStepJump={handleStepJump}
+              handleCancel={handleCancel}
             />
-          ) : mode === 'new-ride' && step === 4 ? (
+          ) : mode === 'new-ride' && step === 2 ? (
             <ReviewStep
               legs={reviewLegs}
               coverPhotoIndex={coverPhotoIndex}
@@ -974,6 +1097,22 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               step={step}
               handleStepJump={handleStepJump}
               saving={saving}
+              rideTitle={rideTitle}
+              setRideTitle={(val) => dispatch({ rideTitle: val })}
+              autoRideTitle={deriveRideTitle(reviewLegs[0]?.date || date)}
+              startLocation={startLocation}
+              startGpsLoading={startGpsLoading}
+              onClearStartLocation={onClearStartLocation}
+              onRetryStartGps={onRetryStartGps}
+              onOpenMapPicker={handleOpenMapPicker}
+              mapNote={mapNote}
+              titleError={titleError}
+              setTitleError={(val) => dispatch({ titleError: val })}
+              onOpenLegMapPicker={handleOpenLegMapPicker}
+              onClearLegLocation={handleClearLegLocation}
+              onRetryLegGps={handleRetryLegGps}
+              onAutoFillLegDistance={handleAutoFillLegDistance}
+              legGpsLoadingId={legGpsLoadingId}
             />
           ) : (
             <StoryStep
@@ -991,7 +1130,13 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       {/* Map Picker Modal Backdrop & Overlay */}
       <MapPicker
         isOpen={showMapPicker}
-        initialLocation={mapPickerTarget === 'start' ? startLocation : location}
+        initialLocation={
+          mapPickerTarget === 'start'
+            ? startLocation
+            : mapPickerLegId
+              ? reviewLegs.find((l) => l.id === mapPickerLegId)?.location ?? null
+              : location
+        }
         fallbackCenter={fallbackCenter}
         onConfirm={handleConfirmPickerLocation}
         onClose={() => dispatch({ showMapPicker: false })}

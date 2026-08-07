@@ -17,6 +17,7 @@ interface PhotosStepProps {
   handleArrangeSave: (order: number[]) => void;
   step: 1 | 2 | 3 | 4 | 5;
   handleStepJump: (s: 1 | 2 | 3 | 4 | 5) => void;
+  handleCancel: () => void;
 }
 
 export function PhotosStep({
@@ -31,7 +32,8 @@ export function PhotosStep({
   setShowArrange,
   handleArrangeSave,
   step,
-  handleStepJump
+  handleStepJump,
+  handleCancel
 }: PhotosStepProps) {
   return (
     <div class="wizard-step-content">
@@ -88,7 +90,8 @@ export function PhotosStep({
       />
 
       <StepActions
-        onBack={() => handleStepJump((step - 1) as 1 | 2 | 3 | 4 | 5)}
+        onBack={step > 1 ? () => handleStepJump((step - 1) as 1 | 2 | 3 | 4 | 5) : handleCancel}
+        backLabel={step > 1 ? '← Back' : 'Cancel'}
         backDisabled={compressing}
         onNext={() => handleStepJump((step + 1) as 1 | 2 | 3 | 4 | 5)}
         nextLabel="Next: Review →"
