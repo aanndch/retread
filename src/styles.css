@@ -1899,26 +1899,29 @@ button:focus,
   scroll-margin-top: calc(var(--sticky-topbar-inset) + var(--sticky-topbar-offset));
 }
 
-/* Temporary search deep-link flash (P2): a SOFT sweep on the target page,
-   distinct from the persistent inverse-green .search-hit above. Fades in
-   ~200ms (~--motion-base), holds, then fades out ~400ms (~--motion-slow) over
-   ~1.2s total. The reduced-motion gate zeroes CSS durations, and the hook also
-   skips the flash entirely — double protection. */
+/* Temporary search deep-link flash (P2): the same contrast/inverse-green
+   treatment as the persistent .search-hit above — solid green fill, paper text
+   — shown briefly over the target term. It fades OUT near the end of ~1.2s via
+   `opacity`, not background-color, so the contrast color stays solid for the
+   whole lifespan (and survives a mid-flash computed-style read). The
+   reduced-motion gate collapses the duration to ~0.01ms, leaving a static
+   highlight — which is exactly the behavior the hook wants there. */
 @keyframes search-flash-fade {
   0% {
-    background-color: rgba(74, 93, 78, 0);
-  }
-  17% {
-    background-color: rgba(74, 93, 78, 0.2);
+    opacity: 1;
   }
   67% {
-    background-color: rgba(74, 93, 78, 0.2);
+    opacity: 1;
   }
   100% {
-    background-color: rgba(74, 93, 78, 0);
+    opacity: 0;
   }
 }
 .search-flash {
+  background: var(--color-green);
+  color: var(--color-paper);
+  font-weight: bold;
+  padding: 0 2px;
   border-radius: var(--border-radius-sm);
   animation: search-flash-fade 1200ms ease-in-out;
 }

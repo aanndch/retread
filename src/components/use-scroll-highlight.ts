@@ -7,6 +7,15 @@ import { normalize } from '../ui/search-match';
 // not covered by the CSS reduced-motion gate — see prefersReducedMotion below).
 const FLASH_MS = 1200;
 
+// Robust async-element wait: a MutationObserver (data-gated routes mount their
+// content after the effect runs) with a generous safety timeout. Far more
+// reliable than the old capped rAF poll, which could give up on a slow device
+// before the element rendered → no scroll at all.
+const WAIT_MS = 5000;
+// Cap on how long we wait for a smooth scroll to settle before flashing, so a
+// missing `scrollend` or a stubborn scroll never starves the flash.
+const SCROLL_SETTLE_MS = 600;
+
 function prefersReducedMotion(): boolean {
   return (
     typeof window.matchMedia === 'function' &&
@@ -57,16 +66,78 @@ function flashTerm(container: HTMLElement, term: string): boolean {
   return true;
 }
 
+// Resolve once the target `id` exists in the DOM. Data-gated routes (ride/leg)
+// mount their content asynchronously, so the element may not exist when the
+// effect first runs — observe the document for mutations and give up after
+// WAIT_MS. No leaked observer: it disconnects on resolve.
+function waitForEl(id: string): Promise<HTMLElement | null> {
+  return new Promise((resolve) => {
+    const existing = document.getElementById(id);
+    if (existing) return resolve(existing);
+    let done = false;
+    const finish = (el: HTMLElement | null) => {
+      if (done) return;
+      done = true;
+      observer.disconnect();
+      window.clearTimeout(safety);
+      resolve(el);
+    };
+    const observer = new MutationObserver(() => {
+      const el = document.getElementById(id);
+      if (el) finish(el);
+    });
+    observer.observe(document, { childList: true, subtree: true });
+    const safety = window.setTimeout(() => finish(document.getElementById(id)), WAIT_MS);
+  });
+}
+
+// Resolve once scrolling has settled — the smooth scroll has arrived — so the
+// flash is applied after the page lands and stays visible for its full span.
+// Prefers the `scrollend` event (fires when the window/container stops
+// scrolling), falls back to a debounced `scroll` listener, and always caps out
+// so the flash never starves.
+function waitForScrollSettle(): Promise<void> {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      resolve();
+    };
+    let debounce = 0;
+    const onScroll = () => {
+      window.clearTimeout(debounce);
+      debounce = window.setTimeout(finish, 120);
+    };
+    const onScrollEnd = () => finish();
+    const scroller = document.scrollingElement || document.documentElement;
+    const safety = window.setTimeout(finish, SCROLL_SETTLE_MS);
+    const cleanup = () => {
+      window.clearTimeout(debounce);
+      window.clearTimeout(safety);
+      window.removeEventListener('scroll', onScroll, true);
+      scroller.removeEventListener('scrollend', onScrollEnd);
+    };
+    // Capture-phase `scroll` catches scrolls from any descendant container too.
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    scroller.addEventListener('scrollend', onScrollEnd);
+  });
+}
+
 // Deep-link scroll-to + flash-highlight. Reads `?scrollTo=<target>&q=<term>`
 // from the route query (useRouteQuery) and, on mount / param change:
 //   1. resolves the target element id from the `scrollTo` value via `resolveId`
 //      (each page knows its own ids: leg → leg-note/leg-title, ride → ride-title),
-//   2. scrolls it into view — land clear of pinned chrome via scroll-margin-top,
-//   3. flashes the matched term (wraps the first occurrence in `.search-flash`,
-//      unwraps it ~1.2s later).
+//   2. waits (MutationObserver + safety timeout) for the element to mount,
+//   3. scrolls it into view — land clear of pinned chrome via scroll-margin-top,
+//   4. waits for the scroll to settle, THEN flashes the matched term (wraps the
+//      first occurrence in `.search-flash`, unwraps it ~1.2s later) so it's
+//      visible on arrival and persists for its full duration.
 // Degradation: term absent from the target text → scroll only, no mark.
-// Reduced motion: scroll still happens (CSS forces it instant) but the flash is
-// skipped — a JS class-toggle isn't covered by the CSS gate.
+// Reduced motion: scroll is instant (auto), and the flash is still applied
+// STATICALLY (no fade animation — the CSS reduced-motion gate collapses it to
+// 0.01ms) — the highlight is always delivered.
 export function useScrollHighlight(resolveId: (scrollTo: string) => string): void {
   const query = useRouteQuery();
   const scrollTo = query.scrollTo;
@@ -78,29 +149,30 @@ export function useScrollHighlight(resolveId: (scrollTo: string) => string): voi
     if (!scrollTo) return;
     const id = resolveIdRef.current(scrollTo);
     const reduced = prefersReducedMotion();
-    let cleanup: (() => void) | undefined;
-    // Data-gated routes (ride/leg) render their content asynchronously, so the
-    // target element may not exist on the first effect run. Poll (like the
-    // App's restoreScroll) until it appears, then scroll + flash it.
-    let tries = 0;
-    const attempt = () => {
-      tries++;
-      const el = document.getElementById(id);
-      if (el) {
-        // Clear any stale flash mark left by a prior query before scrolling
-        // (the previous effect's cleanup only clears its timeout, not the DOM).
-        el.querySelectorAll('mark.search-flash').forEach((m) => m.replaceWith(...m.childNodes));
-        el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
-        if (reduced || !term || !flashTerm(el, term)) return;
-        const timeout = window.setTimeout(() => {
-          el.querySelectorAll('mark.search-flash').forEach((m) => m.replaceWith(...m.childNodes));
-        }, FLASH_MS);
-        cleanup = () => window.clearTimeout(timeout);
-        return;
-      }
-      if (tries <= 240) requestAnimationFrame(attempt);
+    let cancelled = false;
+    let flashTimer = 0;
+
+    const clearMark = (root: HTMLElement) =>
+      root.querySelectorAll('mark.search-flash').forEach((m) => m.replaceWith(...m.childNodes));
+
+    (async () => {
+      const el = await waitForEl(id);
+      if (cancelled || !el) return;
+      // Clear any stale flash mark left by a prior query before scrolling
+      // (the previous effect's cleanup only clears its timer, not the DOM).
+      clearMark(el);
+      el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+      await waitForScrollSettle();
+      if (cancelled) return;
+      // Apply the flash AFTER the scroll settles so it's visible on arrival.
+      // Reduced motion still flashes — statically, no animation.
+      if (!term || !flashTerm(el, term)) return;
+      flashTimer = window.setTimeout(() => clearMark(el), FLASH_MS);
+    })();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(flashTimer);
     };
-    requestAnimationFrame(attempt);
-    return () => cleanup?.();
   }, [scrollTo, term]);
 }
