@@ -770,6 +770,21 @@
   display: block;
 }
 
+/* Informational notice when the photo dump yielded legs but no usable GPS.
+   On-theme paper callout (dashed hairline, dim fill) — purely informational,
+   never blocks. */
+.gps-notice {
+  border: 1px dashed var(--color-ink-muted);
+  border-radius: var(--border-radius);
+  background-color: var(--color-paper-dim);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin: 0 0 var(--spacing-md);
+  font-family: var(--font-typewriter);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-ink);
+}
+
 /* Geolocation Section & Badges */
 .btn-icon-text {
   display: inline-flex;

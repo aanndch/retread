@@ -77,6 +77,10 @@ interface EditorState {
   reviewLegs: ReviewLeg[];
   reviewBuilt: boolean;
   reviewBuilding: boolean;
+  // True when the photo dump produced legs but none carried usable GPS (e.g.
+  // Android stripped location from shared photos). Surfaces an informational
+  // notice on the Legs step so the user knows pins/names are manual.
+  gpsUnavailable: boolean;
   // TEMP DEBUG: per-photo metadata read during the review build, surfaced
   // on-screen to debug why a GPS move didn't split legs. Removed after debug.
   photoMetaDebug: PhotoMetaDebug[];
@@ -126,6 +130,7 @@ const initialEditorState: EditorState = {
   reviewLegs: [],
   reviewBuilt: false,
   reviewBuilding: false,
+  gpsUnavailable: false,
   photoMetaDebug: [],
 };
 
@@ -229,6 +234,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     pendingPhotoFiles,
     reviewLegs,
     reviewBuilding,
+    gpsUnavailable,
     photoMetaDebug,
   } = state;
 
@@ -588,6 +594,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       // A removed photo invalidates the built review legs; rebuild on next visit.
       reviewBuilt: false,
       reviewLegs: [],
+      gpsUnavailable: false,
     });
   };
 
@@ -604,6 +611,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       // Reordering changes photo indices → the built review legs are stale.
       reviewBuilt: false,
       reviewLegs: [],
+      gpsUnavailable: false,
     });
     closeArrange();
   };
@@ -672,6 +680,8 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
           coverPhotoIndex: coverIdx != null && Number.isFinite(coverIdx) ? coverIdx : null,
           reviewBuilt: true,
           reviewBuilding: false,
+          // Non-silent: if every built leg lacks a GPS pin, tell the user why.
+          gpsUnavailable: built.length > 0 && built.every((l) => l.location === null),
         });
       } catch (err) {
         console.warn('Photo grouping failed; falling back to a single leg:', err);
@@ -684,7 +694,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
           location: null,
           photoIndices: photosRef.current.map((_, i) => i),
         };
-        dispatch({ reviewLegs: [fallback], reviewBuilt: true, reviewBuilding: false });
+        dispatch({ reviewLegs: [fallback], reviewBuilt: true, reviewBuilding: false, gpsUnavailable: true });
       }
     })();
     return () => { cancelled = true; };
@@ -1130,6 +1140,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               coverPhotoIndex={coverPhotoIndex}
               photoPreviews={photoPreviews}
               building={reviewBuilding}
+              gpsUnavailable={gpsUnavailable}
               onEditLeg={handleEditReviewLeg}
               onMergeLeg={handleMergeReviewLeg}
               onSplitLeg={handleSplitReviewLeg}

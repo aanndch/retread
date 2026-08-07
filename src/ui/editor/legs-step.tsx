@@ -23,6 +23,7 @@ interface LegsStepProps {
   coverPhotoIndex: number | null;
   photoPreviews: string[];
   building: boolean;
+  gpsUnavailable: boolean;
   onEditLeg: (id: string, patch: Partial<ReviewLeg>) => void;
   onMergeLeg: (intoId: string, fromId: string) => void;
   onSplitLeg: (id: string) => void;
@@ -62,6 +63,7 @@ export function LegsStep({
   coverPhotoIndex,
   photoPreviews,
   building,
+  gpsUnavailable,
   onEditLeg,
   onMergeLeg,
   onSplitLeg,
@@ -273,6 +275,13 @@ export function LegsStep({
       <p class="field-tip" style={{ margin: '0 0 var(--spacing-sm)' }}>
         Tap a leg to edit its pin, date, or distance. Merge &amp; split to fix stops caught together.
       </p>
+
+      {gpsUnavailable && (
+        <div class="gps-notice">
+          GPS wasn't readable in these photos — stops are split by date, but pins &amp; places are manual.
+          Android may strip location from shared photos.
+        </div>
+      )}
 
       {days.map((day) => (
         <FieldCard key={day.date} label={day.date}>
