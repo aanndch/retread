@@ -86,9 +86,9 @@ export function medianGps(photos: PhotoPoint[]): { lat: number; lng: number } | 
   const lats: number[] = [];
   const lngs: number[] = [];
   for (const p of photos) {
-    if (p.lat != null && p.lng != null) {
-      lats.push(p.lat);
-      lngs.push(p.lng);
+    if (hasGps(p)) {
+      lats.push(p.lat as number);
+      lngs.push(p.lng as number);
     }
   }
   if (lats.length === 0) return null;
@@ -100,8 +100,19 @@ export function medianGps(photos: PhotoPoint[]): { lat: number; lng: number } | 
   return { lat: median(lats), lng: median(lngs) };
 }
 
+/**
+ * True when the photo carries USABLE coordinates. A bare `!= null` check is not
+ * enough: exifr can return NaN for stripped/malformed GPS, and NaN would poison
+ * the haversine (`NaN > threshold` is false) and any pin. Number.isFinite rejects
+ * NaN/±Infinity, so a NaN coordinate is treated exactly like "no GPS".
+ */
 function hasGps(p: PhotoPoint): boolean {
-  return p.lat != null && p.lng != null;
+  return (
+    typeof p.lat === 'number' &&
+    typeof p.lng === 'number' &&
+    Number.isFinite(p.lat) &&
+    Number.isFinite(p.lng)
+  );
 }
 
 /**

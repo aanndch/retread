@@ -252,7 +252,11 @@ export async function readPhotoMetadata(file: File): Promise<PhotoMetadata> {
     if (exif) {
       const exifDate = exif.DateTimeOriginal ?? exif.CreateDate;
       if (exifDate instanceof Date) date = exifDate;
-      if (typeof exif.latitude === 'number' && typeof exif.longitude === 'number') {
+      // NaN is a number, so `typeof === 'number'` would accept stripped/malformed
+      // GPS and assign NaN coordinates. Number.isFinite rejects NaN (±Infinity), so
+      // unreadable GPS falls back to null → the clusterer's time-gap fallback splits
+      // legs by date instead of collapsing them via a false haversine comparison.
+      if (Number.isFinite(exif.latitude) && Number.isFinite(exif.longitude)) {
         lat = exif.latitude;
         lng = exif.longitude;
       }

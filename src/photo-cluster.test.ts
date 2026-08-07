@@ -183,6 +183,25 @@ describe('clusterPhotos', () => {
     ]);
   });
 
+  it('NaN GPS → treated as no location, so a date gap still splits legs (and pins are null, not NaN)', () => {
+    // exifr can return NaN for stripped/malformed GPS. NaN is a number, so a
+    // `typeof === 'number'` reader check and a bare `!= null` clustering check
+    // would both accept it — and the haversine `NaN > threshold` is false, so
+    // every photo would collapse into one leg even when the dates would split.
+    // Finite-GPS guards must route NaN through the time-gap fallback instead.
+    const groups = clusterPhotos([
+      pt('a', D(2026, 8, 10, 9, 0), NaN, NaN),
+      pt('b', D(2026, 8, 10, 10, 0), NaN, NaN), // 1h > STOP_GAP_MS (45min)
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].legs).toHaveLength(2); // distinct dates split via time fallback
+    // No usable GPS → each leg is a phantom, pin must be null, never NaN.
+    expect(groups[0].legs[0].lat).toBeNull();
+    expect(groups[0].legs[0].lng).toBeNull();
+    expect(groups[0].legs[1].lat).toBeNull();
+    expect(groups[0].legs[1].lng).toBeNull();
+  });
+
   it('mixed GPS presence → time fallback governs the non-GPS boundary', () => {
     // First has GPS, second has none, gap is small → one leg.
     const groups = clusterPhotos([
