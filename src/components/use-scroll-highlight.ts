@@ -13,8 +13,23 @@ const FLASH_MS = 1200;
 // before the element rendered → no scroll at all.
 const WAIT_MS = 5000;
 // Cap on how long we wait for a smooth scroll to settle before flashing, so a
-// missing `scrollend` or a stubborn scroll never starves the flash.
-const SCROLL_SETTLE_MS = 600;
+// missing `scrollend` or a stubborn scroll never starves the flash. Kept above
+// the longest realistic smooth scroll (~1.2s) so it acts as a hard cap and
+// never resolves mid-flight — `scrollend` remains the normal settle path.
+const SCROLL_SETTLE_MS = 1200;
+
+// --- Self-correcting deep-link landing -------------------------------------
+// A single scrollIntoView isn't enough on real devices: pages whose content
+// (photos, map, cover image) loads AFTER mount push the target further down,
+// so the first scroll lands short. The landing is now verify-and-rescroll:
+// scroll to the target, wait for it to settle, then CHECK the target is
+// actually on screen; if not, re-scroll — up to a few correction passes,
+// giving late-loading layout a moment (waiting on the container's images to
+// finish) before each retry. Capped so we never fight the layout forever —
+// better to land close than to keep scrolling.
+const MAX_SCROLL_PASSES = 3;
+const PASS_DELAY_MS = 150;
+const IMG_WAIT_MS = 800;
 
 function prefersReducedMotion(): boolean {
   return (
@@ -125,15 +140,82 @@ function waitForScrollSettle(): Promise<void> {
   });
 }
 
+// Is any part of the target on screen? block:'center' centers the element in
+// the viewport, so for notes TALLER than the viewport the top edge sits
+// negative and out of view — requiring `top >= 0` would make the landing check
+// unsatisfiable and the self-correction loop would give up. Any overlap with
+// the viewport counts as reached instead: short notes behave exactly as before
+// (their top is on-screen when centered), and tall notes correctly register
+// once centered.
+function isInView(el: HTMLElement, viewportH: number): boolean {
+  const r = el.getBoundingClientRect();
+  return r.top < viewportH && r.bottom > 0;
+}
+
+// Wait for the target's container images to finish decoding so the next scroll
+// sees the final layout. Photos are the main late-layout culprit on the leg
+// page (the carousel sits directly above the note), so waiting on their load
+// lets a correction pass land after the carousel reaches its real height.
+// Returns once every image is complete or after IMG_WAIT_MS, whichever first.
+async function waitForContainerImages(root: ParentNode): Promise<void> {
+  const deadline = Date.now() + IMG_WAIT_MS;
+  while (Date.now() < deadline) {
+    const pending = Array.from(root.querySelectorAll('img')).filter((i) => !i.complete);
+    if (pending.length === 0) return;
+    await Promise.race([
+      Promise.all(
+        pending.map(
+          (i) =>
+            new Promise<void>((res) => {
+              const done = () => res();
+              i.addEventListener('load', done, { once: true });
+              i.addEventListener('error', done, { once: true });
+            })
+        )
+      ),
+      new Promise((r) => setTimeout(r, 300)),
+    ]);
+  }
+}
+
+// Scroll the target into view and self-correct until it actually lands on
+// screen. Uses block:'center' — far more robust to drift than 'start', because
+// a slightly-off position still keeps the target visible (it centers the
+// element in the viewport rather than pinning its top to a precise offset).
+async function scrollAndLand(el: HTMLElement, behavior: ScrollBehavior): Promise<void> {
+  const viewportH = (document.scrollingElement || document.documentElement).clientHeight;
+  const container = el.closest('main') || document.body;
+  // Layout stability before the FIRST scroll: a webfont swap (`white-space:
+  // pre-wrap` reflows as the font loads) and late-loading images (photos/map/
+  // cover) can change the target's position mid-flight, making the initial
+  // scroll measure a provisional layout. Gate the first pass on both so the
+  // landing is measured against the stable layout. (Reduced-motion 'auto'
+  // scrolls are instant, but the wait is still a cheap correctness guard.)
+  if (document.fonts?.ready) await document.fonts.ready;
+  await waitForContainerImages(container);
+  for (let pass = 0; pass < MAX_SCROLL_PASSES; pass++) {
+    el.scrollIntoView({ behavior, block: 'center' });
+    await waitForScrollSettle();
+    if (isInView(el, viewportH)) return;
+    // Late-loading layout (photos/map/cover) pushed the target down — wait for
+    // the container's images to finish, then a brief settle delay, and retry.
+    await waitForContainerImages(container);
+    await new Promise((r) => setTimeout(r, PASS_DELAY_MS));
+  }
+}
+
 // Deep-link scroll-to + flash-highlight. Reads `?scrollTo=<target>&q=<term>`
 // from the route query (useRouteQuery) and, on mount / param change:
 //   1. resolves the target element id from the `scrollTo` value via `resolveId`
 //      (each page knows its own ids: leg → leg-note/leg-title, ride → ride-title),
 //   2. waits (MutationObserver + safety timeout) for the element to mount,
-//   3. scrolls it into view — land clear of pinned chrome via scroll-margin-top,
-//   4. waits for the scroll to settle, THEN flashes the matched term (wraps the
-//      first occurrence in `.search-flash`, unwraps it ~1.2s later) so it's
-//      visible on arrival and persists for its full duration.
+//   3. scrolls it into view (block:'center', clear of pinned chrome via
+//      scroll-margin) and SELF-CORRECTS — re-scrolling up to a few passes until
+//      the target is genuinely on screen, so content that loads after mount
+//      (photos, map, cover) can't leave the landing short,
+//   4. THEN flashes the matched term (wraps the first occurrence in
+//      `.search-flash`, unwraps it ~1.2s later) so it's visible on arrival and
+//      persists for its full duration.
 // Degradation: term absent from the target text → scroll only, no mark.
 // Reduced motion: scroll is instant (auto), and the flash is still applied
 // STATICALLY (no fade animation — the CSS reduced-motion gate collapses it to
@@ -161,8 +243,10 @@ export function useScrollHighlight(resolveId: (scrollTo: string) => string): voi
       // Clear any stale flash mark left by a prior query before scrolling
       // (the previous effect's cleanup only clears its timer, not the DOM).
       clearMark(el);
-      el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
-      await waitForScrollSettle();
+      // Self-correcting scroll: re-scrolls until the target is genuinely on
+      // screen, so content that loads after the first scroll can't leave the
+      // landing short. Reduced motion scrolls instantly (auto).
+      await scrollAndLand(el, reduced ? 'auto' : 'smooth');
       if (cancelled) return;
       // Apply the flash AFTER the scroll settles so it's visible on arrival.
       // Reduced motion still flashes — statically, no animation.
