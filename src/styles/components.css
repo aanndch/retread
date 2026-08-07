@@ -1,0 +1,1007 @@
+/* Layout & Component Styles */
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-family: var(--font-typewriter);
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-ink);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.1s ease, box-shadow 0.1s ease;
+  background: transparent;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+button:focus,
+.btn:focus {
+  outline: none;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  border-color: var(--color-ink-muted);
+  color: var(--color-ink-muted);
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+}
+
+.btn-tertiary {
+  background: none;
+  border: none;
+  color: var(--color-ink-muted);
+  padding: 0;
+}
+
+.btn-tertiary:hover {
+  color: var(--color-ink);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 11px;
+  gap: 6px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--color-ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.btn-icon:hover {
+  background-color: var(--color-paper-dim);
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+}
+
+.btn-icon:active,
+.btn-close:active,
+.btn-clear:active {
+  transform: scale(0.9);
+  opacity: 0.8;
+}
+
+/* Floating Action Button */
+.fab-container {
+  position: fixed;
+  bottom: calc(var(--spacing-xl) + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 480px;
+  pointer-events: none;
+}
+
+.btn-fab {
+  pointer-events: auto;
+  width: 50px;
+  height: 50px;
+  border-radius: var(--border-radius);
+  background-color: var(--color-green);
+  color: var(--color-paper);
+  border: 1px solid var(--color-ink);
+  font-size: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 3px 3px 0px var(--color-ink);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.btn-fab:hover {
+  background-color: var(--color-green-light);
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0px var(--color-ink);
+}
+
+.btn-fab:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0px 0px 0px var(--color-ink);
+}
+
+/* Scroll-to-top button: minimal, sits clear of the centered FAB at bottom-right */
+.btn-scroll-top {
+  position: fixed;
+  right: calc(var(--spacing-lg) + env(safe-area-inset-right));
+  bottom: calc(var(--spacing-xl) + env(safe-area-inset-bottom));
+  width: 40px;
+  height: 40px;
+  border-radius: var(--border-radius);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  box-shadow: 2px 2px 0px var(--color-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.1s ease;
+}
+
+.btn-scroll-top:hover {
+  background-color: var(--color-paper-dim);
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px var(--color-shadow);
+}
+
+.btn-scroll-top:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px var(--color-shadow);
+}
+
+/* Home Header — pinned like every page top bar: paper fills the strip above
+   and a 2px overhang prevents card-shadow bleed. The month-group headers stick
+   just below it via the same sticky-topbar offset used by day-group headers. */
+.home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: 0 -2px var(--spacing-md) -2px;
+  border-bottom: 1px dashed var(--color-paper-dim);
+  padding: 0 2px 6px 2px;
+  height: var(--sticky-topbar-offset);
+  position: sticky;
+  top: var(--sticky-topbar-inset);
+  z-index: 10;
+  background-color: var(--color-paper);
+  box-shadow: 0 calc(-1 * var(--sticky-topbar-inset)) 0 0 var(--color-paper);
+}
+
+.home-header .btn-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.home-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.home-actions .btn-icon.is-active {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.home-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.home-brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1;
+}
+
+.home-logo {
+  font-size: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-tagline {
+  font-size: 10px;
+  margin: 4px 0 0;
+}
+
+/* Setup View */
+.setup-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 80vh;
+}
+
+.setup-title {
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: -2px;
+  margin-bottom: var(--spacing-xs);
+}
+
+.setup-tagline {
+  color: var(--color-ink-muted);
+  font-size: 14px;
+  margin-bottom: var(--spacing-xl);
+}
+
+.setup-card {
+  border: 1px solid var(--color-ink-muted);
+  border-radius: var(--border-radius);
+  background-color: var(--color-paper-dim);
+  padding: var(--spacing-lg);
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--spacing-lg);
+}
+
+.input-label {
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: var(--spacing-xs);
+  color: var(--color-ink-muted);
+}
+
+.input-help {
+  font-family: var(--font-typewriter);
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin-top: var(--spacing-xs);
+}
+
+.privacy-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+  border-top: 1px dashed var(--color-paper-dim);
+  padding-top: var(--spacing-md);
+}
+
+.warning-section {
+  display: flex;
+  gap: var(--spacing-sm);
+  font-size: 12px;
+}
+
+.warning-bullet {
+  color: var(--color-green);
+  font-weight: bold;
+}
+
+.warning-section strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.warning-section p {
+  color: var(--color-ink-muted);
+  line-height: 1.4;
+}
+
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-overlay); /* Theme-aware dim behind the sheet */
+  z-index: 200;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end; /* Mobile drawer style */
+  animation: fade-in var(--motion-fast) ease-out forwards; /* Instantaneous background fade */
+}
+
+.modal-backdrop.closing {
+  animation: fade-out var(--motion-base) ease-in forwards !important;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--color-paper);
+  border-top: 2px solid var(--color-ink);
+  border-left: 1px solid var(--color-ink);
+  border-right: 1px solid var(--color-ink);
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+  padding: 16px 20px 20px 20px; /* Reduced bottom padding */
+  animation: slide-up var(--motion-slow) cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.15);
+}
+
+.modal-content.closing {
+  animation: slide-down var(--motion-base) cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px; /* Pulled closer to content */
+  border-bottom: 1px dashed var(--color-paper-dim);
+  padding-bottom: var(--spacing-sm);
+}
+
+.modal-body-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-header h3 {
+  font-family: var(--font-typewriter);
+  font-weight: 700;
+}
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.settings-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.settings-buttons .btn {
+  width: 100%;
+}
+
+/* Rides List & Cards */
+.rides-section {
+  flex-grow: 1;
+  /* The home FAB floats over the bottom of the ride list, so keep the last
+     card clear of it, matching the FAB's safe-area inset. */
+  padding-bottom: calc(90px + env(safe-area-inset-bottom));
+}
+
+.rides-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.ride-card-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Newly seeded demo card fades in like the page transitions */
+.ride-card-link.ride-card-reveal .ride-card {
+  animation: fade-in 0.2s ease-out;
+}
+
+.ride-card {
+  display: flex;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  background-color: var(--color-paper);
+  overflow: hidden;
+  height: 92px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 2px 2px 0px var(--color-shadow);
+}
+
+.ride-card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px var(--color-shadow);
+}
+
+.ride-card:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px var(--color-shadow);
+}
+
+.ride-cover-container {
+  width: 90px;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-ink);
+  background-color: var(--color-paper-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ride-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ride-cover-placeholder {
+  color: var(--color-ink-muted);
+  opacity: 0.45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ride-card-details {
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.ride-card-title {
+  font-family: var(--font-typewriter);
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 2px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ride-card-route {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mechanical);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ride-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.ride-card-date {
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mechanical);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ride-card-sep {
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mechanical);
+  flex-shrink: 0;
+}
+
+.ride-card-km {
+  font-size: 12px;
+  color: var(--color-ink);
+  font-family: var(--font-mechanical);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Empty & Loading States */
+.loading-text {
+  font-family: var(--font-mechanical);
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  text-align: center;
+  margin-top: var(--spacing-xl);
+}
+
+.skeleton-card {
+  display: flex;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  background-color: var(--color-paper);
+  overflow: hidden;
+  height: 92px;
+  box-shadow: 2px 2px 0px var(--color-shadow);
+}
+
+.skeleton-cover {
+  width: 90px;
+  aspect-ratio: 1 / 1;
+  border-right: 1px solid var(--color-ink);
+  background: linear-gradient(90deg, var(--color-paper-dim) 25%, var(--color-ink-muted) 50%, var(--color-paper-dim) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+.skeleton-details {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+
+.skeleton-line {
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--color-paper-dim) 25%, var(--color-ink-muted) 50%, var(--color-paper-dim) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+.skeleton-line.w60 { width: 60%; }
+.skeleton-line.w40 { width: 40%; }
+.skeleton-line.w80 { width: 80%; }
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl) var(--spacing-md);
+  text-align: center;
+  margin-top: var(--spacing-lg);
+  gap: var(--spacing-sm);
+  color: var(--color-ink-muted);
+}
+
+.empty-state-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin: 0;
+  margin-top: var(--spacing-sm);
+  color: var(--color-ink);
+}
+
+.empty-state-desc {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  margin: 0;
+  margin-bottom: var(--spacing-sm);
+}
+
+.empty-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  width: 100%;
+  max-width: 260px;
+}
+
+.empty-actions .btn {
+  width: 100%;
+}
+
+/* Ride book section label */
+.ride-book-label {
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-ink-muted);
+  margin: 0 0 var(--spacing-sm);
+}
+
+/* Month-grouped ride book: sticky month headers pin to the top inset */
+.ride-book {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Compact month index chips for jumping to a month without scrolling.
+   Single horizontal strip that scrolls when there are many months. */
+.month-index {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+  padding-bottom: var(--spacing-xs);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.month-index::-webkit-scrollbar {
+  display: none;
+}
+
+.month-index-chip {
+  flex: 0 0 auto;
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  background: none;
+  border: 1px solid var(--color-ink-muted);
+  border-radius: var(--border-radius-sm);
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: color 0.1s ease, border-color 0.1s ease, background-color 0.1s ease;
+}
+
+.month-index-chip:hover {
+  color: var(--color-ink);
+  border-color: var(--color-ink);
+  background-color: var(--color-paper-dim);
+}
+
+.month-index-chip:active {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.month-group {
+  display: flex;
+  flex-direction: column;
+  /* Land below the pinned home header when jumped to via the month index. */
+  scroll-margin-top: calc(var(--sticky-topbar-inset) + var(--sticky-topbar-offset));
+}
+
+.month-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-ink);
+  padding: var(--spacing-xs) 2px;
+  margin: 0 -2px var(--spacing-xs) -2px;
+  position: sticky;
+  top: calc(var(--sticky-topbar-inset) + var(--sticky-topbar-offset) - 1px);
+  z-index: 5;
+  background-color: var(--color-paper);
+}
+
+.month-group-label {
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.month-group-meta {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.month-group-hint {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  margin: 0 0 var(--spacing-xs);
+}
+
+/* Book-level summary row above the ride book: mirrors the month-group header
+   anatomy (label left, meta right) one level up, but with a dashed hairline so
+   it doesn't stack a second solid rule against the first month header. */
+.book-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  border-bottom: 1px dashed var(--color-paper-dim);
+  padding: var(--spacing-xs) 2px;
+  margin: 0 -2px var(--spacing-md) -2px;
+}
+
+.book-summary-label {
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.book-summary-meta {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* Placeholders & Test Views */
+.placeholder-view {
+  border: 1px dashed var(--color-ink-muted);
+  padding: var(--spacing-lg);
+  margin-top: var(--spacing-xl);
+  border-radius: var(--border-radius);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.placeholder-view h3 {
+  font-family: var(--font-typewriter);
+}
+
+/* Form Styles & Inputs */
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* Stretch to fill the entire remaining height of the locked viewport */
+}
+
+/* Shared page top bar: back + optional edit/delete. Rests and sticks at the
+   topbar inset, filling the strip above with paper so content scrolls under. */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: 0 -2px var(--spacing-md) -2px;
+  border-bottom: 1px dashed var(--color-paper-dim);
+  padding: 0 2px 6px 2px;
+  height: var(--sticky-topbar-offset);
+  position: sticky;
+  top: var(--sticky-topbar-inset);
+  z-index: 10;
+  background-color: var(--color-paper);
+  box-shadow: 0 calc(-1 * var(--sticky-topbar-inset)) 0 0 var(--color-paper);
+}
+
+.page-header .btn-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.page-header-spacer {
+  flex: 1;
+}
+
+/* Page-level heading that lives in the body beneath the shared top bar */
+.page-heading {
+  font-family: var(--font-typewriter);
+  font-size: 18px;
+  margin: 0 0 var(--spacing-sm);
+  color: var(--color-ink);
+}
+
+/* What's New + Roadmap (changelog/roadmap) */
+.todo-container {
+  display: flex;
+  flex-direction: column;
+  margin-top: calc(var(--sticky-topbar-inset) - var(--spacing-lg));
+}
+
+.todo-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.todo-sub {
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin: 0;
+}
+
+.todo-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.todo-tabs button {
+  flex: 1;
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  background: none;
+  border: 1px solid var(--color-ink-muted);
+  border-radius: var(--border-radius-sm);
+  padding: 6px 0;
+  cursor: pointer;
+  transition: color 0.1s ease, border-color 0.1s ease, background-color 0.1s ease;
+}
+
+.todo-tabs button:hover {
+  color: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+.todo-tabs button.active {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+  border-color: var(--color-ink);
+}
+
+.todo-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.todo-section-label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  font-family: var(--font-mechanical);
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-ink);
+  padding-bottom: var(--spacing-xs);
+  margin: 0;
+}
+
+.todo-section--planned .todo-section-label {
+  color: var(--color-tint-2);
+  border-bottom-color: var(--color-tint-2);
+}
+
+.todo-count {
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  letter-spacing: 0.5px;
+}
+
+.todo-section--planned .todo-count {
+  color: var(--color-tint-3);
+}
+
+.todo-section-desc {
+  font-family: var(--font-typewriter);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+  margin: 0;
+}
+
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.todo-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px dashed var(--color-paper-dim);
+}
+
+.todo-item:last-child {
+  border-bottom: none;
+}
+
+.todo-check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--color-paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  margin-top: 1px;
+  color: var(--color-paper);
+}
+
+.todo-item.is-done .todo-check {
+  background-color: var(--color-green);
+  border-color: var(--color-green);
+}
+
+.todo-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.todo-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.todo-badge {
+  flex-shrink: 0;
+  font-family: var(--font-mechanical);
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-paper);
+  background-color: var(--color-tint-2);
+  border-radius: var(--border-radius-sm);
+  padding: 1px 5px;
+}
+
+.todo-title {
+  font-family: var(--font-typewriter);
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.todo-note {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  line-height: 1.4;
+}
+
+.todo-item:not(.is-done) .todo-title {
+  color: var(--color-ink);
+}
+

@@ -1,0 +1,604 @@
+/* Reduced motion preference — the single global gate. This block zeroes every
+   animation/transition duration app-wide; the old per-feature duplicates
+   (search, lightbox) were consolidated here. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .map-route-path {
+    animation: none !important;
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
+
+/* ==========================================================================
+   FULLSCREEN INTERACTIVE OVERLAYS (MAP & PHOTO ZOOM)
+   ========================================================================== */
+
+/* Cursor affordance for clickable elements */
+.map-interactive-trigger {
+  cursor: zoom-in;
+  transition: transform 0.1s ease-in-out;
+}
+
+.map-interactive-trigger:hover {
+  opacity: 0.95;
+}
+
+/* Backdrops */
+.map-overlay-backdrop {
+  background-color: var(--color-paper);
+  background-image: 
+    linear-gradient(var(--color-paper-dim) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-paper-dim) 1px, transparent 1px);
+  background-size: 20px 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* Close overlay button (Typewriter Keycap style) */
+.btn-close-overlay {
+  position: fixed;
+  top: calc(var(--spacing-md) + env(safe-area-inset-top));
+  right: calc(var(--spacing-md) + env(safe-area-inset-right));
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--border-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-family: var(--font-typewriter);
+  cursor: pointer;
+  z-index: 1010;
+  box-shadow: 2px 2px 0px var(--color-ink);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.btn-close-overlay:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px var(--color-ink);
+}
+
+/* Zoom/Pan Containers */
+.map-zoom-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none; /* Disable native browser pinch-zoom/scroll overrides */
+  overflow: hidden;
+  user-select: none;
+}
+
+.map-zoom-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+  will-change: transform;
+  contain: layout;
+}
+
+.map-zoom-inner:active {
+  cursor: grabbing;
+}
+
+/* ─── Info Modal Internals ────────────────────────────────────────────────── */
+
+.info-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.info-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.info-modal-text {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.info-modal-text-sm {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+  margin: var(--spacing-xs) 0 0 0;
+}
+
+.info-modal-steps {
+  background-color: var(--color-paper-dim);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  border-left: 3px solid var(--color-ink-muted);
+}
+
+.info-modal-step-title {
+  font-family: var(--font-typewriter);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0 0 var(--spacing-sm) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-modal-ol,
+.info-modal-ul {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.info-modal-ol li,
+.info-modal-ul li {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+}
+
+.info-modal-ol li strong,
+.info-modal-ul li strong {
+  color: var(--color-ink);
+}
+
+.info-modal-icon-hint {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.info-modal-callout {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: var(--color-paper-dim);
+  border-radius: var(--border-radius);
+  border-left: 3px solid var(--color-error);
+}
+
+.info-modal-callout-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ─── Leaflet Minimal & Typewriter Theme Overrides ────────────────────────── */
+
+
+
+/* 2. Typewriter Zoom Controls Override */
+.leaflet-bar {
+  border: 1px solid var(--color-ink) !important;
+  border-radius: var(--border-radius) !important;
+  box-shadow: 3px 3px 0px var(--color-shadow) !important;
+  overflow: hidden;
+}
+
+.leaflet-bar a {
+  background-color: var(--color-paper) !important;
+  color: var(--color-ink) !important;
+  border-bottom: 1px solid var(--color-paper-dim) !important;
+  font-family: var(--font-mechanical) !important;
+  font-weight: bold !important;
+  transition: background-color 0.2s ease, color 0.2s ease !important;
+}
+
+.leaflet-bar a:hover {
+  background-color: var(--color-paper-dim) !important;
+  color: var(--color-ink) !important;
+}
+
+.leaflet-bar a.leaflet-disabled {
+  background-color: var(--color-paper-dim) !important;
+  opacity: 0.5 !important;
+  color: var(--color-ink-muted) !important;
+}
+
+/* 3. Attribution Bar Override */
+.leaflet-container .leaflet-control-attribution {
+  background: var(--color-paper-dim) !important;
+  color: var(--color-ink-muted) !important;
+  font-family: var(--font-mechanical) !important;
+  font-size: 9px !important;
+  border-top-left-radius: var(--border-radius);
+  border-left: 1px solid var(--color-ink-muted);
+  border-top: 1px solid var(--color-ink-muted);
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: var(--color-ink) !important;
+  text-decoration: underline !important;
+}
+
+/* ─── Auto-Calculate Link Button Styling ──────────────────────────────────── */
+.btn-calc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 6px;
+  font-family: var(--font-mechanical);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: color 0.15s ease-in-out;
+}
+
+.btn-calc-link:hover:not(:disabled) {
+  color: var(--color-ink);
+}
+
+.btn-calc-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   PHOTOS GALLERY
+   ========================================================================== */
+
+.photos-container {
+  display: flex;
+  flex-direction: column;
+  margin-top: calc(var(--sticky-topbar-inset) - var(--spacing-lg));
+}
+
+.photos-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.photos-sub {
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin: 0;
+}
+
+.photos-empty {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-xl) var(--spacing-md);
+  text-align: center;
+  color: var(--color-ink-muted);
+  border: 1px dashed var(--color-ink-muted);
+  border-radius: var(--border-radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* Masonry wall: CSS columns flow photos into a waterfall. Column-major order
+   is fine because the wall is deliberately shuffled, not chronological. */
+.photos-masonry {
+  column-width: 120px;
+  column-gap: var(--spacing-sm);
+}
+
+.photo-tile {
+  display: block;
+  width: 100%;
+  margin-bottom: var(--spacing-sm);
+  padding: 0;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-paper);
+  overflow: hidden;
+  cursor: pointer;
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  transition: opacity 0.1s ease;
+}
+
+.photo-tile img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.photo-tile:active {
+  opacity: 0.85;
+}
+
+/* Paper-styled lightbox: the photo is a mounted print pasted into the open
+   logbook page — a paper-dim mat with a 1px ink border, an inner dashed
+   hairline (the annotation signifier), a hard offset shadow, and a slight
+   rotation so it reads as pasted in. Mechanical marginalia above the mount, and
+   a footer with a zero-padded register counter flanked by typewriter chevrons
+   plus an optional stamped action. */
+.photo-paper-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-paper);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  animation: fade-in var(--motion-fast) ease-out;
+}
+
+.photo-paper-backdrop.closing {
+  animation: fade-out var(--motion-fast) ease-in forwards;
+}
+
+/* Fixed-height top band: mechanical marginalia on the left, a quiet ghost close
+   on the right. A non-flexing flex row above the reflowing stage, so neither
+   the title nor the close shifts when the photo mount resizes between aspect
+   ratios. */
+.photo-paper-top {
+  flex: 0 0 auto;
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: 0 var(--spacing-md) 0 var(--spacing-lg);
+  box-sizing: border-box;
+}
+
+/* The title/marginalia — a single mechanical kicker line on the left of the
+   top band. */
+.photo-paper-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Quiet ghost close: transparent, no border, no hard shadow — just an ink ✕ in
+   the top band with a ~44px hit area. Deliberately subordinate to the title, so
+   it never reads as a primary card competing with it. Scoped to the lightbox;
+   the shared .btn-close-overlay keeps its look elsewhere. */
+.photo-paper-close {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-right: calc(-1 * var(--spacing-sm));
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: color var(--motion-fast) ease;
+}
+
+.photo-paper-close:hover {
+  color: var(--color-ink);
+}
+
+.photo-paper-close:active {
+  color: var(--color-green);
+}
+
+/* Reflowing mount stage: the only flexing sibling. It takes all the vertical
+   space the fixed meta band (top) and fixed footer (bottom) leave, and the
+   frame/image reflow (object-fit: contain) happens only inside here. */
+.photo-paper-stage {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-sm);
+  touch-action: pan-y;
+}
+
+.photo-paper-frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  box-shadow: 3px 3px 0 var(--color-shadow);
+  background-color: var(--color-paper-dim);
+  padding: 12px;
+  transform: rotate(-0.6deg);
+}
+
+/* Inner dashed hairline — the annotation signifier framing the print inside
+   the mat, echoing the page-header divider / index row dashed rules. */
+.photo-paper-frame::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px dashed var(--color-ink-muted);
+  border-radius: var(--border-radius-sm);
+  pointer-events: none;
+}
+
+.photo-paper-img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--border-radius-sm);
+}
+
+/* Directional slide-in on photo change. One keyframe reads the slide offset
+   from --photo-slide-x so NEXT (from the right, +30px) and PREVIOUS (from the
+   left, -30px) share a single definition. Only transform + opacity animate —
+   no layout shift, so the mounted print never jumps. The reduced-motion gate
+   (~3851) collapses the duration to ~0, leaving an instant swap. */
+.photo-paper-img--next {
+  --photo-slide-x: 30px;
+  animation: photo-slide-in var(--motion-slow) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.photo-paper-img--prev {
+  --photo-slide-x: -30px;
+  animation: photo-slide-in var(--motion-slow) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes photo-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--photo-slide-x, 30px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Fixed-height footer band. Flex:0 sibling so it holds its place while the
+   mount reflows above it; the whole footer is a fixed band so neither the
+   action nor the pager moves as the photo aspect changes. Arranged
+   action-on-left (the prominent stamped button), pager-on-right. */
+.photo-paper-footer {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 480px;
+  min-height: calc(var(--spacing-lg) * 2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg) calc(var(--spacing-lg) + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+/* The pager — prev chevron + zero-padded counter + next chevron — grouped as a
+   single cohesive secondary control. Navigation is already covered by swipe and
+   keyboard, so the pager is styled quietly relative to the action button. */
+.photo-paper-pager {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-ink-muted);
+}
+
+.photo-paper-pager-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-family: var(--font-typewriter);
+  font-size: 18px;
+  line-height: 1;
+  color: var(--color-ink-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: color var(--motion-fast) ease;
+}
+
+.photo-paper-pager-btn:hover {
+  color: var(--color-ink);
+}
+
+.photo-paper-pager-btn:active {
+  color: var(--color-green);
+}
+
+/* CSS-drawn chevrons — Space Mono's U+2039/U+203A glyphs sit off-baseline with
+   tall metrics that overflow the line box, so they clipped at the button edge.
+   A rotated bordered box centers deterministically via the button's flex. */
+.photo-paper-pager-btn__chevron {
+  width: 9px;
+  height: 9px;
+  box-sizing: border-box;
+  border-top: 2px solid currentColor;
+}
+
+.photo-paper-pager-btn__chevron--prev {
+  border-left: 2px solid currentColor;
+  transform: rotate(-45deg);
+}
+
+.photo-paper-pager-btn__chevron--next {
+  border-right: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.photo-paper-counter {
+  font-family: var(--font-mechanical);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+  min-width: 52px;
+  text-align: center;
+}
+
+/* Stamped mechanical action button (SET AS COVER / VIEW RIDE): ink border,
+   hard offset shadow, pressed on :active. Scoped to the lightbox footer so the
+   shared Button keeps its global look elsewhere. */
+.photo-paper-action .btn {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  color: var(--color-ink);
+  background: transparent;
+  box-shadow: 2px 2px 0 var(--color-shadow);
+  font-weight: 400;
+}
+
+.photo-paper-action .btn:hover:not(:disabled) {
+  background-color: var(--color-paper-dim);
+}
+
+.photo-paper-action .btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--color-shadow);
+}
+
+

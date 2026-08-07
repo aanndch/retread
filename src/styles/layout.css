@@ -1,0 +1,51 @@
+/* Mobile-only container: max-width 480px is intentional for phone layouts.
+   Desktop browsers see the same phone-width card, centered via body rules above. */
+.viewport {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100vh;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: opacity var(--motion-route) ease-out;
+}
+
+/* Content-gated route transition: the outgoing route fades out, the routed
+   view stays invisible until it reports its data is rendered, then fades in. */
+.viewport.preparing {
+  opacity: 0;
+  transition: opacity var(--motion-route-fast) ease-out;
+}
+
+/* Lock viewport height while the editor is open: it fits the screen but
+   scrolls internally when the form overflows. Padding-top is intentionally 0:
+   sticky offsets are measured from the scroll container's padding edge, so a
+   nonzero padding-top would push the pinned page-header below its 12px inset.
+   min-height: 0 lets the 100dvh height win — the base .viewport min-height is
+   100vh, which on iPhone Safari is taller than the visible area and pushes the
+   bottom action bar off-screen. */
+.viewport:has(.editor-container) {
+  height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: 0;
+  padding-bottom: var(--spacing-md);
+  box-sizing: border-box;
+}
+
+.logo {
+  font-family: var(--font-typewriter);
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: -1px;
+}
+
+.tagline {
+  font-family: var(--font-typewriter);
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  margin-top: var(--spacing-xs);
+}
+
