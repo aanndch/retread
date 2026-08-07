@@ -468,6 +468,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
         open={showPhotoModal}
         photos={lightboxPhotos}
         activeId={String(activePhotoIdx)}
+        meta={`${rideTitle} · ${leg.title || 'Untitled Leg'} · ${shortDate}`}
         onNavigate={(id) => handlePhotoIdxChange(parseInt(id, 10))}
         onClose={closePhotoModal}
         footer={({ index }) => (

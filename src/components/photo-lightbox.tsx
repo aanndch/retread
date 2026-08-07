@@ -29,6 +29,9 @@ interface PhotoLightboxProps {
   // Optional right-hand footer action slot. Renders nothing when absent, so a
   // bare lightbox (e.g. the Photos gallery) shows only the photo counter.
   footer?: (ctx: PhotoLightboxFooterContext) => ComponentChildren;
+  // Optional marginalia above the mounted print (ride · leg · date context),
+  // set in the mechanical 10px uppercase kicker voice. Rendered when provided.
+  meta?: string;
   ariaLabel?: string;
 }
 
@@ -47,6 +50,7 @@ export function PhotoLightbox({
   onNavigate,
   onClose,
   footer,
+  meta,
   ariaLabel = 'Photo viewer',
 }: PhotoLightboxProps) {
   const touchStartX = useRef(0);
@@ -136,6 +140,7 @@ export function PhotoLightbox({
           if (Math.abs(delta) > 50) step(delta > 0 ? 1 : -1);
         }}
       >
+        {meta && <span class="photo-paper-meta">{meta}</span>}
         <div class="photo-paper-frame">
           {fullUrl && (
             <img src={fullUrl} alt={active?.alt || 'Ride photograph'} class="photo-paper-img" />
@@ -144,10 +149,28 @@ export function PhotoLightbox({
       </div>
 
       <div class="photo-paper-footer" onClick={(e) => e.stopPropagation()}>
-        <span class="photo-paper-counter">
-          Photo {activeIdx + 1} / {photos.length}
-        </span>
-        {footerAction}
+        <div class="photo-paper-pager">
+          <button
+            type="button"
+            class="photo-pager-btn"
+            aria-label="Previous photo"
+            onClick={() => step(-1)}
+          >
+            ◀
+          </button>
+          <span class="photo-paper-counter">
+            {String(activeIdx + 1).padStart(2, '0')} / {String(photos.length).padStart(2, '0')}
+          </span>
+          <button
+            type="button"
+            class="photo-pager-btn"
+            aria-label="Next photo"
+            onClick={() => step(1)}
+          >
+            ▶
+          </button>
+        </div>
+        {footerAction && <span class="photo-paper-action">{footerAction}</span>}
       </div>
     </div>
   );

@@ -4177,8 +4177,12 @@ input[type=number] {
   opacity: 0.85;
 }
 
-/* Paper-styled lightbox: the photo is the hero on a paper ground, framed like
-   a mounted print, with a minimal caption and two actions. */
+/* Paper-styled lightbox: the photo is a mounted print pasted into the open
+   logbook page — a paper-dim mat with a 1px ink border, an inner dashed
+   hairline (the annotation signifier), a hard offset shadow, and a slight
+   rotation so it reads as pasted in. Mechanical marginalia above the mount, and
+   a footer with a zero-padded register counter flanked by typewriter chevrons
+   plus an optional stamped action. */
 .photo-paper-backdrop {
   position: fixed;
   top: 0;
@@ -4202,7 +4206,8 @@ input[type=number] {
   flex: 1;
   width: 100%;
   display: flex;
-  align-items: stretch;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   padding: var(--spacing-sm);
   padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom));
@@ -4211,7 +4216,22 @@ input[type=number] {
   animation: fade-in var(--motion-fast) ease-out;
 }
 
+.photo-paper-meta {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
 .photo-paper-frame {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4219,9 +4239,21 @@ input[type=number] {
   max-height: 100%;
   border: 1px solid var(--color-ink);
   border-radius: var(--border-radius);
-  box-shadow: 4px 4px 0 var(--color-shadow);
-  background-color: var(--color-paper);
-  padding: 8px;
+  box-shadow: 3px 3px 0 var(--color-shadow);
+  background-color: var(--color-paper-dim);
+  padding: 12px;
+  transform: rotate(-0.6deg);
+}
+
+/* Inner dashed hairline — the annotation signifier framing the print inside
+   the mat, echoing the page-header divider / index row dashed rules. */
+.photo-paper-frame::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px dashed var(--color-ink-muted);
+  border-radius: var(--border-radius-sm);
+  pointer-events: none;
 }
 
 .photo-paper-img {
@@ -4245,12 +4277,67 @@ input[type=number] {
   box-sizing: border-box;
 }
 
+.photo-paper-pager {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.photo-pager-btn {
+  font-family: var(--font-typewriter);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--color-ink);
+  background: transparent;
+  border: none;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: var(--border-radius-sm);
+  transition: color 0.1s ease, transform 0.1s ease;
+}
+
+.photo-pager-btn:hover {
+  color: var(--color-green);
+}
+
+.photo-pager-btn:active {
+  transform: translateY(1px);
+}
+
 .photo-paper-counter {
   font-family: var(--font-mechanical);
   font-size: 11px;
   letter-spacing: 1px;
   color: var(--color-ink-muted);
   text-transform: uppercase;
+  white-space: nowrap;
+  min-width: 52px;
+  text-align: center;
+}
+
+/* Stamped mechanical action button (SET AS COVER / VIEW RIDE): ink border,
+   hard offset shadow, pressed on :active. Scoped to the lightbox footer so the
+   shared Button keeps its global look elsewhere. */
+.photo-paper-action .btn {
+  font-family: var(--font-mechanical);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--border-radius);
+  color: var(--color-ink);
+  background: transparent;
+  box-shadow: 2px 2px 0 var(--color-shadow);
+  font-weight: 400;
+}
+
+.photo-paper-action .btn:hover:not(:disabled) {
+  background-color: var(--color-paper-dim);
+}
+
+.photo-paper-action .btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--color-shadow);
 }
 
 

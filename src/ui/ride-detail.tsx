@@ -663,6 +663,12 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
         open={showPhotoModal}
         photos={lightboxPhotos}
         activeId={String(photoActiveIdx)}
+        meta={(() => {
+          const entry = photoList[photoActiveIdx];
+          return entry
+            ? `${ride.title || 'Untitled Ride'} · ${entry.leg.title || 'Untitled Leg'} · ${formatIsoDateToDMY(entry.leg.date)}`
+            : '';
+        })()}
         onNavigate={(id) => handlePhotoIdxChange(parseInt(id, 10))}
         onClose={closePhotoModal}
         footer={({ index }) => (

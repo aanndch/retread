@@ -2,6 +2,7 @@ import { useMemo } from 'preact/hooks';
 import { Button } from '../components/button';
 import { PhotoLightbox, type LightboxPhoto } from '../components/photo-lightbox';
 import { galleryPhotoId, type GalleryPhoto } from './use-gallery-photos';
+import { formatIsoDateToDMY } from '../lib';
 
 interface PhotosOverlayProps {
   photoId: string | null;
@@ -34,11 +35,18 @@ export function PhotosOverlay({
     [photos]
   );
 
+  // Marginalia above the mounted print: ride · leg · date for the active photo.
+  const activeGp = photoId ? photos.find((q) => galleryPhotoId(q) === photoId) : undefined;
+  const meta = activeGp
+    ? `${activeGp.ride.title || 'Untitled Ride'} · ${activeGp.leg.title || 'Untitled Leg'} · ${formatIsoDateToDMY(activeGp.leg.date)}`
+    : '';
+
   return (
     <PhotoLightbox
       open={photoId !== null}
       photos={lightboxPhotos}
       activeId={photoId}
+      meta={meta}
       onNavigate={onNavigatePhoto}
       onClose={onClose}
       footer={({ photo }) => {
