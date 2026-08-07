@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "preact/hooks";
+import { useState, useEffect, useRef, useCallback, useMemo } from "preact/hooks";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db";
 import { Button } from "../components/button";
@@ -13,7 +13,8 @@ import { SquiggleEmptyState, DAY_COLORS } from "./squiggle";
 import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
 import { MapHero } from "../components/map-hero";
-import { PhotoOverlay } from "../components/photo-overlay";
+import { PhotoLightbox, type LightboxPhoto } from "../components/photo-lightbox";
+import { coverUrlCache } from "./use-ride-book";
 import { PhotoArrangeSheet } from "../components/photo-arrange-sheet";
 import { backfillRideRoutes } from "../road";
 import { formatIsoDateToDMY, formatDistance, stopLabel, sortLegs } from "../lib";
@@ -29,6 +30,7 @@ interface LegDetailProps {
 export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDetailProps) {
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+  const [coverSet, setCoverSet] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   // Page-level modals live in the URL (#/leg/:id?modal=map|photo|arrange):
   // opening pushes the param, closing pops it back to the bare leg route.
@@ -66,12 +68,24 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
   };
 
   // Snapshot the current photo as the ride's home cover (immediate persist).
+  // Mirrors the editor's cover-setting mechanism: prefer the thumbnail, fall
+  // back to the full-size photo blob. The lightbox "Set as cover image" action
+  // targets the CURRENT photo index.
   const handleSetCover = async (idx: number) => {
-    if (!leg) return;
+    if (!leg || coverSet) return;
     const thumb = (leg.photoThumbs && leg.photoThumbs[idx]) || (leg.photos && leg.photos[idx]);
     if (!thumb) return;
+    // Revoke the previous cover's cached object URL so a new cover doesn't
+    // leave a stale URL behind (the home book caches cover URLs by content).
+    for (const [key, entry] of coverUrlCache) {
+      if (key.startsWith(`${leg.rideId}:cover:`)) {
+        URL.revokeObjectURL(entry.url);
+        coverUrlCache.delete(key);
+      }
+    }
     await db.rides.update(leg.rideId, { coverBlob: thumb });
-    showToast("Set as ride cover.");
+    setCoverSet(true);
+    showToast("Cover image set");
   };
 
   const photoUrlsRef = useRef<string[]>([]);
@@ -106,6 +120,23 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
     photoUrlsRef.current = urls;
     return () => urls.forEach((url) => URL.revokeObjectURL(url));
   }, [leg]);
+
+  // The shared lightbox reads a generic { id, blob } list; each leg photo is one
+  // entry keyed by its array index (the same value the ?photo= URL uses).
+  const lightboxPhotos: LightboxPhoto[] = useMemo(() => {
+    const blobs = leg?.photos || [];
+    return blobs.map((blob, i) => ({
+      id: String(i),
+      blob,
+      alt: `Photo ${i + 1}`,
+    }));
+  }, [leg]);
+
+  // The "Cover set" confirmation resets when the overlay closes or the user
+  // navigates to a different photo, so a different shot can be set next.
+  useEffect(() => {
+    setCoverSet(false);
+  }, [showPhotoModal, activePhotoIdx]);
 
   // Prev/next inside the photo overlay (swipe pager): replaceState the ?photo=
   // param in place so Back does not stack an entry per photo — the open and
@@ -428,14 +459,23 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
         />
       )}
 
-      {/* Fullscreen Photo Zoom Overlay */}
-      <PhotoOverlay
-        isOpen={showPhotoModal}
-        photoUrls={photoUrls}
-        activeIdx={activePhotoIdx}
-        setActiveIdx={handlePhotoIdxChange}
+      {/* Fullscreen Photo Lightbox (shared photo-paper design) */}
+      <PhotoLightbox
+        open={showPhotoModal}
+        photos={lightboxPhotos}
+        activeId={String(activePhotoIdx)}
+        onNavigate={(id) => handlePhotoIdxChange(parseInt(id, 10))}
         onClose={closePhotoModal}
-        onSetCover={handleSetCover}
+        footer={({ index }) => (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleSetCover(index)}
+            disabled={coverSet}
+          >
+            {coverSet ? "✓ Cover set" : "Set as cover image"}
+          </Button>
+        )}
       />
 
       {/* Fullscreen Map Overlay */}

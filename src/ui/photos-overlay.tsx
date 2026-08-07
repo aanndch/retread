@@ -1,9 +1,6 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useMemo } from 'preact/hooks';
 import { Button } from '../components/button';
-import { CloseIcon } from '../components/icons';
-import { useBodyScrollLock } from '../components/use-body-scroll-lock';
-import { useExitFade } from '../components/use-exit-fade';
-import { useOverlayFocus } from '../components/use-overlay-focus';
+import { PhotoLightbox, type LightboxPhoto } from '../components/photo-lightbox';
 import { galleryPhotoId, type GalleryPhoto } from './use-gallery-photos';
 
 interface PhotosOverlayProps {
@@ -14,12 +11,12 @@ interface PhotosOverlayProps {
   onViewRide: (route: string) => void;
 }
 
-// Paper-styled lightbox for the gallery, rendered by the Photos page on top of
-// the wall while "#/photos?photo=N" is set. The photo is the hero on a paper
-// ground with a minimal caption (which ride · where in the stream) and two
-// actions — View ride and Close. The active photo is resolved by identity, so
-// "View ride" -> Back restores the exact photo even after the wall is
-// reshuffled.
+// The Photos page's lightbox, rendered on top of the wall while
+// "#/photos?photo=N" is set. A thin adapter over the shared PhotoLightbox: it
+// maps gallery photos into LightboxPhoto entries (identity = leg:id + index)
+// and supplies the "View ride" footer action. Behavior is unchanged from the
+// previous inline implementation — the photo is the hero on a paper ground with
+// a caption and two actions, and "View ride" -> Back restores the exact photo.
 export function PhotosOverlay({
   photoId,
   photos,
@@ -27,114 +24,31 @@ export function PhotosOverlay({
   onNavigatePhoto,
   onViewRide,
 }: PhotosOverlayProps) {
-  const touchStartX = useRef(0);
-  const backdropRef = useRef<HTMLDivElement>(null);
-  // The ?photo= param is the single source of truth for "open": removing it
-  // plays a short fade-out so the lightbox never cuts to a blank frame, and
-  // the page scroll stays locked until the fade completes. The lightbox's
-  // closing fade is --motion-fast (150ms), so the unmount timer matches that
-  // rather than the default --motion-base.
-  const { visible, closing } = useExitFade(photoId !== null, 150);
-  useBodyScrollLock(visible);
-  useOverlayFocus(visible, backdropRef);
-
-  // Keep the last non-null photo on screen through the exit fade — photoId
-  // goes null the moment the param is popped, but the fade must show the photo
-  // that was open, not snap to the first in the list.
-  const lastPhotoIdRef = useRef<string | null>(photoId);
-  if (photoId !== null) lastPhotoIdRef.current = photoId;
-  const resolvedPhotoId = photoId ?? lastPhotoIdRef.current;
-
-  const activeIdx = Math.max(
-    0,
-    photos.findIndex((p) => galleryPhotoId(p) === resolvedPhotoId)
+  const lightboxPhotos: LightboxPhoto[] = useMemo(
+    () =>
+      photos.map((p) => ({
+        id: galleryPhotoId(p),
+        blob: p.leg.photos?.[p.photoIndex] ?? new Blob(),
+        alt: p.ride.title || 'Ride photograph',
+      })),
+    [photos]
   );
-  const active = photos[activeIdx];
-
-  // Full-size object URL for the active photo only, so the wall never holds
-  // hundreds of full-size URLs in memory at once. Keyed on `visible` so the
-  // photo stays in the frame during the exit fade.
-  const [fullUrl, setFullUrl] = useState('');
-  useEffect(() => {
-    if (!visible || photos.length === 0) {
-      // Closed (or empty): drop the object URL so a reopen never briefly
-      // renders the previous photo's revoked URL (that fetch logs
-      // ERR_FILE_NOT_FOUND). The photo itself stays up through the exit fade
-      // because `visible` stays true for the fade duration.
-      setFullUrl('');
-      return;
-    }
-    const blob = active?.leg.photos?.[active?.photoIndex ?? 0];
-    if (!blob) {
-      setFullUrl('');
-      return;
-    }
-    const url = URL.createObjectURL(blob);
-    setFullUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [visible, activeIdx, photos, active]);
-
-  // Dialog semantics: Escape closes. Focus handling (move into the backdrop on
-  // open, trap Tab, restore on close) lives in useOverlayFocus.
-  useEffect(() => {
-    if (!visible) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [visible, onClose]);
-
-  if (!visible || photos.length === 0) return null;
-
-  const step = (dir: 1 | -1) => {
-    const next = (activeIdx + dir + photos.length) % photos.length;
-    onNavigatePhoto(galleryPhotoId(photos[next]));
-  };
 
   return (
-    <div ref={backdropRef} class={`photo-paper-backdrop${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={onClose}>
-      <button
-        type="button"
-        class="btn-close-overlay"
-        aria-label="Close photo"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-      >
-        <CloseIcon size={16} />
-      </button>
-
-      <div
-        class="photo-paper-stage"
-        onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e: TouchEvent) => {
-          touchStartX.current = e.touches[0].clientX;
-        }}
-        onTouchEnd={(e: TouchEvent) => {
-          const delta = touchStartX.current - e.changedTouches[0].clientX;
-          if (Math.abs(delta) > 50) step(delta > 0 ? 1 : -1);
-        }}
-      >
-        <div class="photo-paper-frame">
-          {fullUrl && (
-            <img src={fullUrl} alt={active?.ride.title || 'Ride photograph'} class="photo-paper-img" />
-          )}
-        </div>
-      </div>
-
-      <div class="photo-paper-footer" onClick={(e) => e.stopPropagation()}>
-        <span class="photo-paper-counter">
-          Photo {activeIdx + 1} / {photos.length}
-        </span>
-        <Button variant="secondary" size="sm" onClick={() => active && onViewRide(`#/ride/${active.ride.id}`)}>
-          View ride
-        </Button>
-      </div>
-    </div>
+    <PhotoLightbox
+      open={photoId !== null}
+      photos={lightboxPhotos}
+      activeId={photoId}
+      onNavigate={onNavigatePhoto}
+      onClose={onClose}
+      footer={({ photo }) => {
+        const gp = photos.find((q) => galleryPhotoId(q) === photo.id);
+        return gp ? (
+          <Button variant="secondary" size="sm" onClick={() => onViewRide(`#/ride/${gp.ride.id}`)}>
+            View ride
+          </Button>
+        ) : null;
+      }}
+    />
   );
 }

@@ -4246,15 +4246,19 @@ input[type=number] {
   flex: 1;
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-sm);
+  padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom));
   min-height: 0;
   touch-action: pan-y;
   animation: fade-in var(--motion-fast) ease-out;
 }
 
 .photo-paper-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   max-width: 100%;
   max-height: 100%;
   border: 1px solid var(--color-ink);
@@ -4267,7 +4271,9 @@ input[type=number] {
 .photo-paper-img {
   display: block;
   max-width: 100%;
-  max-height: 62vh;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   border-radius: var(--border-radius-sm);
 }
