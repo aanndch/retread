@@ -127,6 +127,62 @@ describe('clusterPhotos', () => {
     expect(noGps[0].legs[0].lng).toBeNull();
   });
 
+  it('GPS spread of ~100-200m at the same stop does NOT split into new legs', () => {
+    // Three photos within ~200m of each other (≈0.0018 deg lat) — you parked and
+    // walked the viewpoint. Distance is far below STOP_DISTANCE_M → one leg.
+    const groups = clusterPhotos([
+      pt('a', D(2026, 8, 10, 9, 0), 12.0, 77.0),
+      pt('b', D(2026, 8, 10, 9, 5), 12.001, 77.0),
+      pt('c', D(2026, 8, 10, 9, 12), 12.0018, 77.0),
+    ]);
+    expect(groups[0].legs).toHaveLength(1);
+    expect(groups[0].legs[0].photos.map((p) => p.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('mixed GPS within a stop + small time gap → stays one leg', () => {
+    // Some photos carry GPS, some don't, all within ~250m and a small time gap.
+    // The GPS boundary is only hit when BOTH sides have GPS; the missing side
+    // makes the time fallback govern, and the gap is far below STOP_GAP_MS.
+    const groups = clusterPhotos([
+      pt('a', D(2026, 8, 10, 9, 0), 12.0, 77.0),
+      pt('b', D(2026, 8, 10, 9, 4)), // no GPS
+      pt('c', D(2026, 8, 10, 9, 8), 12.0005, 77.0005),
+      pt('d', D(2026, 8, 10, 9, 12)), // no GPS
+    ]);
+    expect(groups[0].legs).toHaveLength(1);
+    expect(groups[0].legs[0].photos.map((p) => p.id)).toEqual(['a', 'b', 'c', 'd']);
+    // Leg median still uses whichever photos carry GPS.
+    expect(groups[0].legs[0].lat).toBeCloseTo(12.00025, 5);
+  });
+
+  it('photos just before/after midnight land in their correct day buckets', () => {
+    // 23:59:59.999 on day 1 and 00:00:00 on day 2 — a few ms apart in time but
+    // different local calendar days → separate buckets, one leg each.
+    const groups = clusterPhotos([
+      pt('before', new Date(2026, 7, 10, 23, 59, 59, 999), 12.0, 77.0),
+      pt('after', new Date(2026, 7, 11, 0, 0, 0, 0), 12.0, 77.0),
+    ]);
+    expect(groups.map((g) => g.date)).toEqual(['2026-08-10', '2026-08-11']);
+    expect(groups[0].legs[0].photos.map((p) => p.id)).toEqual(['before']);
+    expect(groups[1].legs[0].photos.map((p) => p.id)).toEqual(['after']);
+  });
+
+  it('a single isolated photo (big gap before and after) is its own leg', () => {
+    // Middle photo is hours from both neighbours → splits into its own leg on
+    // each boundary (GPS present, so a > DAY_BREAK_MS gap still splits).
+    const groups = clusterPhotos([
+      pt('a', D(2026, 8, 10, 8, 0), 12.0, 77.0),
+      pt('solo', D(2026, 8, 10, 13, 0), 12.0, 77.0), // 5h from both
+      pt('c', D(2026, 8, 10, 18, 0), 12.0, 77.0),
+    ]);
+    expect(groups[0].legs).toHaveLength(3);
+    expect(groups[0].legs.map((l) => l.photos.map((p) => p.id))).toEqual([
+      ['a'],
+      ['solo'],
+      ['c'],
+    ]);
+  });
+
   it('mixed GPS presence → time fallback governs the non-GPS boundary', () => {
     // First has GPS, second has none, gap is small → one leg.
     const groups = clusterPhotos([

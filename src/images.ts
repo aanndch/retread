@@ -235,6 +235,11 @@ export interface PhotoMetadata {
  * for GPS. Falls back to `file.lastModified` when no EXIF date is present.
  * Returns nulls gracefully on parse errors / unsupported files (GPS null; the
  * date still falls back to lastModified, which the File API provides reliably).
+ *
+ * The file is read into an ArrayBuffer and handed to exifr as raw bytes rather
+ * than as the `File` itself: exifr's Blob path goes through `FileReader`, which
+ * exists in the browser but not in Node. Parsing from an ArrayBuffer works in
+ * both, so the same reader drives the in-app backfill and the Node-side tests.
  */
 export async function readPhotoMetadata(file: File): Promise<PhotoMetadata> {
   let date: Date | null = null;
@@ -242,7 +247,8 @@ export async function readPhotoMetadata(file: File): Promise<PhotoMetadata> {
   let lng: number | null = null;
   try {
     const exifr = (await import('exifr')).default;
-    const exif = await exifr.parse(file, { tiff: true, exif: true, gps: true });
+    const data = await file.arrayBuffer();
+    const exif = await exifr.parse(data, { tiff: true, exif: true, gps: true });
     if (exif) {
       const exifDate = exif.DateTimeOriginal ?? exif.CreateDate;
       if (exifDate instanceof Date) date = exifDate;
