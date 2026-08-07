@@ -31,6 +31,8 @@ export interface StopLeg {
   date: Date;
   lat: number | null;
   lng: number | null;
+  /** Reverse-geocoded place-name suggestion (P2). Unset until `suggestLegNames` runs. */
+  name?: string;
 }
 
 /** A calendar-day bucket of one or more stop legs. `date` is a YYYY-MM-DD key. */
