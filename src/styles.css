@@ -1901,24 +1901,27 @@ button:focus,
 
 /* Temporary search deep-link flash (P2): the same contrast/inverse-green
    treatment as the persistent .search-hit above — solid green fill, paper text
-   — shown briefly over the target term. It fades OUT near the end of ~1.2s via
-   `opacity`, not background-color, so the contrast color stays solid for the
-   whole lifespan (and survives a mid-flash computed-style read). The
-   reduced-motion gate collapses the duration to ~0.01ms, leaving a static
-   highlight — which is exactly the behavior the hook wants there. */
+   — shown briefly over the target term. Instead of fading the text out via
+   `opacity` (which briefly made the matched term invisible before the hook
+   unwrapped the mark), it cross-fades the BACKGROUND (green → transparent) and
+   the TEXT COLOR (paper → ink) over ~1.2s. Opacity stays pinned at 1 the whole
+   time, so the term is always fully readable and the end state (transparent
+   bg + ink text) matches the un-highlighted note text — the later unwrap is
+   seamless. The reduced-motion gate collapses the duration to ~0.01ms, leaving
+   a static highlight — which is exactly the behavior the hook wants there. */
 @keyframes search-flash-fade {
-  0% {
-    opacity: 1;
-  }
-  67% {
-    opacity: 1;
+  0%,
+  65% {
+    background-color: var(--color-green);
+    color: var(--color-paper);
   }
   100% {
-    opacity: 0;
+    background-color: transparent;
+    color: var(--color-ink);
   }
 }
 .search-flash {
-  background: var(--color-green);
+  background-color: var(--color-green);
   color: var(--color-paper);
   border-radius: var(--border-radius-sm);
   animation: search-flash-fade 1200ms ease-in-out;
