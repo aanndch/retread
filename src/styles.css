@@ -4235,6 +4235,7 @@ input[type=number] {
   flex-direction: column;
   align-items: center;
   overflow: hidden;
+  animation: fade-in var(--motion-fast) ease-out;
 }
 
 .photo-paper-backdrop.closing {
@@ -4250,6 +4251,7 @@ input[type=number] {
   padding: var(--spacing-lg);
   min-height: 0;
   touch-action: pan-y;
+  animation: fade-in var(--motion-fast) ease-out;
 }
 
 .photo-paper-frame {
