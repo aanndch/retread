@@ -301,7 +301,7 @@
 /* Masonry wall: CSS columns flow photos into a waterfall. Column-major order
    is fine because the wall is deliberately shuffled, not chronological. */
 .photos-masonry {
-  column-width: 120px;
+  column-width: 104px;
   column-gap: var(--spacing-sm);
 }
 
@@ -336,7 +336,7 @@
    grid holds layout. Pulse reuses the search skeleton keyframe; the global
    reduced-motion gate collapses it to a static block. */
 .photos-skeleton {
-  column-width: 120px;
+  column-width: 104px;
   column-gap: var(--spacing-sm);
 }
 
