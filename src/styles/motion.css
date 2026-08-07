@@ -330,6 +330,29 @@
   opacity: 0.85;
 }
 
+/* Wall loading state: paper-dim tiles matching the masonry geometry while the
+   live photo list resolves, so nothing flashes empty. Same column flow/gap as
+   .photos-masonry and the real .photo-tile border-box, so the swap to the real
+   grid holds layout. Pulse reuses the search skeleton keyframe; the global
+   reduced-motion gate collapses it to a static block. */
+.photos-skeleton {
+  column-width: 120px;
+  column-gap: var(--spacing-sm);
+}
+
+.photos-skeleton-tile {
+  display: block;
+  width: 100%;
+  margin-bottom: var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--color-paper-dim);
+  border: 1px solid var(--color-paper-dim);
+  aspect-ratio: 1 / 1;
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  animation: search-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
 /* Paper-styled lightbox: the photo is a mounted print pasted into the open
    logbook page — a paper-dim mat with a 1px ink border, an inner dashed
    hairline (the annotation signifier), a hard offset shadow, and a slight

@@ -41,7 +41,11 @@ export function Photos({ ridesData, photos, photoId, onOpenPhoto, onClose, onNav
         <p class="photos-sub">Every picture in the book, shuffled like a shoebox.</p>
 
         {ridesData === undefined ? (
-          <p class="loading-text">Loading photographs...</p>
+          <div class="photos-skeleton" aria-hidden="true">
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div class="photos-skeleton-tile" key={i} />
+            ))}
+          </div>
         ) : photos.length === 0 ? (
           <div class="photos-empty">
             <p>No photographs yet — every photo you add to a leg lands here.</p>
