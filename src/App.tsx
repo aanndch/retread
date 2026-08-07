@@ -103,6 +103,13 @@ export function App() {
   const [dismissedPrompt, setDismissedPrompt] = useState(false);
   const activePrompt = dismissedPrompt ? null : appPrompt;
   const prevHashRef = useRef(window.location.hash || HASH_HOME);
+  // The last in-app hash the user was on before the current one, kept on every
+  // hashchange. Drives the in-app back button: when a valid in-app predecessor
+  // exists, back pops history to it (search query, lightbox, parent ride all
+  // restored exactly); on a deep link with no predecessor it falls back to the
+  // page's logical parent. replaceState-only edits (?q= typing, ?photo= prev/
+  // next) never fire hashchange, so they can't pollute this.
+  const prevInAppHashRef = useRef<string | null>(null);
 
   // Shared ride-book data (rides + legs + covers) for both home and search.
   // The status variant also reports the initial Dexie live-query load so the
@@ -185,6 +192,12 @@ export function App() {
 
       const prevHash = prevHashRef.current;
       const nextHash = window.location.hash || HASH_HOME;
+
+      // Remember the outgoing hash as the in-app predecessor for the back
+      // button — before the same-page guard can early-return, so ?photo= /
+      // ?modal= pushes on the same route still register the page they were
+      // opened from.
+      prevInAppHashRef.current = prevHash;
 
       // Save the outgoing route's scroll position (DOM is still the old route here)
       scrollCacheRef.current.set(prevHash, window.scrollY);
@@ -297,14 +310,20 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Back navigation: always land on the caller's logical parent by replacing
-  // the current history entry — no depth tracking, no history.back(). Replace
-  // (not push) keeps the entry count flat across back-button presses, so
-  // repeated presses can't spiral history growth, and browser Back from the
-  // parent then returns to whatever preceded the child. A deep-linked child
-  // (no prior in-app entry) still lands on its parent — the app is never left.
+  // Back navigation: return to where the user actually came from — the search
+  // results, the gallery lightbox, a parent ride — by popping history when an
+  // in-app predecessor exists, so the previous URL, query params, and lightbox
+  // state are restored exactly. With no predecessor (fresh deep link) or on a
+  // same-hash edge, fall back to the caller's logical parent via replace, so
+  // the app is never left. No depth tracking: one ref, updated on hashchange.
   const navigateBack = useCallback((logicalParent: string | null) => {
-    if (logicalParent) {
+    const current = window.location.hash || HASH_HOME;
+    const prev = prevInAppHashRef.current;
+    const hasInAppPredecessor =
+      prev !== null && prev.startsWith('#/') && prev !== current;
+    if (hasInAppPredecessor) {
+      history.back();
+    } else if (logicalParent) {
       window.location.replace(logicalParent);
     }
   }, []);
