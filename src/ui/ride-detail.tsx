@@ -9,6 +9,7 @@ import { PageHeader } from "../components/page-header";
 import { StatPlate } from "../components/stat-plate";
 import { useBodyScrollLock } from "../components/use-body-scroll-lock";
 import { closeModal, openModal, setModalPhotoParam, useRouteQuery } from "../components/use-route-query";
+import { useScrollHighlight } from "../components/use-scroll-highlight";
 import { SquiggleEmptyState, DAY_COLORS } from "./squiggle";
 import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
@@ -264,6 +265,9 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
   const [photoActiveIdx, setPhotoActiveIdx] = useState(0);
   const [coverSet, setCoverSet] = useState(false);
   const { modal, photo } = useRouteQuery();
+  // Deep-link scroll-to + flash from search results (?scrollTo=&q=): `title`
+  // targets the ride hero title.
+  useScrollHighlight(() => 'ride-title');
   const showPhotoModal = modal === "photo";
   const showMapModal = modal === "map";
   useBodyScrollLock(showMapModal);
@@ -518,7 +522,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
         {/* Hero: kicker, title, route-line trail */}
         <section class="ride-hero">
           <span class="ride-hero-kicker">{dateRange}</span>
-          <h1 class="ride-hero-title">{ride.title || 'Untitled Ride'}</h1>
+          <h1 id="ride-title" class="ride-hero-title">{ride.title || 'Untitled Ride'}</h1>
           {trailStops.length > 0 && <RouteTrail stops={trailStops} onSelectStop={scrollToLeg} />}
         </section>
 

@@ -200,8 +200,13 @@ export function App() {
       // opened from.
       prevInAppHashRef.current = prevHash;
 
-      // Save the outgoing route's scroll position (DOM is still the old route here)
-      scrollCacheRef.current.set(prevHash, window.scrollY);
+      // A deep-link scroll target (?scrollTo=) owns the scroll on arrival — the
+      // generic restore below would overwrite the target page's scrollIntoView
+      // moments after the swap. Skip both caching and restoring for those routes.
+      const hasScrollTarget = nextHash.includes('scrollTo=');
+      if (!hasScrollTarget) {
+        scrollCacheRef.current.set(prevHash, window.scrollY);
+      }
       prevHashRef.current = nextHash;
       // Keep the lightbox photo in sync with the URL (deep link /
       // Back-restore).
@@ -248,9 +253,11 @@ export function App() {
         // so restore any previously-visited route's cached position and top
         // otherwise — the common "Back returns where I was scrolled" case
         // holds for browser Back and the logical-parent back button alike.
-        requestAnimationFrame(() => {
-          restoreScroll(scrollCacheRef.current.get(nextHash));
-        });
+        if (!hasScrollTarget) {
+          requestAnimationFrame(() => {
+            restoreScroll(scrollCacheRef.current.get(nextHash));
+          });
+        }
       }, 120);
     };
 

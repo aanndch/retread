@@ -1888,6 +1888,19 @@ button:focus,
   border-radius: var(--border-radius-sm);
 }
 
+/* Deep-link scroll targets (?scrollTo=&q= from search results): a scroll-margin
+   so scrollIntoView lands them clear of the pinned PageHeader (55px = topbar
+   inset + bar height), not tucked underneath it. The ride hero title sits at
+   the top of the ride page (below the PageHeader, above the sticky day-group
+   headers), so it uses the same leg-page inset. */
+#leg-note,
+#leg-title,
+#ride-title {
+  scroll-margin-top: calc(var(--sticky-topbar-inset) + var(--sticky-topbar-offset));
+}
+
+
+
 /* Motion (D11): section headers reveal with a small rise + fade (150 ms,
    30 ms stagger between sections); skeleton blocks pulse slowly. Every
    transition lists its exact properties — never `transition: all`. */

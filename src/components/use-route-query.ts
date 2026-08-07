@@ -16,6 +16,10 @@ export interface RouteQuery {
   photo: string | null;
   // The ?q= search query (the routed search page's param, R0).
   q: string | null;
+  // The ?scrollTo= deep-link target on the destination page, set by search
+  // results (e.g. #/leg/1?scrollTo=note&q=term). Paired with ?q= so the target
+  // page scrolls to the element and flashes the matched term.
+  scrollTo: string | null;
 }
 
 // Parse a raw hash ("#/ride/1?modal=map&photo=2") into the route query. Shared
@@ -32,6 +36,7 @@ export function readRouteQueryFromHash(hash: string): RouteQuery {
         : null,
     photo: params.get('photo'),
     q: params.get('q'),
+    scrollTo: params.get('scrollTo'),
   };
 }
 

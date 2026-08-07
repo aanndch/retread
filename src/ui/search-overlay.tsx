@@ -39,6 +39,26 @@ function highlight(text: string, query: string): ComponentChildren {
   return parts;
 }
 
+// Build a deep-link route to a search match target. `scrollTo` names the target
+// element on the destination page and `q` carries the matched term (URL-encoded)
+// so the target page can scroll to + flash it (see use-scroll-highlight). Stop
+// matches target the leg title (Option A: no stop anchor on the leg page) — the
+// term may not be in the title, in which case the target page scrolls without
+// flashing.
+function buildTargetRoute(dest: string, scrollTo: string, q: string): string {
+  const sep = dest.includes('?') ? '&' : '?';
+  return `${dest}${sep}scrollTo=${scrollTo}&q=${encodeURIComponent(q)}`;
+}
+
+// Route for a margin note: a `note` match deep-links to the leg note; a `stop`
+// match goes to the leg (or ride) title. The destination stays as today — the
+// leg when one is known, else the parent ride.
+function marginNoteRoute(n: MarginNote, parentRideId: number | undefined, q: string): string {
+  const dest = n.legId !== undefined ? `#/leg/${n.legId}` : `#/ride/${parentRideId}`;
+  const scrollTo = n.label === 'note' ? 'note' : 'title';
+  return buildTargetRoute(dest, scrollTo, q);
+}
+
 // For freeform notes, show a short window around the first hit.
 function windowed(text: string, query: string): string {
   const idx = normalize(text).indexOf(normalize(query).trim());
@@ -354,7 +374,9 @@ function CatalogSections({
               <button
                 type="button"
                 class="search-row"
-                onClick={() => onGoTo(`#/ride/${row.entry.ride.id}`)}
+                onClick={() =>
+                  onGoTo(buildTargetRoute(`#/ride/${row.entry.ride.id}`, 'title', resultsQuery))
+                }
               >
                 <SearchThumb blob={row.entry.firstPhotoBlob} coverKey={row.entry.coverKey} />
                 <span class="search-row-body">
@@ -370,9 +392,7 @@ function CatalogSections({
                   type="button"
                   class="search-margin-note"
                   key={i}
-                  onClick={() =>
-                    onGoTo(n.legId !== undefined ? `#/leg/${n.legId}` : `#/ride/${row.entry.ride.id}`)
-                  }
+                  onClick={() => onGoTo(marginNoteRoute(n, row.entry.ride.id, resultsQuery))}
                 >
                   <span class="search-margin-note-label">{n.label}:</span>
                   <span class="search-margin-note-text">{highlight(n.text, resultsQuery)}</span>
@@ -393,7 +413,7 @@ function CatalogSections({
               <button
                 type="button"
                 class="search-row"
-                onClick={() => onGoTo(`#/leg/${row.leg.id}`)}
+                onClick={() => onGoTo(buildTargetRoute(`#/leg/${row.leg.id}`, 'title', resultsQuery))}
               >
                 <span
                   class="search-day-swatch"
@@ -413,9 +433,7 @@ function CatalogSections({
                   type="button"
                   class="search-margin-note"
                   key={i}
-                  onClick={() =>
-                    onGoTo(n.legId !== undefined ? `#/leg/${n.legId}` : `#/ride/${row.entry.ride.id}`)
-                  }
+                  onClick={() => onGoTo(marginNoteRoute(n, row.entry.ride.id, resultsQuery))}
                 >
                   <span class="search-margin-note-label">{n.label}:</span>
                   <span class="search-margin-note-text">{highlight(n.text, resultsQuery)}</span>

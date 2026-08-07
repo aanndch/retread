@@ -9,6 +9,7 @@ import { PageHeader } from "../components/page-header";
 import { StatPlate } from "../components/stat-plate";
 import { useBodyScrollLock } from "../components/use-body-scroll-lock";
 import { closeModal, openModal, setModalPhotoParam, useRouteQuery } from "../components/use-route-query";
+import { useScrollHighlight } from "../components/use-scroll-highlight";
 import { SquiggleEmptyState, DAY_COLORS } from "./squiggle";
 import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
@@ -35,6 +36,9 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
   // Page-level modals live in the URL (#/leg/:id?modal=map|photo|arrange):
   // opening pushes the param, closing pops it back to the bare leg route.
   const { modal, photo } = useRouteQuery();
+  // Deep-link scroll-to + flash from search results (?scrollTo=&q=): `note`
+  // targets the leg blockquote, `title` the hero title.
+  useScrollHighlight((target) => (target === 'note' ? 'leg-note' : 'leg-title'));
   const showArrange = modal === "arrange";
   const showPhotoModal = modal === "photo";
   const showMapModal = modal === "map";
@@ -300,7 +304,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
           <span class="ride-hero-kicker">
             {rideTitle}{dayNum > 0 ? ` · Day ${dayNum}` : ""} · {shortDate}
           </span>
-          <h1 class="ride-hero-title">{leg.title || "Untitled Leg"}</h1>
+          <h1 id="leg-title" class="ride-hero-title">{leg.title || "Untitled Leg"}</h1>
         </section>
 
         <MapHero
@@ -388,7 +392,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
         {leg.note && (
           <section class="story-note-section">
             <span class="note-label">Rider's Note</span>
-            <blockquote class="typewriter-blockquote">{leg.note}</blockquote>
+            <blockquote id="leg-note" class="typewriter-blockquote">{leg.note}</blockquote>
           </section>
         )}
 
