@@ -1920,8 +1920,6 @@ button:focus,
 .search-flash {
   background: var(--color-green);
   color: var(--color-paper);
-  font-weight: bold;
-  padding: 0 2px;
   border-radius: var(--border-radius-sm);
   animation: search-flash-fade 1200ms ease-in-out;
 }
