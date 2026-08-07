@@ -1,26 +1,31 @@
 import { db } from '../db';
 import { DEMO_ROUTE_PATHS } from './demo-routes';
 
-function createMockPhoto(title: string, color: string) {
-  const escapedTitle = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
-    <rect width="100%" height="100%" fill="${color}"/>
-    <circle cx="400" cy="260" r="100" fill="none" stroke="#fafefe" stroke-width="2" opacity="0.3"/>
-    <line x1="400" y1="60" x2="400" y2="460" stroke="#fafefe" stroke-width="1" opacity="0.2"/>
-    <line x1="100" y1="260" x2="700" y2="260" stroke="#fafefe" stroke-width="1" opacity="0.2"/>
-    <text x="50%" y="530" dominant-baseline="middle" text-anchor="middle" font-family="monospace" font-size="16" fill="#fafefe" letter-spacing="2">${escapedTitle.toUpperCase()}</text>
-    <text x="50%" y="265" dominant-baseline="middle" text-anchor="middle" font-family="serif" font-size="32" font-style="italic" fill="#fafefe">RETREAD LOGS</text>
-  </svg>`;
-  return new Blob([svg], { type: 'image/svg+xml' });
+// Loads one of the bundled demo photos from Vite's `public/` dir (served at the
+// root). Fetches are awaited up front, before any IndexedDB transaction opens —
+// you cannot await an arbitrary fetch inside a `db.transaction` callback.
+async function loadDemoPhoto(file: string): Promise<Blob> {
+  const r = await fetch(`/demo-photos/${file}`);
+  if (!r.ok) throw new Error(`Failed to load demo photo: ${file}`);
+  return r.blob();
 }
 
 export async function seedDemoRide(): Promise<number> {
+  // Preload the bundled real photos (varied aspect ratios) — the lightbox then
+  // shows a mix of landscape, portrait, square and panorama shapes.
+  const mountains = await loadDemoPhoto('mountains-800x600.jpg');   // 4:3
+  const valley    = await loadDemoPhoto('valley-800x450.jpg');      // 16:9
+  const peak      = await loadDemoPhoto('peak-portrait-600x800.jpg'); // 3:4
+  const lake      = await loadDemoPhoto('lake-square-700x700.jpg');  // 1:1
+  const ridge     = await loadDemoPhoto('ridge-panorama-1000x500.jpg'); // 2:1
+  const road      = await loadDemoPhoto('road-900x600.jpg');         // 3:2
+
   // Write everything in a single transaction so the UI updates once (not once
   // per leg), which avoids the demo card flickering/animating as it appears.
   return db.transaction('rw', db.rides, db.legs, async () => {
   // Reused as the ride's home-page cover AND as the day-3 photo so the demo
   // shows off the user-picked cover feature (home renders coverBlob directly).
-  const coverPhoto = createMockPhoto("Day 3: Nine hairpins", "#586954");
+  const coverPhoto = mountains;
 
   const newRideId = await db.rides.add({
     title: "Western Ghats Loop",
@@ -40,8 +45,8 @@ export async function seedDemoRide(): Promise<number> {
     km: 118,
     location: { kind: 'gps', lat: 12.4244, lng: 75.7382, name: "Madikeri" },
     photos: [
-      createMockPhoto("Day 1: Coffee estate ride", "#4a5d4e"),
-      createMockPhoto("Day 1: Brahmagiri viewpoint", "#546469")
+      valley,
+      lake
     ]
   });
 
@@ -55,8 +60,8 @@ export async function seedDemoRide(): Promise<number> {
     km: 122,
     location: { kind: 'gps', lat: 11.6107, lng: 76.0821, name: "Kalpetta" },
     photos: [
-      createMockPhoto("Day 2: Virajpet descent", "#695e54"),
-      createMockPhoto("Day 2: Wayanad plateau mist", "#5c6d5f")
+      road,
+      peak
     ]
   });
 
@@ -84,7 +89,7 @@ export async function seedDemoRide(): Promise<number> {
     km: 95,
     location: { kind: 'gps', lat: 10.5276, lng: 76.2144, name: "Thrissur" },
     photos: [
-      createMockPhoto("Day 4a: Coastal NH66", "#6e6255")
+      ridge
     ]
   });
 
@@ -98,8 +103,8 @@ export async function seedDemoRide(): Promise<number> {
     km: 110,
     location: { kind: 'gps', lat: 9.9667, lng: 76.2422, name: "Fort Kochi" },
     photos: [
-      createMockPhoto("Day 4b: Fort Kochi ferry", "#4b5b5c"),
-      createMockPhoto("Day 4b: Chinese fishing nets", "#6e5d5c")
+      valley,
+      mountains
     ]
   });
 
@@ -113,8 +118,8 @@ export async function seedDemoRide(): Promise<number> {
     km: 54,
     location: { kind: 'gps', lat: 9.4981, lng: 76.3388, name: "Alleppey" },
     photos: [
-      createMockPhoto("Day 5: Backwater canal", "#4a5d4e"),
-      createMockPhoto("Day 5: Country boat", "#5c6d5f")
+      road,
+      peak
     ]
   });
 
@@ -128,7 +133,7 @@ export async function seedDemoRide(): Promise<number> {
     km: 385,
     location: { kind: 'gps', lat: 12.2958, lng: 76.6394, name: "Mysore" },
     photos: [
-      createMockPhoto("Day 6: Palakkad gap climb", "#6e6255")
+      lake
     ]
   });
 
@@ -180,8 +185,14 @@ const SPITI_PATHS: { lat: number; lng: number }[][] = [
 ];
 
 export async function seedPhantomDemoRide(): Promise<number> {
+  const ridge = await loadDemoPhoto('ridge-panorama-1000x500.jpg'); // 2:1
+  const mountains = await loadDemoPhoto('mountains-800x600.jpg');   // 4:3
+  const valley    = await loadDemoPhoto('valley-800x450.jpg');      // 16:9
+  const lake      = await loadDemoPhoto('lake-square-700x700.jpg'); // 1:1
+  const peak      = await loadDemoPhoto('peak-portrait-600x800.jpg'); // 3:4
+
   return db.transaction('rw', db.rides, db.legs, async () => {
-  const day2Photo = createMockPhoto("Day 2: Kunzum La", "#6d6a5e");
+  const day2Photo = ridge;
 
   const newRideId = await db.rides.add({
     title: "Spiti Circuit (Phantom Demo)",
@@ -202,7 +213,7 @@ export async function seedPhantomDemoRide(): Promise<number> {
     km: 51,
     location: { kind: 'gps', lat: 32.3717, lng: 77.2467, name: "Rohtang Pass" },
     photos: [
-      createMockPhoto("Day 1: Rohtang top", "#5c6d5f")
+      mountains
     ]
   });
 
@@ -232,7 +243,7 @@ export async function seedPhantomDemoRide(): Promise<number> {
     km: 70,
     location: { kind: 'gps', lat: 32.2261, lng: 78.0766, name: "Kaza" },
     photos: [
-      createMockPhoto("Day 3: Spiti valley", "#6e6255")
+      valley
     ]
   });
 
@@ -247,7 +258,7 @@ export async function seedPhantomDemoRide(): Promise<number> {
     km: 47,
     location: { kind: 'gps', lat: 32.0804, lng: 78.3673 },
     photos: [
-      createMockPhoto("Day 4: Tabo monastery", "#4b5b5c")
+      lake
     ]
   });
 
@@ -261,7 +272,7 @@ export async function seedPhantomDemoRide(): Promise<number> {
     km: 118,
     location: { kind: 'named', name: 'Kalpa' },
     photos: [
-      createMockPhoto("Day 5: Kalpa orchards", "#5c6d5f")
+      peak
     ]
   });
 
