@@ -378,6 +378,7 @@ export function MapPicker({
                   onInput={(e) => handleSearchInput((e.target as HTMLInputElement).value)}
                   onFocus={() => { if (results.length > 0) setShowResults(true); }}
                   style={{
+                    display: 'block', width: '100%', boxSizing: 'border-box',
                     fontSize: '13px', padding: '8px 32px 8px 12px',
                     boxShadow: '2px 2px 0px var(--color-shadow)',
                     background: 'var(--color-paper)',
