@@ -12,6 +12,11 @@ const FLASH_MS = 1200;
 // reliable than the old capped rAF poll, which could give up on a slow device
 // before the element rendered → no scroll at all.
 const WAIT_MS = 5000;
+// Cap on how long we wait for the route to be fully revealed before starting
+// the deep-link scroll (see waitForReveal below). Kept well above the longest
+// realistic reveal (~600ms) so it acts purely as a hard safety backstop and
+// never resolves the wait mid-reveal.
+const REVEAL_WAIT_MS = 1500;
 // Cap on how long we wait for a smooth scroll to settle before flashing, so a
 // missing `scrollend` or a stubborn scroll never starves the flash. Kept above
 // the longest realistic smooth scroll (~1.2s) so it acts as a hard cap and
@@ -103,6 +108,59 @@ function waitForEl(id: string): Promise<HTMLElement | null> {
     });
     observer.observe(document, { childList: true, subtree: true });
     const safety = window.setTimeout(() => finish(document.getElementById(id)), WAIT_MS);
+  });
+}
+
+// Resolve once the route is fully revealed — the incoming view has shed its
+// `.preparing` class (or its computed opacity is ~1), meaning the content-gated
+// route transition has faded it in. On NAVIGATION the App holds the incoming
+// page invisible (opacity 0) for up to ~600ms of reveal while its data/photos
+// load; starting the deep-link scroll during that window races the swap + the
+// late-loading layout, so the self-correction can fall short. On REFRESH there
+// is no transition, so the viewport is settled and revealed immediately. Gating
+// on this signal makes the navigation path identical to refresh: the page is
+// settled and visible before the scroll runs, so the scroll is the sole,
+// post-settle controller. A rAF poll drives the check (re-reading `.viewport`
+// each frame, so it survives the viewport being swapped/re-mounted mid-navigate),
+// with a MutationObserver as a fast path for the class swap and a timeout safety
+// so it never hangs if the reveal signal isn't detectable (no `.viewport` /
+// non-gated view). No leaked observer/timers: all are torn down on resolve.
+function waitForReveal(): Promise<void> {
+  return new Promise((resolve) => {
+    const viewport = () => document.querySelector('.viewport') as HTMLElement | null;
+    const revealed = () => {
+      const vp = viewport();
+      // Revealed = the viewport no longer carries `.preparing` (the class the
+      // App toggles to hold the route at opacity 0). Fall back to computed
+      // opacity ~1 for robustness against a class rename / non-viewport shell.
+      if (!vp) return true; // no signal to read — don't block
+      if (!vp.classList.contains('preparing')) return true;
+      return parseFloat(getComputedStyle(vp).opacity) >= 0.99;
+    };
+    if (revealed()) return resolve();
+    let done = false;
+    let raf = 0;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      observer.disconnect();
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(safety);
+      resolve();
+    };
+    const check = () => {
+      if (revealed()) finish();
+      else raf = window.requestAnimationFrame(check);
+    };
+    // Class swaps on `.viewport` are attribute mutations — observe them for a
+    // faster settle than the rAF poll alone.
+    const observer = new MutationObserver(() => {
+      if (revealed()) finish();
+    });
+    const vp = viewport();
+    if (vp) observer.observe(vp, { attributes: true, attributeFilter: ['class'] });
+    raf = window.requestAnimationFrame(check);
+    const safety = window.setTimeout(finish, REVEAL_WAIT_MS);
   });
 }
 
@@ -243,6 +301,14 @@ export function useScrollHighlight(resolveId: (scrollTo: string) => string): voi
       // Clear any stale flash mark left by a prior query before scrolling
       // (the previous effect's cleanup only clears its timer, not the DOM).
       clearMark(el);
+      // Don't start the deep-link scroll until the route is FULLY revealed: on
+      // navigation the App holds the incoming page invisible (`.preparing`,
+      // opacity 0) for up to ~600ms while its data/photos load, and scrolling
+      // inside that window races the swap + late-loading layout. Waiting here
+      // makes navigation behave exactly like refresh — the page is settled and
+      // visible, so the scroll is the sole, post-settle controller.
+      await waitForReveal();
+      if (cancelled) return;
       // Self-correcting scroll: re-scrolls until the target is genuinely on
       // screen, so content that loads after the first scroll can't leave the
       // landing short. Reduced motion scrolls instantly (auto).
