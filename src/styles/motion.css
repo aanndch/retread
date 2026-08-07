@@ -318,16 +318,12 @@
   break-inside: avoid;
   -webkit-column-break-inside: avoid;
   transition: opacity 0.1s ease;
-  /* Reserve the tile's height before the thumbnail decodes, so the masonry
-     columns hold layout and stop reflowing — mirrors the skeleton tile. */
-  aspect-ratio: 1 / 1;
 }
 
 .photo-tile img {
   display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
 }
 
 .photo-tile:active {
