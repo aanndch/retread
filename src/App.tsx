@@ -202,10 +202,19 @@ export function App() {
       // Save the outgoing route's scroll position (DOM is still the old route here)
       scrollCacheRef.current.set(prevHash, window.scrollY);
       prevHashRef.current = nextHash;
-      // Keep the search query and lightbox photo in sync with the URL (deep
-      // link / Back-restore).
-      setSearchQuery(readSearchQueryFromHash(nextHash));
+      // Keep the lightbox photo in sync with the URL (deep link /
+      // Back-restore).
       setPhotoId(readPhotoQueryFromHash(nextHash));
+
+      // Re-read the search query from the URL only when ARRIVING at /search
+      // (fresh visit, deep link, or Back-from-result restores the query).
+      // While leaving search, keep the last query value instead of clobbering
+      // it with '' — the page stays mounted through the 120ms exit fade, and
+      // resetting the query mid-fade flips its committed results to the
+      // empty-query browse-all catalog ("catalog flash").
+      if (normalizeRoute(nextHash) === '/search') {
+        setSearchQuery(readSearchQueryFromHash(nextHash));
+      }
 
       // Query-param-only changes on the same page do not re-transition the
       // viewport: the overlay renders over the static page and plays its own

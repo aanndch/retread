@@ -492,8 +492,10 @@ export function SearchOverlay({
   // that starts false on every mount, so a fresh visit always lands on the
   // journal (empty query) or suggestions (non-empty) and typing after a commit
   // returns to suggestions — the old "committed never resets on close" bug
-  // disappears structurally.
-  const [committed, setCommitted] = useState(false);
+  // disappears structurally. When the page mounts WITH a query already in the
+  // URL (Back from a result restores ?q=), committed starts true so the
+  // catalog for that query renders immediately instead of the suggestion panel.
+  const [committed, setCommitted] = useState(() => query.trim() !== '');
   // Active suggestion for the combobox (aria-activedescendant); -1 = none.
   const [activeIndex, setActiveIndex] = useState(-1);
   const resultsQuery = committed ? query : deferredQuery;
