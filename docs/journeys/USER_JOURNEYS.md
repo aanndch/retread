@@ -26,7 +26,12 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 | Edit icon | Leg detail header | `#/edit?mode=edit&legId={id}` |
 | "Set this stop's pin" button | Leg detail (phantom legs, no map) | `#/edit?mode=edit&legId={id}` |
 | "Edit This Leg" button | Leg detail (empty photo/note state) | `#/edit?mode=edit&legId={id}` |
-| Search result tap | Search overlay | `#/ride/{id}` or `#/leg/{id}` (detail pages, not editor) |
+| Search icon | Home page header | `#/search` (routed page; query syncs to `?q=`) |
+| Settings icon | Home page header | `#/settings` (routed page) |
+| Photos icon | Home page header | `#/photos` (gallery wall) |
+| Photo tile tap | Photos page | `#/photos?photo=N` (opens lightbox) |
+| Photo thumbnail tap | Ride/Leg detail photo rail | `#/ride/{id}?modal=photo&photo=N` / `#/leg/{id}?modal=photo&photo=N` (opens photo overlay) |
+| Search result tap | Search page (`#/search?q=…`) | `#/ride/{id}?scrollTo=…&q=…` or `#/leg/{id}?scrollTo=…&q=…` (detail pages, not editor) |
 
 ---
 
@@ -487,6 +492,9 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
    - `newBlobs` doesn't include the failed file.
    - User can see the valid photos in the preview grid.
 
+### Notes
+- **HEIC/HEIF:** iPhone photos are converted to JPEG on upload (lazy `heic2any` decoder). A corrupt/undecodable HEIC shows the HEIC-specific toast: "Failed to upload [filename]: Couldn't convert this HEIC image." Other files still process.
+
 ---
 
 ## Journey 17: Pin Clear → Distance Reset
@@ -531,6 +539,7 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 
 ### Notes
 - There is no dirty-state tracking or discard confirmation. This is by design — the app prioritizes fast exit over protection.
+- The destinations above are the editor's **logical parents**. Back is context-aware: `navigateBack` pops `history.back()` when an in-app predecessor exists (restoring the exact URL/params), else `location.replace(logicalParent)` on a fresh deep link.
 - Photos already compressed in memory are revoked on unmount (`URL.revokeObjectURL`).
 
 ---
@@ -589,22 +598,31 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 
 ### Steps
 
-1. **User opens search overlay** (from home page).
-   - Types a query. Results appear.
+1. **User opens the search page** (search icon on home).
+   - Route: `#/search`. The input auto-focuses and the body scroll locks.
+   - With no query, the **journal** shows Recent Searches (persisted in localStorage, with Clear All), a **Suggested** list of real ride titles and stops from the book, and a "Your Log · N Rides" count.
 
-2. **Taps a ride result.**
-   - Search overlay closes.
-   - Route: `#/ride/{id}`.
-   - Ride detail page loads.
+2. **User types a query.**
+   - The query syncs to `?q=` via `history.replaceState` (never pushes).
+   - While typing (uncommitted), a **suggestions** panel lists real rides/legs/stops whose prefix matches — the typed prefix renders in green with a RIDE/LEG scope tag. ↓/↑ navigate, Enter/Search commits, and Enter on an active suggestion commits it.
+   - On commit (Enter/Search, suggestion tap, or a journal entry), the sectioned **catalog** renders: **RIDES** and **LEGS** groups with mechanical headers + counts; each row highlights the matched term and carries margin notes (stop/note) that deep-link to their leg or ride.
 
-3. **Taps a leg result.**
-   - Route: `#/leg/{id}`.
-   - Leg detail page loads.
+3. **No matches.**
+   - A no-results stub shows "No matches for '…'", a tolerant "Try '…'" suggestion, "browse all rides →", and "…or return to recent searches."
+
+4. **Taps a ride result.**
+   - Route: `#/ride/{id}?scrollTo=title&q=…`. On arrival the page scrolls to the ride title and flashes the matched term (~1.2s). The query is recorded in recents.
+
+5. **Taps a leg result.**
+   - Route: `#/leg/{id}?scrollTo=title&q=…` (a `note` match deep-links to `scrollTo=note` instead). Same scroll-to + flash.
+
+6. **Back from a result.**
+   - The in-app back (or browser Back) returns to `#/search?q=…` with the query restored, so the results are exactly as the user left them.
 
 ### Notes
 - Search results navigate to detail pages, not the editor.
+- Search is a **routed page**, not an overlay: it uses the normal route transition, closes via `history.back()` (× / Escape), and supports deep-linkable `?q=` queries.
 - User must use edit icons or FABs on detail pages to enter the editor.
-- `navDepthRef` tracks search → detail navigation for proper back-button behavior.
 
 ---
 
@@ -810,3 +828,33 @@ Every path a user can take through ride/leg creation, editing, and recovery. Bas
 ### Notes
 - No ARIA roles on wizard tabs (potential accessibility improvement).
 - Map picker has keyboard panning via Leaflet defaults.
+
+---
+
+## Journey 31: Photo Gallery & Fullscreen Viewer
+
+**Persona:** Any user — browsing or reviewing photos across the book.
+
+### Steps
+
+1. **Open the Photos page** (photos icon on home).
+   - Route: `#/photos`. The wall shows every picture in the book in a stable shuffled order; a skeleton grid renders while the ride-book data loads.
+
+2. **Tap a photo tile.**
+   - Route: `#/photos?photo=N` (pushes a history entry). The shared `PhotoLightbox` opens: the photo as a mounted print on a paper ground, with a caption/counter and an optional action.
+
+3. **Navigate photos.**
+   - ←/→ arrow keys, horizontal swipe, or the pager chevrons move between photos. Prev/next `replaceState` the `?photo=` param in place, so Back does not stack an entry per photo — open and close stay a push/pop pair.
+
+4. **Close the lightbox.**
+   - × / Escape / backdrop (or browser Back) pops to `#/photos`, playing a short exit fade.
+
+### Ride/Leg photo overlay (`?modal=photo`)
+
+- Tapping a thumbnail on the ride or leg detail page opens the same shared `PhotoLightbox` via `?modal=photo&photo=N` on the host route (`#/ride/{id}?modal=photo&photo=N`, `#/leg/{id}?modal=photo&photo=N`).
+- Same swipe / keyboard / arrow navigation; the `?photo=` index `replaceState`s in place.
+- A footer action, **"Set as cover image"**, snapshots the current photo to the ride's home cover (toast "Cover image set"; the button reads "✓ Cover set" after).
+- Closing pops the `?modal=photo` param back to the bare ride/leg route.
+
+### Notes
+- The gallery lightbox and the ride/leg photo overlay share the single `PhotoLightbox` component — the photo is a mounted print, the counter is the footer, and the active photo is resolved by identity so Back restores the exact photo.
