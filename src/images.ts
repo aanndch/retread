@@ -1,4 +1,6 @@
 import { MAX_IMAGE_EDGE, IMAGE_COMPRESSION_QUALITY } from './constants';
+import type { PhotoPoint } from './photo-cluster';
+import { clusterPhotos } from './photo-cluster';
 
 /**
  * Error message used when a HEIC/HEIF file cannot be converted to JPEG.
@@ -210,4 +212,71 @@ export async function createThumbnail(file: Blob): Promise<Blob> {
       img.src = objectUrl;
     }
   });
+}
+
+/**
+ * A photo's derived metadata: capture date and GPS coordinates.
+ * `date` falls back to the file's lastModified when no EXIF date exists;
+ * `lat`/`lng` are null when the file carries no usable GPS.
+ */
+export interface PhotoMetadata {
+  date: Date | null;
+  lat: number | null;
+  lng: number | null;
+}
+
+/**
+ * Reads EXIF date + GPS from a photo File. The EXIF parser (`exifr`) is
+ * lazy-loaded via dynamic `import()` — the same code-splitting pattern as the
+ * HEIC decoder (`heic2any`) — so it stays a separate chunk, downloaded only on
+ * the first backfill, never in the main bundle.
+ *
+ * Reads DateTimeOriginal/CreateDate for the capture time and latitude/longitude
+ * for GPS. Falls back to `file.lastModified` when no EXIF date is present.
+ * Returns nulls gracefully on parse errors / unsupported files (GPS null; the
+ * date still falls back to lastModified, which the File API provides reliably).
+ */
+export async function readPhotoMetadata(file: File): Promise<PhotoMetadata> {
+  let date: Date | null = null;
+  let lat: number | null = null;
+  let lng: number | null = null;
+  try {
+    const exifr = (await import('exifr')).default;
+    const exif = await exifr.parse(file, { tiff: true, exif: true, gps: true });
+    if (exif) {
+      const exifDate = exif.DateTimeOriginal ?? exif.CreateDate;
+      if (exifDate instanceof Date) date = exifDate;
+      if (typeof exif.latitude === 'number' && typeof exif.longitude === 'number') {
+        lat = exif.latitude;
+        lng = exif.longitude;
+      }
+    }
+  } catch {
+    // Unsupported or unparseable file — leave date/lat/lng null.
+  }
+  if (!date) date = new Date(file.lastModified);
+  return { date, lat, lng };
+}
+
+/**
+ * Wires the metadata reader and the pure clustering together: reads EXIF date +
+ * GPS from every file, then runs the two-level clustering (day buckets → stop
+ * legs). Returns the structured groups the backfill Review UI consumes.
+ *
+ * Photo ids are derived from the file name (disambiguated by index) so the
+ * resulting legs reference their source files.
+ */
+export async function groupPhotos(files: File[]): Promise<ReturnType<typeof clusterPhotos>> {
+  const points: PhotoPoint[] = await Promise.all(
+    files.map(async (file, i) => {
+      const meta = await readPhotoMetadata(file);
+      return {
+        id: `${file.name}:${i}`,
+        date: meta.date ?? new Date(file.lastModified),
+        lat: meta.lat,
+        lng: meta.lng,
+      };
+    })
+  );
+  return clusterPhotos(points);
 }
