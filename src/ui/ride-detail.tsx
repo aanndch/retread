@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "preact/hooks";
+import { useState, useEffect, useCallback, useMemo, useRef } from "preact/hooks";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Fragment } from "preact";
 import { db } from "../db";
@@ -13,7 +13,8 @@ import { SquiggleEmptyState, DAY_COLORS } from "./squiggle";
 import type { SquiggleSegment, SquiggleStop } from "./squiggle";
 import { MapModal } from "../components/map-modal";
 import { MapHero } from "../components/map-hero";
-import { PhotoOverlay } from "../components/photo-overlay";
+import { PhotoLightbox, type LightboxPhoto } from "../components/photo-lightbox";
+import { coverUrlCache } from "./use-ride-book";
 import { LegCard } from "./ride-detail/leg-card";
 import { HASH_HOME } from "../constants";
 import {
@@ -261,6 +262,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
   // ?modal=photo opens the photo overlay (with ?photo=N for the active photo).
   // Opening pushes the param, closing pops it back to the bare ride route.
   const [photoActiveIdx, setPhotoActiveIdx] = useState(0);
+  const [coverSet, setCoverSet] = useState(false);
   const { modal, photo } = useRouteQuery();
   const showPhotoModal = modal === "photo";
   const showMapModal = modal === "map";
@@ -278,14 +280,25 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
   const closeMapModal = () => closeModal("map");
 
   // Snapshot the current photo as the ride's home cover (immediate persist).
+  // Mirrors the leg page: prefer the thumbnail, fall back to the full-size
+  // photo blob, revoke the prior cover's cached URL, then toast. The lightbox
+  // "Set as cover image" action targets the CURRENT photo index.
   const handleSetCover = async (idx: number) => {
+    if (coverSet) return;
     const entry = photoList[idx];
     if (!entry) return;
     const { leg, photoIndex } = entry;
     const thumb = (leg.photoThumbs && leg.photoThumbs[photoIndex]) || (leg.photos && leg.photos[photoIndex]);
     if (!thumb) return;
+    for (const [key, cached] of coverUrlCache) {
+      if (key.startsWith(`${rideId}:cover:`)) {
+        URL.revokeObjectURL(cached.url);
+        coverUrlCache.delete(key);
+      }
+    }
     await db.rides.update(rideId, { coverBlob: thumb });
-    showToast("Set as ride cover.");
+    setCoverSet(true);
+    showToast("Cover image set");
   };
 
   // The delete confirmation isn't a history entry, so browser back just closes
@@ -349,6 +362,16 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
     return () => handles.forEach((h) => URL.revokeObjectURL(h));
   }, [legs]);
 
+  // The shared lightbox reads a generic { id, blob } list; each ride photo is
+  // one entry keyed by its global index (the same value the ?photo= URL uses).
+  const lightboxPhotos: LightboxPhoto[] = useMemo(() => {
+    return photoList.map((p, i) => ({
+      id: String(i),
+      blob: p.leg.photos![p.photoIndex],
+      alt: `Photo ${i + 1}`,
+    }));
+  }, [photoList]);
+
   // Prev/next inside the photo overlay (swipe pager): replaceState the ?photo=
   // param in place so Back does not stack an entry per photo — the open and
   // close stay a push/pop pair.
@@ -373,6 +396,12 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
       if (!Number.isNaN(idx)) setPhotoActiveIdx(idx);
     }
   }, [modal, photo]);
+
+  // The "Cover set" confirmation resets when the overlay closes or the user
+  // navigates to a different photo, so a different shot can be set next.
+  useEffect(() => {
+    setCoverSet(false);
+  }, [showPhotoModal, photoActiveIdx]);
 
   // Fade the page in once the ride data has actually rendered.
   useEffect(() => {
@@ -625,14 +654,23 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
         onClose={closeMapModal}
       />
 
-      {/* Fullscreen Photo Zoom Overlay (ride-wide) */}
-      <PhotoOverlay
-        isOpen={showPhotoModal}
-        photoUrls={photoList.map((p) => p.url)}
-        activeIdx={photoActiveIdx}
-        setActiveIdx={handlePhotoIdxChange}
+      {/* Fullscreen Photo Lightbox (shared photo-paper design) */}
+      <PhotoLightbox
+        open={showPhotoModal}
+        photos={lightboxPhotos}
+        activeId={String(photoActiveIdx)}
+        onNavigate={(id) => handlePhotoIdxChange(parseInt(id, 10))}
         onClose={closePhotoModal}
-        onSetCover={handleSetCover}
+        footer={({ index }) => (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleSetCover(index)}
+            disabled={coverSet}
+          >
+            {coverSet ? "✓ Cover set" : "Set as cover image"}
+          </Button>
+        )}
       />
 
       <ToastHost toasts={toasts} removeToast={removeToast} />

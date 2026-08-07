@@ -3527,24 +3527,6 @@ input[type=number] {
   margin-top: var(--spacing-md);
 }
 
-/* 'Set as ride cover' in the fullscreen photo overlay (lives in the bar) */
-.btn-overlay-cover {
-  font-family: var(--font-mechanical);
-  font-size: 11px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--color-paper);
-  background-color: var(--color-ink);
-  border: 1px solid var(--color-ink);
-  border-radius: var(--border-radius);
-  padding: 6px 12px;
-  cursor: pointer;
-}
-
-.btn-overlay-cover:hover {
-  background-color: var(--color-ink-muted);
-}
-
 /* Typewriter blocks */
 .story-note-section {
   margin-top: var(--spacing-md);
@@ -3856,16 +3838,6 @@ input[type=number] {
 }
 
 /* Backdrops */
-.photo-overlay-backdrop {
-  background-color: rgba(0, 0, 0, 0.95);
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-}
-
 .map-overlay-backdrop {
   background-color: var(--color-paper);
   background-image: 
@@ -3907,21 +3879,7 @@ input[type=number] {
   box-shadow: 1px 1px 0px var(--color-ink);
 }
 
-/* Accent override for photo close button in dark overlay */
-.photo-overlay-backdrop .btn-close-overlay {
-  background-color: var(--color-paper-dim);
-  color: var(--color-ink);
-  border: 1px solid var(--color-ink);
-  box-shadow: 2px 2px 0px var(--color-ink);
-}
-
-.photo-overlay-backdrop .btn-close-overlay:active {
-  transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0px var(--color-ink);
-}
-
 /* Zoom/Pan Containers */
-.photo-zoom-container,
 .map-zoom-container {
   width: 100%;
   height: 100%;
@@ -3931,19 +3889,6 @@ input[type=number] {
   touch-action: none; /* Disable native browser pinch-zoom/scroll overrides */
   overflow: hidden;
   user-select: none;
-}
-
-.photo-zoom-image {
-  max-width: 95vw;
-  max-height: 80vh;
-  object-fit: contain;
-  cursor: grab;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-.photo-zoom-image:active {
-  cursor: grabbing;
 }
 
 .map-zoom-inner {
@@ -3958,36 +3903,6 @@ input[type=number] {
 
 .map-zoom-inner:active {
   cursor: grabbing;
-}
-
-/* Photo overlay bottom control bar: typewriter counter + cover action */
-.photo-overlay-bar {
-  position: fixed;
-  bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom));
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 2 * var(--spacing-lg));
-  max-width: 480px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-md);
-  padding: 6px 14px;
-  box-sizing: border-box;
-  background-color: var(--color-paper);
-  border: 1px solid var(--color-ink);
-  border-radius: var(--border-radius);
-  box-shadow: 2px 2px 0px var(--color-ink);
-  z-index: 1010;
-}
-
-.photo-overlay-counter {
-  font-family: var(--font-mechanical);
-  font-size: 10px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-  white-space: nowrap;
 }
 
 /* ─── Info Modal Internals ────────────────────────────────────────────────── */
