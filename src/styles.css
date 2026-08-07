@@ -1899,6 +1899,30 @@ button:focus,
   scroll-margin-top: calc(var(--sticky-topbar-inset) + var(--sticky-topbar-offset));
 }
 
+/* Temporary search deep-link flash (P2): a SOFT sweep on the target page,
+   distinct from the persistent inverse-green .search-hit above. Fades in
+   ~200ms (~--motion-base), holds, then fades out ~400ms (~--motion-slow) over
+   ~1.2s total. The reduced-motion gate zeroes CSS durations, and the hook also
+   skips the flash entirely — double protection. */
+@keyframes search-flash-fade {
+  0% {
+    background-color: rgba(74, 93, 78, 0);
+  }
+  17% {
+    background-color: rgba(74, 93, 78, 0.2);
+  }
+  67% {
+    background-color: rgba(74, 93, 78, 0.2);
+  }
+  100% {
+    background-color: rgba(74, 93, 78, 0);
+  }
+}
+.search-flash {
+  border-radius: var(--border-radius-sm);
+  animation: search-flash-fade 1200ms ease-in-out;
+}
+
 
 
 /* Motion (D11): section headers reveal with a small rise + fade (150 ms,
