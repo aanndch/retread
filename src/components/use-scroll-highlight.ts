@@ -76,16 +76,31 @@ export function useScrollHighlight(resolveId: (scrollTo: string) => string): voi
 
   useEffect(() => {
     if (!scrollTo) return;
-    const el = document.getElementById(resolveIdRef.current(scrollTo));
-    if (!el) return;
+    const id = resolveIdRef.current(scrollTo);
     const reduced = prefersReducedMotion();
-    el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
-    if (reduced || !term) return;
-    if (flashTerm(el, term)) {
-      const timeout = window.setTimeout(() => {
+    let cleanup: (() => void) | undefined;
+    // Data-gated routes (ride/leg) render their content asynchronously, so the
+    // target element may not exist on the first effect run. Poll (like the
+    // App's restoreScroll) until it appears, then scroll + flash it.
+    let tries = 0;
+    const attempt = () => {
+      tries++;
+      const el = document.getElementById(id);
+      if (el) {
+        // Clear any stale flash mark left by a prior query before scrolling
+        // (the previous effect's cleanup only clears its timeout, not the DOM).
         el.querySelectorAll('mark.search-flash').forEach((m) => m.replaceWith(...m.childNodes));
-      }, FLASH_MS);
-      return () => window.clearTimeout(timeout);
-    }
+        el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+        if (reduced || !term || !flashTerm(el, term)) return;
+        const timeout = window.setTimeout(() => {
+          el.querySelectorAll('mark.search-flash').forEach((m) => m.replaceWith(...m.childNodes));
+        }, FLASH_MS);
+        cleanup = () => window.clearTimeout(timeout);
+        return;
+      }
+      if (tries <= 240) requestAnimationFrame(attempt);
+    };
+    requestAnimationFrame(attempt);
+    return () => cleanup?.();
   }, [scrollTo, term]);
 }
