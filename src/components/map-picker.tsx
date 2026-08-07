@@ -380,6 +380,8 @@ export function MapPicker({
                   style={{
                     fontSize: '13px', padding: '8px 32px 8px 12px',
                     boxShadow: '2px 2px 0px var(--color-shadow)',
+                    background: 'var(--color-paper)',
+                    borderRadius: 'var(--border-radius)',
                   }}
                 />
                 {searching && (
