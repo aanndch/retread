@@ -6,7 +6,8 @@ import { ToastHost, useToast } from '../../components/toast';
 import { LegStep } from './leg-step';
 import { EditRideStep } from './edit-ride-step';
 import { PhotosStep } from './photos-step';
-import { ReviewStep, type ReviewLeg } from './review-step';
+import { RideInfoStep } from './ride-info-step';
+import { LegsStep, type ReviewLeg } from './legs-step';
 import { StoryStep } from './story-step';
 import { StepActions } from './fields';
 import { useBodyScrollLock } from '../../components/use-body-scroll-lock';
@@ -167,11 +168,12 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   const skipAutoOnMountRef = useRef(false);
 
   // Wizard length depends on mode: a new ride is a photos-first flow — Photos →
-  // Review → Story (3 steps; Start/Stop fold into the Review step's ride-level
-  // and per-leg fields); a new leg / leg edit runs Details → Photos → Story (3).
-  const lastStep: WizardStep = 3;
+  // Ride Info → Legs → Story (4 steps; the ride-level fields live in Ride Info
+  // and the legs are edited in the Legs master-detail). A new leg / leg edit
+  // runs Details → Photos → Story (3).
+  const lastStep: WizardStep = mode === 'new-ride' ? 4 : 3;
   const stepNames = mode === 'new-ride'
-    ? ['Photos', 'Review', 'Story']
+    ? ['Photos', 'Ride Info', 'Legs', 'Story']
     : ['Details', 'Photos', 'Note'];
 
   // Initialize unified merging state tree
@@ -596,7 +598,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     dispatch({ coverPhotoIndex: coverPhotoIndex === index ? null : index });
   };
 
-  // Rebuild the backfill review legs whenever the Review step mounts for a
+  // Rebuild the backfill legs whenever the Ride Info step mounts (step 2) for a
   // photo set we haven't built yet. `lastBuildKeyRef` holds the photo-array
   // reference the current `reviewLegs` were built from, so re-entering the step
   // without changes stays put, while adding/removing/reordering photos triggers
@@ -798,38 +800,19 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     }
   };
 
-  // The backfill save: build one leg input per review leg and write the whole
-  // trip (ride + N legs) atomically via saveBackfillTrip.
-  const handleCreateRideFromReview = async () => {
-    if (saving) return;
-    if (reviewLegs.length === 0) return;
-    setSaving(true);
-    try {
-      const legInputs = reviewLegs.map((leg) => ({
-        date: leg.date,
-        time: leg.time || '',
-        note: '',
-        photos: leg.photoIndices.map((i) => photos[i]),
-        photoThumbs: leg.photoIndices.map((i) => photoThumbs[i]),
-        km: leg.km != null && !isNaN(leg.km) ? leg.km : null,
-        location: leg.location,
-        title: leg.title,
-      }));
-      const coverThumb =
-        coverPhotoIndex !== null ? photoThumbs[coverPhotoIndex] ?? photos[coverPhotoIndex] ?? null : null;
-      const redirectPath = await saveBackfillTrip({
-        rideTitle,
-        startLocation,
-        coverThumb,
-        legs: legInputs,
-      });
-      triggerClose(onNavigate, redirectPath);
-    } catch (err) {
-      showToast((err as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  };
+  // The backfill save writes the whole trip (ride + N legs) atomically via
+  // saveBackfillTrip. It lives in `handleSave` on the Story step (step 4), where
+  // the note lands on the first (chronological) leg.
+  const legInputsForReview = () => reviewLegs.map((leg, li) => ({
+    date: leg.date,
+    time: leg.time || '',
+    note: li === 0 ? note.trim() : '',
+    photos: leg.photoIndices.map((i) => photos[i]),
+    photoThumbs: leg.photoIndices.map((i) => photoThumbs[i]),
+    km: leg.km != null && !isNaN(leg.km) ? leg.km : null,
+    location: leg.location,
+    title: leg.title,
+  }));
 
   // Advancing (or finally saving) without a pin is the implicit "save without a
   // map" bypass; flag it so the form shows the consequence instead of hiding it.
@@ -937,16 +920,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       let redirectPath: string;
       if (mode === 'new-ride' && reviewLegs.length > 0) {
         // Backfill path: the Story note lands on the first (chronological) leg.
-        const legInputs = reviewLegs.map((leg, li) => ({
-          date: leg.date,
-          time: leg.time || '',
-          note: li === 0 ? note.trim() : '',
-          photos: leg.photoIndices.map((i) => photos[i]),
-          photoThumbs: leg.photoIndices.map((i) => photoThumbs[i]),
-          km: leg.km != null && !isNaN(leg.km) ? leg.km : null,
-          location: leg.location,
-          title: leg.title,
-        }));
+        const legInputs = legInputsForReview();
         const coverThumb =
           coverPhotoIndex !== null ? photoThumbs[coverPhotoIndex] ?? photos[coverPhotoIndex] ?? null : null;
         redirectPath = await saveBackfillTrip({
@@ -1084,22 +1058,12 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               handleCancel={handleCancel}
             />
           ) : mode === 'new-ride' && step === 2 ? (
-            <ReviewStep
-              legs={reviewLegs}
-              coverPhotoIndex={coverPhotoIndex}
-              photoPreviews={photoPreviews}
-              building={reviewBuilding}
-              onEditLeg={handleEditReviewLeg}
-              onMergeLeg={handleMergeReviewLeg}
-              onSplitLeg={handleSplitReviewLeg}
-              onSetCover={handleSetCover}
-              onCreateRide={handleCreateRideFromReview}
-              step={step}
-              handleStepJump={handleStepJump}
-              saving={saving}
+            <RideInfoStep
               rideTitle={rideTitle}
               setRideTitle={(val) => dispatch({ rideTitle: val })}
-              autoRideTitle={deriveRideTitle(reviewLegs[0]?.date || date)}
+              autoRideTitle={
+                reviewLegs[0]?.title || reviewLegs[0]?.location?.name || deriveRideTitle(reviewLegs[0]?.date || date)
+              }
               startLocation={startLocation}
               startGpsLoading={startGpsLoading}
               onClearStartLocation={onClearStartLocation}
@@ -1108,6 +1072,25 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               mapNote={mapNote}
               titleError={titleError}
               setTitleError={(val) => dispatch({ titleError: val })}
+              coverPhotoIndex={coverPhotoIndex}
+              photoPreviews={photoPreviews}
+              step={step}
+              handleStepJump={handleStepJump}
+              saving={saving}
+            />
+          ) : mode === 'new-ride' && step === 3 ? (
+            <LegsStep
+              legs={reviewLegs}
+              coverPhotoIndex={coverPhotoIndex}
+              photoPreviews={photoPreviews}
+              building={reviewBuilding}
+              onEditLeg={handleEditReviewLeg}
+              onMergeLeg={handleMergeReviewLeg}
+              onSplitLeg={handleSplitReviewLeg}
+              onSetCover={handleSetCover}
+              step={step}
+              handleStepJump={handleStepJump}
+              saving={saving}
               onOpenLegMapPicker={handleOpenLegMapPicker}
               onClearLegLocation={handleClearLegLocation}
               onRetryLegGps={handleRetryLegGps}
