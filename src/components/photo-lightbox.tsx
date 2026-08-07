@@ -54,6 +54,7 @@ export function PhotoLightbox({
   ariaLabel = 'Photo viewer',
 }: PhotoLightboxProps) {
   const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
   const backdropRef = useRef<HTMLDivElement>(null);
   const { visible, closing } = useExitFade(open, 150);
   useBodyScrollLock(visible);
@@ -68,6 +69,11 @@ export function PhotoLightbox({
 
   const activeIdx = Math.max(0, photos.findIndex((p) => p.id === resolvedActiveId));
   const active = photos[activeIdx];
+
+  const step = (dir: 1 | -1) => {
+    const next = (activeIdx + dir + photos.length) % photos.length;
+    onNavigate(photos[next].id);
+  };
 
   // Full-size object URL for the active photo only, so a big book never holds
   // hundreds of full-size URLs in memory at once. Keyed on `visible` so the
@@ -92,26 +98,32 @@ export function PhotoLightbox({
     return () => URL.revokeObjectURL(url);
   }, [visible, activeIdx, photos, active]);
 
-  // Dialog semantics: Escape closes. Focus handling (move into the backdrop on
-  // open, trap Tab, restore on close) lives in useOverlayFocus.
+  // Dialog semantics: Escape closes, ←/→ navigate (focus-aware — never hijack
+  // arrows while an input/textarea/select or contenteditable has focus). Focus
+  // handling (move into the backdrop on open, trap Tab, restore on close)
+  // lives in useOverlayFocus.
   useEffect(() => {
     if (!visible) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
         onClose();
+        return;
       }
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      const inEditable =
+        tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || !!t?.isContentEditable;
+      if (inEditable) return;
+      e.preventDefault();
+      step(e.key === 'ArrowLeft' ? -1 : 1);
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [visible, onClose]);
+  }, [visible, onClose, step]);
 
   if (!visible || photos.length === 0) return null;
-
-  const step = (dir: 1 | -1) => {
-    const next = (activeIdx + dir + photos.length) % photos.length;
-    onNavigate(photos[next].id);
-  };
 
   const footerAction = footer ? footer({ photo: active, index: activeIdx, total: photos.length }) : null;
 
@@ -129,18 +141,22 @@ export function PhotoLightbox({
         <CloseIcon size={16} />
       </button>
 
+      {meta && <span class="photo-paper-meta">{meta}</span>}
+
       <div
         class="photo-paper-stage"
         onClick={(e) => e.stopPropagation()}
         onTouchStart={(e: TouchEvent) => {
           touchStartX.current = e.touches[0].clientX;
+          touchStartY.current = e.touches[0].clientY;
         }}
         onTouchEnd={(e: TouchEvent) => {
-          const delta = touchStartX.current - e.changedTouches[0].clientX;
-          if (Math.abs(delta) > 50) step(delta > 0 ? 1 : -1);
+          const dx = touchStartX.current - e.changedTouches[0].clientX;
+          const dy = touchStartY.current - e.changedTouches[0].clientY;
+          // Horizontal swipe dominates vertical and clears the threshold.
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) step(dx > 0 ? 1 : -1);
         }}
       >
-        {meta && <span class="photo-paper-meta">{meta}</span>}
         <div class="photo-paper-frame">
           {fullUrl && (
             <img src={fullUrl} alt={active?.alt || 'Ride photograph'} class="photo-paper-img" />
@@ -149,29 +165,34 @@ export function PhotoLightbox({
       </div>
 
       <div class="photo-paper-footer" onClick={(e) => e.stopPropagation()}>
-        <div class="photo-paper-pager">
-          <button
-            type="button"
-            class="photo-pager-btn"
-            aria-label="Previous photo"
-            onClick={() => step(-1)}
-          >
-            ◀
-          </button>
-          <span class="photo-paper-counter">
-            {String(activeIdx + 1).padStart(2, '0')} / {String(photos.length).padStart(2, '0')}
-          </span>
-          <button
-            type="button"
-            class="photo-pager-btn"
-            aria-label="Next photo"
-            onClick={() => step(1)}
-          >
-            ▶
-          </button>
-        </div>
+        <span class="photo-paper-counter">
+          {String(activeIdx + 1).padStart(2, '0')} / {String(photos.length).padStart(2, '0')}
+        </span>
         {footerAction && <span class="photo-paper-action">{footerAction}</span>}
       </div>
+
+      <button
+        type="button"
+        class="photo-edge-arrow photo-edge-arrow--prev"
+        aria-label="Previous photo"
+        onClick={(e) => {
+          e.stopPropagation();
+          step(-1);
+        }}
+      >
+        ◀
+      </button>
+      <button
+        type="button"
+        class="photo-edge-arrow photo-edge-arrow--next"
+        aria-label="Next photo"
+        onClick={(e) => {
+          e.stopPropagation();
+          step(1);
+        }}
+      >
+        ▶
+      </button>
     </div>
   );
 }

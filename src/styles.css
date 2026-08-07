@@ -4202,32 +4202,42 @@ input[type=number] {
   animation: fade-out var(--motion-fast) ease-in forwards;
 }
 
-.photo-paper-stage {
-  flex: 1;
+/* Fixed-height top band for the marginalia. Sized by its own content (a single
+   mechanical kicker line) and laid out as a non-flexing sibling above the
+   reflowing stage, so the title never shifts when the photo mount resizes
+   between aspect ratios. */
+.photo-paper-meta {
+  flex: 0 0 auto;
+  height: 44px;
   width: 100%;
+  max-width: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-sm);
-  padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom));
-  min-height: 0;
-  touch-action: pan-y;
-  animation: fade-in var(--motion-fast) ease-out;
-}
-
-.photo-paper-meta {
+  box-sizing: border-box;
   font-family: var(--font-mechanical);
   font-size: 10px;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--color-ink-muted);
-  max-width: 100%;
+  padding: 0 var(--spacing-lg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 0 var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
+}
+
+/* Reflowing mount stage: the only flexing sibling. It takes all the vertical
+   space the fixed meta band (top) and fixed footer (bottom) leave, and the
+   frame/image reflow (object-fit: contain) happens only inside here. */
+.photo-paper-stage {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-sm);
+  touch-action: pan-y;
 }
 
 .photo-paper-frame {
@@ -4266,42 +4276,20 @@ input[type=number] {
   border-radius: var(--border-radius-sm);
 }
 
+/* Fixed-height footer band (counter + optional action). Flex:0 sibling so it
+   holds its place while the mount reflows above it; only the counter and the
+   action slot remain here — the prev/next arrows now live at the screen edges. */
 .photo-paper-footer {
+  flex: 0 0 auto;
   width: 100%;
   max-width: 480px;
+  min-height: calc(var(--spacing-lg) * 2);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-md);
   padding: var(--spacing-md) var(--spacing-lg) calc(var(--spacing-lg) + env(safe-area-inset-bottom));
   box-sizing: border-box;
-}
-
-.photo-paper-pager {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.photo-pager-btn {
-  font-family: var(--font-typewriter);
-  font-size: 14px;
-  line-height: 1;
-  color: var(--color-ink);
-  background: transparent;
-  border: none;
-  padding: 6px 8px;
-  cursor: pointer;
-  border-radius: var(--border-radius-sm);
-  transition: color 0.1s ease, transform 0.1s ease;
-}
-
-.photo-pager-btn:hover {
-  color: var(--color-green);
-}
-
-.photo-pager-btn:active {
-  transform: translateY(1px);
 }
 
 .photo-paper-counter {
@@ -4312,7 +4300,47 @@ input[type=number] {
   text-transform: uppercase;
   white-space: nowrap;
   min-width: 52px;
-  text-align: center;
+}
+
+/* Edge chevrons: typewriter ◀ / ▶ pinned to the left/right screen edges,
+   vertically centered, with a generous (~44px) hit area and a subtle
+   ink-muted → green hover/active. Absolute within the fixed backdrop so they
+   never affect the flex column layout. */
+.photo-edge-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1005;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  font-family: var(--font-typewriter);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-ink-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: color 0.1s ease, transform 0.1s ease;
+}
+
+.photo-edge-arrow--prev {
+  left: 0;
+}
+
+.photo-edge-arrow--next {
+  right: 0;
+}
+
+.photo-edge-arrow:hover {
+  color: var(--color-green);
+}
+
+.photo-edge-arrow:active {
+  transform: translateY(-50%) translateX(1px);
 }
 
 /* Stamped mechanical action button (SET AS COVER / VIEW RIDE): ink border,
