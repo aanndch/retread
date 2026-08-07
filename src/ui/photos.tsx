@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo } from 'preact/hooks';
 import { PageHeader } from '../components/page-header';
 import { Button } from '../components/button';
 import { galleryPhotoId, type GalleryPhoto } from './use-gallery-photos';
@@ -21,16 +21,23 @@ interface PhotosProps {
 // lightbox via "#/photos?photo=N". Thumb object URLs are created here,
 // locally, so a big book never holds more URLs than what's on this screen.
 export function Photos({ ridesData, photos, photoId, onOpenPhoto, onClose, onNavigatePhoto, onNavigate, onNavigateBack }: PhotosProps) {
-  const [wall, setWall] = useState<{ p: GalleryPhoto; url: string }[]>([]);
+  // Built synchronously so the first render already has every tile — no
+  // empty-first-render flash. URLs are created here, locally, and revoked by
+  // the cleanup effect below: on `photos` change the previous memo's URLs are
+  // revoked before the next render commits, and on unmount all of them are
+  // released. A URL is never used after it is revoked (no ERR_FILE_NOT_FOUND).
+  const wall = useMemo<{ p: GalleryPhoto; url: string }[]>(
+    () =>
+      photos.map((p) => ({
+        p,
+        url: URL.createObjectURL(p.leg.photoThumbs?.[p.photoIndex] || p.leg.photos![p.photoIndex]),
+      })),
+    [photos],
+  );
 
   useEffect(() => {
-    const created: { p: GalleryPhoto; url: string }[] = photos.map((p) => ({
-      p,
-      url: URL.createObjectURL(p.leg.photoThumbs?.[p.photoIndex] || p.leg.photos![p.photoIndex]),
-    }));
-    setWall(created);
-    return () => created.forEach((t) => URL.revokeObjectURL(t.url));
-  }, [photos]);
+    return () => wall.forEach((t) => URL.revokeObjectURL(t.url));
+  }, [wall]);
 
   return (
     <div class="photos-container">
