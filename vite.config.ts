@@ -67,12 +67,12 @@ export default defineConfig({
             }
           },
           {
-            urlPattern: /^https:\/\/[a-d]\.basemaps\.cartocdn\.com\/.*/i,
+            urlPattern: /^https:\/\/tiles\.openfreemap\.org\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'cartodb-tiles',
+              cacheName: 'openfreemap-tiles',
               expiration: {
-                maxEntries: 200,
+                maxEntries: 300,
                 maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
               }
             }

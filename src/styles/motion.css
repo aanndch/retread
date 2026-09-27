@@ -186,40 +186,36 @@
   margin-top: 1px;
 }
 
-/* ─── Leaflet Minimal & Typewriter Theme Overrides ────────────────────────── */
+/* ─── MapLibre / OpenFreeMap Typewriter Theme Overrides ─────────────────── */
 
-
-
-/* 2. Typewriter Zoom Controls Override */
-.leaflet-bar {
+.maplibregl-ctrl-group {
   border: 1px solid var(--color-ink) !important;
   border-radius: var(--border-radius) !important;
   box-shadow: 3px 3px 0px var(--color-shadow) !important;
   overflow: hidden;
+  background-color: var(--color-paper) !important;
 }
 
-.leaflet-bar a {
+.maplibregl-ctrl-group button {
   background-color: var(--color-paper) !important;
-  color: var(--color-ink) !important;
   border-bottom: 1px solid var(--color-paper-dim) !important;
-  font-family: var(--font-mechanical) !important;
-  font-weight: bold !important;
   transition: background-color 0.2s ease, color 0.2s ease !important;
 }
 
-.leaflet-bar a:hover {
-  background-color: var(--color-paper-dim) !important;
-  color: var(--color-ink) !important;
+.maplibregl-ctrl-group button:last-child {
+  border-bottom: none !important;
 }
 
-.leaflet-bar a.leaflet-disabled {
+.maplibregl-ctrl-group button:hover {
+  background-color: var(--color-paper-dim) !important;
+}
+
+.maplibregl-ctrl-group button:disabled {
   background-color: var(--color-paper-dim) !important;
   opacity: 0.5 !important;
-  color: var(--color-ink-muted) !important;
 }
 
-/* 3. Attribution Bar Override */
-.leaflet-container .leaflet-control-attribution {
+.maplibregl-ctrl-attrib {
   background: var(--color-paper-dim) !important;
   color: var(--color-ink-muted) !important;
   font-family: var(--font-mechanical) !important;
@@ -229,7 +225,7 @@
   border-top: 1px solid var(--color-ink-muted);
 }
 
-.leaflet-container .leaflet-control-attribution a {
+.maplibregl-ctrl-attrib a {
   color: var(--color-ink) !important;
   text-decoration: underline !important;
 }

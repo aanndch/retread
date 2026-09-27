@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { Button } from './button';
 import { FieldCard } from './field-card';
-import { loadLeaflet, geocodePlace, reverseGeocode, type GeocodePlace } from '../ui/editor/utils';
+import { loadMaplibre, geocodePlace, reverseGeocode, type GeocodePlace, type MaplibreGLModule } from '../ui/editor/utils';
 import { getActiveTheme, Theme } from '../theme';
 import type { LocationUnion } from '../types';
 import { useExitFade } from './use-exit-fade';
+import type { Map as MaplibreMap, Marker as MaplibreMarker } from 'maplibre-gl';
 
 interface MapPickerProps {
   isOpen: boolean;
@@ -18,13 +19,14 @@ interface MapPickerProps {
 const MIN_QUERY_LEN = 3;
 const DEBOUNCE_MS = 500;
 const SEARCH_TIMEOUT_MS = 10000;
-// No existing pin and no fallback: open on India rather than a random town.
-const DEFAULT_CENTER: [number, number] = [20.5937, 78.9629];
 
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-// Dark themes use CARTO's dark_all raster set so the picker map matches the
-// paper, instead of a light map glaring inside a dark sheet.
-const DARK_TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+// No existing pin and no fallback: open on India rather than a random town.
+// MapLibre coordinates are [lng, lat] (GeoJSON standard).
+const DEFAULT_CENTER: [number, number] = [78.9629, 20.5937];
+
+// OpenFreeMap vector styles: 100% free, no API key or token required.
+const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
+const DARK_STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
 const DARK_THEMES: ReadonlySet<string> = new Set([Theme.Nightfall, Theme.Midnight, Theme.Cyberpunk]);
 
 // The selection point is the map center until the user taps the map, which
@@ -45,15 +47,16 @@ export function MapPicker({
   onClose,
   showToast,
 }: MapPickerProps) {
-  const [leafletLoaded, setLeafletLoaded] = useState(false);
-  const [leafletFailed, setLeafletFailed] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapFailed, setMapFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   // Overlay envelope: the picker is plain component state (isOpen), so closing
   // is a plain onClose() — useExitFade keeps us mounted through the
   // --motion-base fade-out before the parent flips isOpen false.
   const { visible, closing } = useExitFade(isOpen);
 
-  const mapRef = useRef<any>(null);
+  const maplibreglRef = useRef<MaplibreGLModule | null>(null);
+  const mapRef = useRef<MaplibreMap | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Search state
@@ -69,10 +72,8 @@ export function MapPicker({
   const searchInputRef = useRef<HTMLInputElement>(null);
   // The tapped pin position; null until the user taps the map (center fallback).
   const pinnedRef = useRef<{ lat: number; lng: number } | null>(null);
-  // Live Leaflet pin marker + its icon, so placing a pin (tap, existing pin,
-  // or a picked search result) works from anywhere in the component.
-  const pinMarkerRef = useRef<any>(null);
-  const pinIconRef = useRef<any>(null);
+  // Live MapLibre pin marker, so placing a pin works from anywhere in the component.
+  const pinMarkerRef = useRef<MaplibreMarker | null>(null);
   // The stop's label — edited in the modal, reverse-geocoded onto nameless pins.
   const [nameValue, setNameValue] = useState('');
   const nameValueRef = useRef('');
@@ -83,15 +84,20 @@ export function MapPicker({
   initialLocationRef.current = initialLocation;
   fallbackCenterRef.current = fallbackCenter;
 
-  // Load Leaflet once on mount; bumping loadAttempt retries after a failure.
+  // Load MapLibre once on mount; bumping loadAttempt retries after a failure.
   useEffect(() => {
     let active = true;
-    setLeafletFailed(false);
-    loadLeaflet()
-      .then(() => { if (active) setLeafletLoaded(true); })
+    setMapFailed(false);
+    loadMaplibre()
+      .then((m) => {
+        if (active) {
+          maplibreglRef.current = m;
+          setMapLoaded(true);
+        }
+      })
       .catch((err) => {
-        console.error('Failed to load Leaflet library:', err);
-        if (active) setLeafletFailed(true);
+        console.error('Failed to load MapLibre library:', err);
+        if (active) setMapFailed(true);
       });
     return () => { active = false; };
   }, [loadAttempt]);
@@ -124,55 +130,58 @@ export function MapPicker({
   // existing pin, and picking a search result.
   const placePinAt = useCallback((latlng: { lat: number; lng: number }) => {
     const map = mapRef.current;
-    if (!map) return;
+    const maplibregl = maplibreglRef.current;
+    if (!map || !maplibregl) return;
     if (pinMarkerRef.current) {
-      pinMarkerRef.current.setLatLng([latlng.lat, latlng.lng]);
+      pinMarkerRef.current.setLngLat([latlng.lng, latlng.lat]);
       return;
     }
-    const L = (window as any).L;
-    pinMarkerRef.current = L.marker([latlng.lat, latlng.lng], {
-      icon: pinIconRef.current,
-      interactive: false,
-    }).addTo(map);
+    const el = document.createElement('div');
+    el.className = 'map-picker-pin';
+    el.innerHTML = PIN_HTML;
+    pinMarkerRef.current = new maplibregl.Marker({
+      element: el,
+      anchor: 'bottom',
+    })
+      .setLngLat([latlng.lng, latlng.lat])
+      .addTo(map);
   }, []);
 
-  // Create the map when open + Leaflet ready; tear it down when closed so the
+  // Create the map when open + MapLibre ready; tear it down when closed so the
   // next open always gets a fresh, correctly-centered instance. Keyed on
   // `visible` (not isOpen) so the map survives the exit fade and doesn't blank
   // out mid-close.
   useEffect(() => {
-    if (!visible || !leafletLoaded || !containerRef.current) return;
-    const L = (window as any).L;
+    if (!visible || !mapLoaded || !containerRef.current || !maplibreglRef.current) return;
+    const maplibregl = maplibreglRef.current;
     const initLoc = initialLocationRef.current;
     const fbCenter = fallbackCenterRef.current;
     let center: [number, number] = DEFAULT_CENTER;
-    if (initLoc?.kind === 'gps') center = [initLoc.lat, initLoc.lng];
-    else if (fbCenter) center = fbCenter;
+    if (initLoc?.kind === 'gps') {
+      center = [initLoc.lng, initLoc.lat];
+    } else if (fbCenter) {
+      center = [fbCenter[1], fbCenter[0]]; // fallbackCenter is [lat, lng]
+    }
 
-    let map: any;
+    const isDark = DARK_THEMES.has(getActiveTheme());
+    let map: MaplibreMap;
     try {
-      map = L.map(containerRef.current, { zoomControl: false }).setView(center, 13);
+      map = new maplibregl.Map({
+        container: containerRef.current,
+        style: isDark ? DARK_STYLE_URL : STYLE_URL,
+        center,
+        zoom: 13,
+        attributionControl: false,
+      });
     } catch (err) {
       console.error('Failed to create map:', err);
-      setLeafletFailed(true);
+      setMapFailed(true);
       showToast('Error setting up the map.');
       return;
     }
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-    L.tileLayer(DARK_THEMES.has(getActiveTheme()) ? DARK_TILE_URL : TILE_URL, {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-      subdomains: 'abcd',
-      maxZoom: 20,
-    }).addTo(map);
-
-    const icon = L.divIcon({
-      className: 'map-picker-pin',
-      html: PIN_HTML,
-      iconSize: [30, 36],
-      iconAnchor: [15, 34],
-    });
-    pinIconRef.current = icon;
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
 
     // The pin is created lazily — the map starts blank so the user knows to
     // place it. Editing an existing pin shows it at its current spot.
@@ -183,13 +192,15 @@ export function MapPicker({
     }
 
     // Tap-to-place: tapping the map drops the pin at that exact spot.
-    map.on('click', (e: any) => {
+    map.on('click', (e) => {
       setShowResults(false);
       setNoMatches(false);
-      pinnedRef.current = { lat: e.latlng.lat, lng: e.latlng.lng };
-      placePinAt(e.latlng);
+      const lat = e.lngLat.lat;
+      const lng = e.lngLat.lng;
+      pinnedRef.current = { lat, lng };
+      placePinAt({ lat, lng });
       setPinnedNow(true);
-      fillNameFromPin(e.latlng.lat, e.latlng.lng);
+      fillNameFromPin(lat, lng);
     });
     map.on('dragstart', () => setShowResults(false));
 
@@ -203,12 +214,12 @@ export function MapPicker({
     // showToast is stable for the picker's lifetime; recreating the map on a
     // toast identity change would be wrong, so it is intentionally excluded.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, leafletLoaded]);
+  }, [visible, mapLoaded]);
 
   // Focus search when the picker opens with the map ready.
   useEffect(() => {
-    if (isOpen && leafletLoaded) searchInputRef.current?.focus();
-  }, [isOpen, leafletLoaded]);
+    if (isOpen && mapLoaded) searchInputRef.current?.focus();
+  }, [isOpen, mapLoaded]);
 
   // Escape closes the picker.
   useEffect(() => {
@@ -274,7 +285,7 @@ export function MapPicker({
   // Pan the map to a geocoded result, place the pin there, and adopt its name.
   const handleSelectResult = (r: GeocodePlace) => {
     const map = mapRef.current;
-    if (map) map.setView([r.lat, r.lng], 14);
+    if (map) map.flyTo({ center: [r.lng, r.lat], zoom: 14 });
     pinnedRef.current = { lat: r.lat, lng: r.lng };
     placePinAt({ lat: r.lat, lng: r.lng });
     setPinnedNow(true);
@@ -338,7 +349,7 @@ export function MapPicker({
 
         {/* Map container — search floats on top */}
         <div style={{ position: 'relative', width: '100%', height: 'min(420px, 60vh)' }}>
-          {!leafletLoaded && !leafletFailed ? (
+          {!mapLoaded && !mapFailed ? (
             <div style={{
               width: '100%', height: '100%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -347,7 +358,7 @@ export function MapPicker({
             }}>
               Loading map...
             </div>
-          ) : leafletFailed ? (
+          ) : mapFailed ? (
             <div style={{
               width: '100%', height: '100%',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px',
@@ -365,7 +376,7 @@ export function MapPicker({
           )}
 
           {/* Search bar — floats on top of the map */}
-          {leafletLoaded && !leafletFailed && (
+          {mapLoaded && !mapFailed && (
             <div style={{ position: 'absolute', top: '12px', left: '12px', right: '12px', zIndex: 2200 }}>
               <div style={{ position: 'relative' }}>
                 <input
@@ -524,7 +535,7 @@ export function MapPicker({
                 Add without a pin
               </Button>
             )}
-            <Button variant="primary" size="sm" onClick={handleConfirm} disabled={!leafletLoaded || leafletFailed || !pinnedNow}>
+            <Button variant="primary" size="sm" onClick={handleConfirm} disabled={!mapLoaded || mapFailed || !pinnedNow}>
               Confirm Location
             </Button>
           </div>

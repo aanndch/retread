@@ -76,40 +76,28 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
   }
 }
 
-// Shared Leaflet loader: concurrent callers get one in-flight attempt, a
-// partial global (script loaded, CSS missing) is not mistaken for success, and
-// a failure clears the cache so a later retry actually reloads.
-let leafletLoadPromise: Promise<void> | null = null;
+// Shared MapLibre GL loader: concurrent callers get one in-flight attempt,
+// styles and the library are dynamically imported on-demand, and failures
+// clear the cache so a retry can reload.
+export type MaplibreGLModule = typeof import('maplibre-gl');
 
-export const loadLeaflet = (): Promise<void> => {
-  if ((window as any).L?.map) return Promise.resolve();
-  if (leafletLoadPromise) return leafletLoadPromise;
+let maplibreLoadPromise: Promise<MaplibreGLModule> | null = null;
+let maplibreInstance: MaplibreGLModule | null = null;
 
-  leafletLoadPromise = new Promise<void>((resolve, reject) => {
-    // Guard against duplicate stylesheets with an id.
-    if (!document.getElementById('leaflet-css')) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
+export const loadMaplibre = async (): Promise<MaplibreGLModule> => {
+  if (maplibreInstance) return maplibreInstance;
+  if (maplibreLoadPromise) return maplibreLoadPromise;
 
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => {
-      if ((window as any).L?.map) resolve();
-      else reject(new Error('Leaflet loaded without a usable API'));
-    };
-    script.onerror = () => reject(new Error('Failed to load Leaflet script'));
-    document.body.appendChild(script);
-  });
+  maplibreLoadPromise = (async () => {
+    await import('maplibre-gl/dist/maplibre-gl.css');
+    const mod = await import('maplibre-gl');
+    maplibreInstance = mod;
+    return mod;
+  })();
 
-  // Clear the cache on settle so a rejected load can be retried; the L guard
-  // above short-circuits future calls once it succeeds.
-  leafletLoadPromise
-    .finally(() => { leafletLoadPromise = null; })
-    .catch(() => { /* swallow on the detached chain */ });
+  maplibreLoadPromise
+    .finally(() => { maplibreLoadPromise = null; })
+    .catch(() => { /* swallow on detached chain so retries work */ });
 
-  return leafletLoadPromise;
+  return maplibreLoadPromise;
 };
