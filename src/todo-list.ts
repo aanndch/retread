@@ -55,7 +55,7 @@ export const TODO_SECTIONS: TodoSection[] = [
       { id: 'pwa', title: 'PWA install prompt & iOS backup reminder', status: 'done', note: 'Add to Home Screen without hunting the browser menu' },
       { id: 'themes', title: '7 themes with system detection', status: 'done' },
       { id: 'compress', title: 'Automatic photo compression & thumbnails', status: 'done', note: 'EXIF-safe resize on upload keeps backups lean' },
-      { id: 'osrm', title: 'Field-logbook distance & route lines', status: 'done', note: 'Fast, offline route lines connecting stops and via points with direct Haversine measurement' },
+      { id: 'osrm', title: 'Real-road distance measurement', status: 'done', note: 'Routes snap to OpenStreetMap roads via OSRM with via-point corridor steering' },
       { id: 'rm-gallery', title: 'Photo gallery tab', status: 'done', badge: 'BROWSE', note: 'A `#/photos` page — global all-photos view with a masonry grid and the shared photo lightbox.' },
       { id: 'search-redesign', title: 'Routed search page with journal, suggestions & sectioned results', status: 'done', note: '`#/search?q=` deep-linkable; recents (localStorage), green-prefix suggestions, RIDES/LEGS catalog, no-results stub, relevance scoring.' },
       { id: 'search-deeplink', title: 'Search results deep-link to the exact spot', status: 'done', note: 'Scroll-to + flash the matched term on the leg/ride page via `?scrollTo=&q=`.' },

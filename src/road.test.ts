@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { haversineDistance, snapLeg } from './road';
 
 describe('haversineDistance', () => {
@@ -16,28 +16,63 @@ describe('haversineDistance', () => {
   });
 });
 
-describe('snapLeg (field-logbook routing)', () => {
-  it('connects start and destination directly when no viaPoints are provided', async () => {
-    const from = { lat: 12.97, lng: 77.59 };
-    const to = { lat: 12.30, lng: 76.64 };
+describe('snapLeg (real-road snapping with via points)', () => {
+  const originalFetch = globalThis.fetch;
 
-    const result = await snapLeg(from, to);
-    expect(result).toEqual([from, to]);
+  beforeEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it('connects start, intermediate viaPoints, and destination in order', async () => {
-    const from = { lat: 12.97, lng: 77.59 };
-    const via = [
-      { lat: 12.52, lng: 76.89, name: 'Mandya' },
-      { lat: 12.41, lng: 76.71, name: 'Srirangapatna' },
-    ];
-    const to = { lat: 12.30, lng: 76.64 };
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
 
-    const result = await snapLeg(from, to, via);
-    expect(result).toHaveLength(4);
-    expect(result[0]).toEqual(from);
-    expect(result[1]).toEqual(via[0]);
-    expect(result[2]).toEqual(via[1]);
-    expect(result[3]).toEqual(to);
+  it('includes viaPoints in OSRM query string and decodes route geometry', async () => {
+    const from = { lat: 18.52, lng: 73.85 }; // Pune
+    const via = [{ lat: 16.70, lng: 74.24, name: 'Kolhapur' }];
+    const to = { lat: 14.46, lng: 75.92 }; // Davangere
+
+    let requestedUrl = '';
+    globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+      requestedUrl = url;
+      return {
+        ok: true,
+        json: async () => ({
+          code: 'Ok',
+          routes: [
+            {
+              distance: 630000,
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  [73.85, 18.52],
+                  [74.24, 16.70],
+                  [75.92, 14.46],
+                ],
+              },
+            },
+          ],
+        }),
+      };
+    });
+
+    const result = await snapLeg(from, to, via, { maxAttempts: 0 });
+
+    expect(requestedUrl).toContain('73.85,18.52;74.24,16.7;75.92,14.46');
+    expect(result).toHaveLength(3);
+    expect(result[0]).toEqual({ lat: 18.52, lng: 73.85 });
+    expect(result[1]).toEqual({ lat: 16.70, lng: 74.24 });
+    expect(result[2]).toEqual({ lat: 14.46, lng: 75.92 });
+  });
+
+  it('falls back to straight-line waypoints when OSRM fails', async () => {
+    const from = { lat: 18.52, lng: 73.85 };
+    const via = [{ lat: 16.70, lng: 74.24 }];
+    const to = { lat: 14.46, lng: 75.92 };
+
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network offline'));
+
+    const result = await snapLeg(from, to, via, { maxAttempts: 0, timeoutMs: 50 });
+    expect(result).toEqual([from, via[0], to]);
   });
 });

@@ -13,6 +13,15 @@ export const HASH_SEARCH = '#/search';
 export const HASH_RIDE_PREFIX = '#/ride/';
 export const HASH_LEG_PREFIX = '#/leg/';
 
+// OSRM Map Snapping API Settings
+export const OSRM_DRIVING_BASE_URL = 'https://router.project-osrm.org/route/v1/driving/';
+export const OSRM_FALLBACK_BASE_URL = 'https://routing.openstreetmap.de/routed-car/route/v1/driving/';
+
+// OSRM Resilience Settings
+export const SNAP_TIMEOUT_MS = 15000;
+export const SNAP_RETRIES = 2;
+export const SNAP_RETRY_BACKOFF_MS = 600;
+
 // Image Attachment Compression Defaults
 export const MAX_IMAGE_EDGE = 1600; // Max edge length for compressed images
 export const IMAGE_COMPRESSION_QUALITY = 0.8; // Quality level for compressed JPEGs
