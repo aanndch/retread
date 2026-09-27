@@ -19,6 +19,7 @@ import {
   HASH_RIDE_PREFIX,
   HASH_LEG_PREFIX,
 } from './constants';
+import { shouldNavigateHistoryBack } from './nav';
 import { getSWUpdate } from './main';
 
 // Normalize a raw location.hash ("#/ride/3", "#/edit?mode=x", "#/", "") to
@@ -197,8 +198,10 @@ export function App() {
       // Remember the outgoing hash as the in-app predecessor for the back
       // button — before the same-page guard can early-return, so ?photo= /
       // ?modal= pushes on the same route still register the page they were
-      // opened from.
-      prevInAppHashRef.current = prevHash;
+      // opened from. Transient editor routes never pollute the predecessor.
+      if (!prevHash.startsWith('#/edit')) {
+        prevInAppHashRef.current = prevHash;
+      }
 
       // A deep-link scroll target (?scrollTo=) owns the scroll on arrival — the
       // generic restore below would overwrite the target page's scrollIntoView
@@ -329,15 +332,14 @@ export function App() {
   // Back navigation: return to where the user actually came from — the search
   // results, the gallery lightbox, a parent ride — by popping history when an
   // in-app predecessor exists, so the previous URL, query params, and lightbox
-  // state are restored exactly. With no predecessor (fresh deep link) or on a
-  // same-hash edge, fall back to the caller's logical parent via replace, so
-  // the app is never left. No depth tracking: one ref, updated on hashchange.
+  // state are restored exactly. Transient editor routes and child legs on parent
+  // ride views are never valid predecessors. With no predecessor (fresh deep link)
+  // or on a same-hash edge, fall back to the caller's logical parent via replace,
+  // so the app is never left. No depth tracking: one ref, updated on hashchange.
   const navigateBack = useCallback((logicalParent: string | null) => {
     const current = window.location.hash || HASH_HOME;
     const prev = prevInAppHashRef.current;
-    const hasInAppPredecessor =
-      prev !== null && prev.startsWith('#/') && prev !== current;
-    if (hasInAppPredecessor) {
+    if (shouldNavigateHistoryBack(current, prev)) {
       history.back();
     } else if (logicalParent) {
       window.location.replace(logicalParent);

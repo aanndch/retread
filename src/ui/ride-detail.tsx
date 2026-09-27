@@ -427,7 +427,7 @@ export function RideDetail({ rideId, onNavigate, onNavigateBack, onReady }: Ride
         await db.legs.where("rideId").equals(rideId).delete();
         await db.rides.delete(rideId);
       });
-      onNavigate("#/");
+      window.location.replace(HASH_HOME);
     } catch (err) {
       console.error("Failed to delete ride logbook:", err);
       showToast("Failed to delete ride.");

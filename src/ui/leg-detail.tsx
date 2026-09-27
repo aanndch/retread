@@ -219,7 +219,7 @@ export function LegDetail({ legId, onNavigate, onNavigateBack, onReady }: LegDet
       const rideId = leg.rideId;
       await db.legs.delete(legId);
       await backfillRideRoutes(rideId);
-      onNavigate(`#/ride/${rideId}`);
+      window.location.replace(`#/ride/${rideId}`);
     } catch (err) {
       console.error("Failed to delete leg:", err);
       showToast("Failed to delete leg.");

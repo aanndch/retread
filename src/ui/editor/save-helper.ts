@@ -178,7 +178,7 @@ export async function saveEditorDetails(
     backfillRideRoutes(existingLeg.rideId).catch((snapErr) => {
       console.warn('Snapping routes failed during edit save:', snapErr);
     });
-    return `#/ride/${existingLeg.rideId}`;
+    return `#/leg/${legId}`;
   } else {
     legData.title = await resolveTitle(activeRideId!);
     await db.legs.add({

@@ -154,11 +154,11 @@ function padTime(d: Date): string {
 // ==========================================
 
 interface EditorProps {
-  onNavigate: (route: string) => void;
+  onNavigate?: (route: string) => void;
   onNavigateBack: (logicalParent: string | null) => void;
 }
 
-export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
+export function Editor({ onNavigateBack }: EditorProps) {
   // Parse routing parameters from the in-hash query (`#/edit?mode=...`).
   const [searchParams] = useSearchParams();
   const rawMode = searchParams.get('mode');
@@ -950,8 +950,8 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   };
 
   // Cancel closes back to the page's logical parent (pops in-app history when
-  // possible). Save moves forward to the created/edited page (pushes). Both
-  // share the same exit fade, so the nav function is passed in.
+  // possible). Save replaces or pops history so the editor never leaves a
+  // trail in browser history. Both share the same exit fade.
   const triggerClose = (nav: (path: string) => void, path: string) => {
     setIsClosing(true);
     setTimeout(() => {
@@ -998,7 +998,11 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       } else {
         redirectPath = await saveEditorDetails(mode, rideId, legId, state);
       }
-      triggerClose(onNavigate, redirectPath);
+      if (mode === 'new-ride') {
+        triggerClose((p) => window.location.replace(p), redirectPath);
+      } else {
+        triggerClose(onNavigateBack, redirectPath);
+      }
     } catch (err) {
       showToast((err as Error).message);
     } finally {
