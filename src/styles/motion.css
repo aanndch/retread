@@ -99,6 +99,118 @@
   cursor: grabbing;
 }
 
+/* Route Explorer Map Modal */
+.map-route-canvas-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+}
+
+.map-route-caption {
+  position: absolute;
+  top: calc(var(--spacing-md) + env(safe-area-inset-top));
+  left: calc(var(--spacing-md) + env(safe-area-inset-left));
+  max-width: calc(100% - 110px);
+  z-index: 1005;
+  background-color: color-mix(in srgb, var(--color-paper) 92%, transparent);
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  box-shadow: 2px 2px 0px var(--color-shadow);
+  border-radius: var(--border-radius);
+  padding: 6px 12px;
+  font-family: var(--font-typewriter);
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.btn-map-fit {
+  position: absolute;
+  bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom));
+  left: calc(var(--spacing-md) + env(safe-area-inset-left));
+  z-index: 1005;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  box-shadow: 2px 2px 0px var(--color-shadow);
+  border-radius: var(--border-radius);
+  padding: 7px 12px;
+  font-family: var(--font-typewriter);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.btn-map-fit:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px var(--color-shadow);
+}
+
+/* Route Explorer Markers */
+.route-marker-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-paper);
+  border: 1.5px solid var(--color-ink);
+  border-radius: 50%;
+  box-shadow: 2px 2px 0px var(--color-shadow);
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--font-mechanical);
+  font-weight: bold;
+  font-size: 10px;
+  color: var(--color-ink);
+  width: 22px;
+  height: 22px;
+}
+
+.route-marker-badge.marker-start {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+  border-color: var(--color-paper);
+  width: 20px;
+  height: 20px;
+}
+
+.route-marker-badge.marker-end {
+  background-color: var(--color-green);
+  border-color: var(--color-paper);
+  color: var(--color-paper);
+  width: 26px;
+  height: 26px;
+}
+
+/* MapLibre Popup Overrides (Paper Logbook Style) */
+.maplibregl-popup-content {
+  background: var(--color-paper) !important;
+  color: var(--color-ink) !important;
+  border: 1px solid var(--color-ink) !important;
+  border-radius: var(--border-radius) !important;
+  box-shadow: 2px 2px 0px var(--color-shadow) !important;
+  padding: 6px 10px !important;
+  font-family: var(--font-typewriter) !important;
+  font-size: 11px !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: var(--color-ink) !important;
+  border-bottom-color: var(--color-ink) !important;
+}
+
+.maplibregl-popup-close-button {
+  color: var(--color-ink) !important;
+  font-size: 16px !important;
+  padding: 2px 6px !important;
+}
+
 /* ─── Info Modal Internals ────────────────────────────────────────────────── */
 
 .info-modal-body {
