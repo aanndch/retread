@@ -14,6 +14,7 @@ interface SaveData {
   distanceMode: 'auto' | 'manual';
   location: LocationUnion | null;
   startLocation: LocationUnion | null;
+  viaPoints?: { lat: number; lng: number; name?: string }[];
   photos: Blob[];
   photoThumbs: Blob[];
   coverPhotoIndex: number | null;
@@ -98,6 +99,7 @@ export async function saveEditorDetails(
       photoThumbs: data.photoThumbs,
       km: data.km !== null && !isNaN(data.km) ? data.km : null,
       location: locationPayload,
+      viaPoints: data.viaPoints || [],
       title: legTitle,
     };
 
@@ -138,7 +140,8 @@ export async function saveEditorDetails(
     photos: data.photos,
     photoThumbs: data.photoThumbs,
     km: data.km !== null && !isNaN(data.km) ? data.km : null,
-    location: locationPayload
+    location: locationPayload,
+    viaPoints: data.viaPoints || [],
   };
 
   // Title is optional: fall back to the stop label, then to a positional
@@ -163,6 +166,10 @@ export async function saveEditorDetails(
     if (!existingLeg) throw new Error('Leg to update was not found.');
 
     legData.title = await resolveTitle(existingLeg.rideId, existingLeg);
+    const viaChanged = JSON.stringify(existingLeg.viaPoints || []) !== JSON.stringify(data.viaPoints || []);
+    if (viaChanged) {
+      legData.roadPath = null;
+    }
     await db.legs.update(legId, legData);
     await applyCover(existingLeg.rideId);
     scheduleAutoSync();
@@ -202,6 +209,7 @@ export interface BackfillLegInput {
   photoThumbs: Blob[];
   km?: number | null;
   location: LocationUnion | null;
+  viaPoints?: { lat: number; lng: number; name?: string }[];
   title: string;
 }
 
@@ -258,6 +266,7 @@ export async function saveBackfillTrip(args: SaveBackfillTripArgs): Promise<stri
         photoThumbs: leg.photoThumbs,
         km: leg.km != null && !isNaN(leg.km) ? leg.km : null,
         location: locationPayload,
+        viaPoints: leg.viaPoints || [],
         // Title fallback consistent with `resolveTitle`: place name, then "Stop N".
         title: leg.title.trim() || (locationPayload?.name?.trim() || `Stop ${i + 1}`),
       };

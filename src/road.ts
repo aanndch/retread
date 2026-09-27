@@ -70,38 +70,50 @@ export interface SnapOptions {
 export async function snapLeg(
   from: { lat: number; lng: number },
   to: { lat: number; lng: number },
+  viaOrOptions?: { lat: number; lng: number }[] | SnapOptions,
   options?: SnapOptions
 ): Promise<{ lat: number; lng: number }[]> {
-  const { timeoutMs = SNAP_TIMEOUT_MS, maxAttempts = SNAP_RETRIES, hosts = OSRM_BASE_URLS } = options ?? {};
+  const viaPoints = Array.isArray(viaOrOptions) ? viaOrOptions : undefined;
+  const opts = Array.isArray(viaOrOptions) ? options : (viaOrOptions ?? options);
+  const { timeoutMs = SNAP_TIMEOUT_MS, maxAttempts = SNAP_RETRIES, hosts = OSRM_BASE_URLS } = opts ?? {};
+
+  const allPoints = [from, ...(viaPoints || []), to];
   const directDist = haversineDistance(from, to);
 
-  // Safeguard: If points are basically identical, return direct line
-  if (directDist < SNAP_THRESHOLD_KM) {
+  // Safeguard: If points are basically identical and no via points, return direct line
+  if (!viaPoints?.length && directDist < SNAP_THRESHOLD_KM) {
     return [from, to];
   }
 
-  // Split marathon legs into hops so public OSRM servers don't stall/drop them
-  const hopCount = Math.max(1, Math.ceil(directDist / LONG_LEG_SPLIT_KM));
-  if (hopCount > 1) {
-    const waypoints = [from, ...interpolateWaypoints(from, to, hopCount - 1), to];
-    const segments: { lat: number; lng: number }[][] = [];
-    for (let i = 0; i < waypoints.length - 1; i++) {
-      segments.push(await snapLeg(waypoints[i], waypoints[i + 1], options));
+  // If there are no via points and distance is huge, split marathon legs into hops.
+  // When via points ARE present, the user has explicitly guided the corridor,
+  // so we avoid blind geometric straight-line midpoint splitting.
+  if (!viaPoints?.length) {
+    const hopCount = Math.max(1, Math.ceil(directDist / LONG_LEG_SPLIT_KM));
+    if (hopCount > 1) {
+      const waypoints = [from, ...interpolateWaypoints(from, to, hopCount - 1), to];
+      const segments: { lat: number; lng: number }[][] = [];
+      for (let i = 0; i < waypoints.length - 1; i++) {
+        segments.push(await snapLeg(waypoints[i], waypoints[i + 1], undefined, opts));
+      }
+      const joined: { lat: number; lng: number }[] = [];
+      for (const seg of segments) {
+        if (joined.length > 0 && seg.length > 0) joined.push(...seg.slice(1));
+        else joined.push(...seg);
+      }
+      return joined;
     }
-    const joined: { lat: number; lng: number }[] = [];
-    for (const seg of segments) {
-      if (joined.length > 0 && seg.length > 0) joined.push(...seg.slice(1));
-      else joined.push(...seg);
-    }
-    return joined;
   }
+
+  // Query OSRM with all waypoints in order
+  const coordString = allPoints.map((p) => `${p.lng},${p.lat}`).join(';');
 
   for (let attempt = 0; attempt <= maxAttempts; attempt++) {
     for (const baseUrl of hosts) {
       let controller: AbortController | null = null;
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
-        const url = `${baseUrl}${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
+        const url = `${baseUrl}${coordString}?overview=full&geometries=geojson`;
         controller = new AbortController();
         timer = setTimeout(() => controller?.abort(), timeoutMs);
         const res = await fetch(url, { signal: controller.signal });
@@ -116,13 +128,15 @@ export async function snapLeg(
           const route = data.routes[0];
           const osrmKm = route.distance / 1000;
 
-          // Safeguard: If OSRM distance is > DETOUR_RATIO_LONG * direct distance AND direct distance is significant, drop snap
-          const isDetour = directDist > DIRECT_DIST_LIMIT_KM 
-            ? (osrmKm > DETOUR_RATIO_LONG * directDist) 
-            : (osrmKm > DETOUR_FLAT_SHORT_KM);
-          if (isDetour) {
-            console.warn(`OSRM detour safety triggered: OSRM is ${osrmKm.toFixed(1)}km vs direct ${directDist.toFixed(1)}km. Dropping snap.`);
-            return [from, to];
+          // Detour safety check applies only when no user-selected via points are present
+          if (!viaPoints?.length) {
+            const isDetour = directDist > DIRECT_DIST_LIMIT_KM 
+              ? (osrmKm > DETOUR_RATIO_LONG * directDist) 
+              : (osrmKm > DETOUR_FLAT_SHORT_KM);
+            if (isDetour) {
+              console.warn(`OSRM detour safety triggered: OSRM is ${osrmKm.toFixed(1)}km vs direct ${directDist.toFixed(1)}km. Dropping snap.`);
+              return [from, to];
+            }
           }
 
           // Convert OSRM GeoJSON coords [lng, lat] to list of {lat, lng}
@@ -143,8 +157,26 @@ export async function snapLeg(
     if (attempt < maxAttempts) await sleep(SNAP_RETRY_BACKOFF_MS * (attempt + 1));
   }
 
+  // If multi-point query failed, fall back to pairwise snapping across via points
+  if (viaPoints?.length) {
+    try {
+      const segments: { lat: number; lng: number }[][] = [];
+      for (let i = 0; i < allPoints.length - 1; i++) {
+        segments.push(await snapLeg(allPoints[i], allPoints[i + 1], undefined, opts));
+      }
+      const joined: { lat: number; lng: number }[] = [];
+      for (const seg of segments) {
+        if (joined.length > 0 && seg.length > 0) joined.push(...seg.slice(1));
+        else joined.push(...seg);
+      }
+      return joined;
+    } catch {
+      // Fall through to straight-line fallback
+    }
+  }
+
   console.warn('[OSRM] All hosts exhausted; returning straight-line fallback.');
-  return [from, to];
+  return allPoints;
 }
 
 // Retroactive Snapper: Backfills missing road paths for all legs of a ride.
@@ -198,11 +230,11 @@ export async function backfillRideRoutes(rideId: number): Promise<void> {
 
     if (needsSnap) {
       try {
-        const snappedPath = await snapLeg(fromGps, toGps);
+        const snappedPath = await snapLeg(fromGps, toGps, currentLeg.viaPoints);
         await db.legs.update(currentLeg.id!, { roadPath: snappedPath });
       } catch (snapErr) {
         console.warn(`[OSRM] Snap failed for leg, saving straight line fallback:`, snapErr);
-        await db.legs.update(currentLeg.id!, { roadPath: [fromGps, toGps] });
+        await db.legs.update(currentLeg.id!, { roadPath: [fromGps, ...(currentLeg.viaPoints || []), toGps] });
       }
     }
 

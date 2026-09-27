@@ -48,12 +48,13 @@ interface EditorState {
   // Human-readable name of the from-point an auto-measured distance is based on.
   distanceFromLabel: string | null;
   location: LocationUnion | null;
+  viaPoints: { lat: number; lng: number; name?: string }[];
   startLocation: LocationUnion | null;
   gpsLoading: boolean;
   startGpsLoading: boolean;
   showMapPicker: boolean;
   showPasteModal: boolean;
-  mapPickerTarget: 'start' | 'location';
+  mapPickerTarget: 'start' | 'location' | 'via';
   // When set, the map picker edits that review leg's destination pin (instead
   // of the single-leg `location`); null → the ride-level/leg-level `location`.
   mapPickerLegId: string | null;
@@ -110,6 +111,7 @@ const initialEditorState: EditorState = {
   distanceMode: 'auto',
   distanceFromLabel: null,
   location: null,
+  viaPoints: [],
   startLocation: null,
   gpsLoading: false,
   startGpsLoading: false,
@@ -215,6 +217,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     distanceMode,
     distanceFromLabel,
     location,
+    viaPoints,
     startLocation,
     gpsLoading,
     startGpsLoading,
@@ -269,6 +272,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
             km: leg.km ?? null,
             kmSource: leg.km != null ? 'manual' : null,
             location: leg.location ?? null,
+            viaPoints: leg.viaPoints || [],
             legTitle: leg.title || '',
             photos: leg.photos || [],
             photoThumbs: leg.photoThumbs || [],
@@ -493,7 +497,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       const fromGps = { lat: legFromCenter[0], lng: legFromCenter[1] };
       const toGps = { lat: location.lat, lng: location.lng };
 
-      const snappedPath = await snapLeg(fromGps, toGps, { timeoutMs: 8000, maxAttempts: 0 });
+      const snappedPath = await snapLeg(fromGps, toGps, viaPoints, { timeoutMs: 8000, maxAttempts: 0 });
 
       let totalKm = 0;
       for (let i = 1; i < snappedPath.length; i++) {
@@ -532,7 +536,8 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       return;
     }
     if (location?.kind !== 'gps' || !legFromCenter || gpsLoading) return;
-    const key = `${legFromCenter[0]},${legFromCenter[1]}|${location.lat},${location.lng}`;
+    const viaKey = (viaPoints || []).map((p) => `${p.lat},${p.lng}`).join(';');
+    const key = `${legFromCenter[0]},${legFromCenter[1]}|${location.lat},${location.lng}|${viaKey}`;
     if (autoCalcKeyRef.current !== key) {
       autoCalcKeyRef.current = key;
       if (skipAutoOnMountRef.current) {
@@ -541,7 +546,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       }
       handleAutoFillDistance();
     }
-  }, [distanceMode, location, fallbackCenter, gpsLoading]);
+  }, [distanceMode, location, fallbackCenter, gpsLoading, viaPoints]);
 
   // Photo uploads & compression
   const handlePhotoChange = async (e: Event) => {
@@ -755,10 +760,9 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     dispatch({ reviewLegs: next });
   };
 
-  // Open the map picker targeting a specific review leg's destination pin. The
-  // single `location` state is untouched — the picked pin lands on that leg.
-  const handleOpenLegMapPicker = (id: string) => {
-    dispatch({ mapPickerTarget: 'location', mapPickerLegId: id });
+  // Open the map picker targeting a specific review leg's destination pin or via points.
+  const handleOpenLegMapPicker = (id: string, target: 'location' | 'via' = 'location') => {
+    dispatch({ mapPickerTarget: target, mapPickerLegId: id });
     if (!navigator.onLine) {
       dispatch({ showPasteModal: true });
       return;
@@ -821,7 +825,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     dispatch({ legGpsLoadingId: id });
     try {
       const toGps = { lat: leg.location.lat, lng: leg.location.lng };
-      const snappedPath = await snapLeg(from, toGps, { timeoutMs: 8000, maxAttempts: 0 });
+      const snappedPath = await snapLeg(from, toGps, leg.viaPoints, { timeoutMs: 8000, maxAttempts: 0 });
       let totalKm = 0;
       for (let i = 1; i < snappedPath.length; i++) {
         totalKm += haversineDistance(snappedPath[i - 1], snappedPath[i]);
@@ -851,6 +855,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     photoThumbs: leg.photoIndices.map((i) => photoThumbs[i]),
     km: leg.km != null && !isNaN(leg.km) ? leg.km : null,
     location: leg.location,
+    viaPoints: leg.viaPoints,
     title: leg.title,
   }));
 
@@ -872,7 +877,7 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
     dispatch({ titleError: '', step: targetStep });
   };
 
-  const handleOpenMapPicker = (target: 'start' | 'location') => {
+  const handleOpenMapPicker = (target: 'start' | 'location' | 'via') => {
     dispatch({ mapPickerTarget: target });
     if (!navigator.onLine) {
       // The map needs a network; offer the paste-coordinates fallback instead.
@@ -886,10 +891,20 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
   // label"), plus the stop name edited in the modal.
   const handleConfirmPickerLocation = (pin: { lat: number; lng: number } | null, name: string) => {
     const target = mapPickerTarget;
-    const existing = target === 'start' ? startLocation : location;
-    // A leg-targeted pick: patch that review leg's destination pin instead of
+    // A leg-targeted pick: patch that review leg's destination pin or via points instead of
     // the single-leg `location`.
     if (mapPickerLegId) {
+      if (target === 'via') {
+        if (pin) {
+          const leg = reviewLegs.find((l) => l.id === mapPickerLegId);
+          const currentVia = leg?.viaPoints || [];
+          const newVia = [...currentVia, { lat: pin.lat, lng: pin.lng, name: name || undefined }];
+          handleEditReviewLeg(mapPickerLegId, { viaPoints: newVia });
+        }
+        dispatch({ mapPickerLegId: null });
+        return;
+      }
+
       const legExisting = reviewLegs.find((l) => l.id === mapPickerLegId)?.location ?? null;
       if (pin) {
         handleEditReviewLeg(mapPickerLegId, {
@@ -903,6 +918,17 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       dispatch({ mapPickerLegId: null });
       return;
     }
+
+    if (target === 'via') {
+      if (pin) {
+        dispatch({
+          viaPoints: [...viaPoints, { lat: pin.lat, lng: pin.lng, name: name || undefined }],
+        });
+      }
+      return;
+    }
+
+    const existing = target === 'start' ? startLocation : location;
     if (pin) {
       if (target === 'start') {
         dispatch({ mapNote: false, startLocation: { kind: 'gps', lat: pin.lat, lng: pin.lng, name: name || existing?.name || '' } });
@@ -1062,6 +1088,8 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
               kmSource={kmSource}
               distanceFromLabel={legFromLabel}
               location={location}
+              viaPoints={viaPoints}
+              onRemoveViaPoint={(idx) => dispatch({ viaPoints: viaPoints.filter((_, i) => i !== idx) })}
               gpsLoading={gpsLoading}
               handleDropPin={handleDropPin}
               handleClearLocation={handleClearLocation}
@@ -1172,24 +1200,46 @@ export function Editor({ onNavigate, onNavigateBack }: EditorProps) {
       <MapPicker
         isOpen={showMapPicker}
         initialLocation={
-          mapPickerTarget === 'start'
-            ? startLocation
-            : mapPickerLegId
-              ? reviewLegs.find((l) => l.id === mapPickerLegId)?.location ?? null
-              : location
+          mapPickerTarget === 'via'
+            ? null
+            : mapPickerTarget === 'start'
+              ? startLocation
+              : mapPickerLegId
+                ? reviewLegs.find((l) => l.id === mapPickerLegId)?.location ?? null
+                : location
         }
-        fallbackCenter={fallbackCenter}
+        fallbackCenter={
+          mapPickerTarget === 'via'
+            ? (mapPickerLegId
+                ? (() => {
+                    const rLeg = reviewLegs.find((l) => l.id === mapPickerLegId);
+                    if (rLeg?.viaPoints?.length) {
+                      const lastVp = rLeg.viaPoints[rLeg.viaPoints.length - 1];
+                      return [lastVp.lat, lastVp.lng] as [number, number];
+                    }
+                    if (rLeg?.location?.kind === 'gps') {
+                      return [rLeg.location.lat, rLeg.location.lng] as [number, number];
+                    }
+                    return fallbackCenter;
+                  })()
+                : (viaPoints.length > 0
+                    ? [viaPoints[viaPoints.length - 1].lat, viaPoints[viaPoints.length - 1].lng] as [number, number]
+                    : location?.kind === 'gps'
+                      ? [location.lat, location.lng] as [number, number]
+                      : fallbackCenter))
+            : fallbackCenter
+        }
         onConfirm={handleConfirmPickerLocation}
-        onClose={() => dispatch({ showMapPicker: false })}
+        onClose={() => dispatch({ showMapPicker: false, mapPickerLegId: null })}
         showToast={showToast}
       />
 
       {/* Offline fallback: paste raw coordinates when the map can't load */}
       <CoordinatePasteModal
         isOpen={showPasteModal}
-        targetLabel={mapPickerTarget === 'start' ? 'Start point' : 'Destination'}
+        targetLabel={mapPickerTarget === 'start' ? 'Start point' : mapPickerTarget === 'via' ? 'Via point' : 'Destination'}
         onConfirm={handlePasteLocation}
-        onClose={() => dispatch({ showPasteModal: false })}
+        onClose={() => dispatch({ showPasteModal: false, mapPickerLegId: null })}
       />
 
       <ToastHost toasts={toasts} removeToast={removeToast} />

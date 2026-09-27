@@ -32,6 +32,7 @@ export interface BackupPayload {
     note: string;
     km: number | null;
     location: LocationUnion | null;
+    viaPoints?: { lat: number; lng: number; name?: string }[];
     roadPath: { lat: number; lng: number }[] | null;
     photos: string[];
   }[];
@@ -260,6 +261,7 @@ export async function buildBackupPayload(): Promise<BackupPayload> {
       note: leg.note,
       km: leg.km ?? null,
       location: leg.location ?? null,
+      viaPoints: leg.viaPoints ?? [],
       roadPath: leg.roadPath ?? null,
       photos: base64Photos,
     });
@@ -453,6 +455,7 @@ export async function performRestore(
         photoThumbs,
         km: leg.km,
         location: leg.location,
+        viaPoints: leg.viaPoints ?? [],
         roadPath: leg.roadPath,
       });
     }

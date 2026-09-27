@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import type { JSX } from 'preact';
 import { FieldCard } from '../../components/field-card';
+import { Button } from '../../components/button';
 import { StepActions, PlaceRow, TextInput } from './fields';
 import { formatDistance } from '../../lib';
 import type { LocationUnion } from '../../types';
@@ -14,6 +15,7 @@ export interface ReviewLeg {
   date: string; // YYYY-MM-DD
   time?: string;
   location: LocationUnion | null; // GPS pin, or null → phantom stop
+  viaPoints?: { lat: number; lng: number; name?: string }[];
   photoIndices: number[];
   km?: number | null;
 }
@@ -32,7 +34,7 @@ interface LegsStepProps {
   handleStepJump: (s: 1 | 2 | 3 | 4 | 5) => void;
   saving: boolean;
   // Per-leg destination / distance helpers.
-  onOpenLegMapPicker: (id: string) => void;
+  onOpenLegMapPicker: (id: string, target?: 'location' | 'via') => void;
   onClearLegLocation: (id: string) => void;
   onRetryLegGps: (id: string) => void;
   onAutoFillLegDistance: (id: string) => void;
@@ -169,13 +171,76 @@ export function LegsStep({
             emptyLabel="Choose destination →"
             location={leg.location}
             gpsLoading={legLoading}
-            onOpen={() => onOpenLegMapPicker(leg.id)}
+            onOpen={() => onOpenLegMapPicker(leg.id, 'location')}
             onUseLocation={() => onRetryLegGps(leg.id)}
             onClear={() => onClearLegLocation(leg.id)}
           />
           {leg.location?.kind !== 'gps' && (
             <span class="field-tip">No pin — this stop will show as an approximate stop on the map.</span>
           )}
+        </FieldCard>
+
+        <FieldCard label="Route Guide (Via Points)">
+          <p class="field-tip" style={{ margin: '0 0 var(--spacing-sm) 0' }}>
+            Add towns or highway junctions you passed through to guide the route path.
+          </p>
+
+          {leg.viaPoints && leg.viaPoints.length > 0 && (
+            <div class="via-points-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+              {leg.viaPoints.map((vp, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    background: 'var(--color-paper-dim)',
+                    border: '1px solid var(--color-ink-muted)',
+                    borderRadius: 'var(--border-radius)',
+                    fontFamily: 'var(--font-typewriter)',
+                    fontSize: '12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                    <span style={{ color: 'var(--color-ink-muted)', fontSize: '10px' }}>#{idx + 1}</span>
+                    <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      {vp.name || `${vp.lat.toFixed(4)}, ${vp.lng.toFixed(4)}`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn-clear"
+                    onClick={() => {
+                      const updated = (leg.viaPoints || []).filter((_, i) => i !== idx);
+                      onEditLeg(leg.id, { viaPoints: updated });
+                    }}
+                    aria-label="Remove via point"
+                    style={{
+                      fontSize: '14px',
+                      color: 'var(--color-ink-muted)',
+                      cursor: 'pointer',
+                      background: 'none',
+                      border: 'none',
+                      padding: '2px 6px',
+                    }}
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => onOpenLegMapPicker(leg.id, 'via')}
+            style={{ width: '100%', justifyContent: 'center' }}
+          >
+            + Add Waypoint on Map
+          </Button>
         </FieldCard>
 
         <FieldCard label="Date & Time">

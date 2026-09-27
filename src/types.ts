@@ -24,6 +24,7 @@ export interface Leg {
   photoThumbs?: Blob[];       // Small JPEGs (~320px) for ride-card covers
   km?: number | null;         // Direct distance entry
   location?: LocationUnion | null;
+  viaPoints?: { lat: number; lng: number; name?: string }[];
   roadPath?: { lat: number; lng: number }[] | null; // OSRM shape coordinates
   title?: string;
 }

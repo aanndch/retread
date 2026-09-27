@@ -16,6 +16,8 @@ interface LegStepProps {
   kmSource: 'auto' | 'manual' | null;
   distanceFromLabel: string | null;
   location: LocationUnion | null;
+  viaPoints?: { lat: number; lng: number; name?: string }[];
+  onRemoveViaPoint?: (index: number) => void;
   gpsLoading: boolean;
   handleDropPin: () => void;
   handleClearLocation: () => void;
@@ -31,7 +33,7 @@ interface LegStepProps {
   step: 1 | 2 | 3 | 4 | 5;
   handleCancel: () => void;
     handleStepJump: (s: 1 | 2 | 3 | 4 | 5) => void;
-  onOpenMapPicker: (target: 'start' | 'location') => void;
+  onOpenMapPicker: (target: 'start' | 'location' | 'via') => void;
   fallbackCenter: [number, number] | null;
   onAutoFillDistance: () => void;
   saving: boolean;
@@ -50,6 +52,8 @@ export function LegStep({
   kmSource,
   distanceFromLabel,
   location,
+  viaPoints,
+  onRemoveViaPoint,
   gpsLoading,
   handleDropPin,
   handleClearLocation,
@@ -92,6 +96,66 @@ export function LegStep({
         {mapNote && location?.kind !== 'gps' && (
           <span class="field-tip">No pin — this stop will show as an approximate stop on the map.</span>
         )}
+      </FieldCard>
+
+      <FieldCard label="Route Guide (Via Points)">
+        <p class="field-tip" style={{ margin: '0 0 var(--spacing-sm) 0' }}>
+          Add towns or highway junctions you passed through to guide the route path.
+        </p>
+
+        {viaPoints && viaPoints.length > 0 && (
+          <div class="via-points-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+            {viaPoints.map((vp, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '6px 10px',
+                  background: 'var(--color-paper-dim)',
+                  border: '1px solid var(--color-ink-muted)',
+                  borderRadius: 'var(--border-radius)',
+                  fontFamily: 'var(--font-typewriter)',
+                  fontSize: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                  <span style={{ color: 'var(--color-ink-muted)', fontSize: '10px' }}>#{idx + 1}</span>
+                  <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    {vp.name || `${vp.lat.toFixed(4)}, ${vp.lng.toFixed(4)}`}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  class="btn-clear"
+                  onClick={() => onRemoveViaPoint?.(idx)}
+                  aria-label="Remove via point"
+                  style={{
+                    fontSize: '14px',
+                    color: 'var(--color-ink-muted)',
+                    cursor: 'pointer',
+                    background: 'none',
+                    border: 'none',
+                    padding: '2px 6px',
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => onOpenMapPicker('via')}
+          style={{ width: '100%', justifyContent: 'center' }}
+        >
+          + Add Waypoint on Map
+        </Button>
       </FieldCard>
 
       <DetailRow
