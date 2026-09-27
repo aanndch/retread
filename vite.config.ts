@@ -58,18 +58,6 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/router\.project-osrm\.org\/route\/v1\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'osrm-routes',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 1 week
-              },
-              networkTimeoutSeconds: 10 // fail fast if offline
-            }
-          },
-          {
             urlPattern: /^https:\/\/tiles\.openfreemap\.org\/.*/i,
             handler: 'CacheFirst',
             options: {

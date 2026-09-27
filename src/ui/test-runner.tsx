@@ -4,7 +4,7 @@ import { ArrowLeft } from '../components/icons';
 import { computeTotalDistance } from '../lib';
 import { db } from '../db';
 import { buildBackupPayload } from '../gdrive';
-import { snapLeg } from '../road';
+import { snapLeg, haversineDistance } from '../road';
 import { sideAnchor, centerLabel } from './squiggle';
 
 export function TestRunner() {
@@ -92,104 +92,64 @@ export function TestRunner() {
       list.push({ name: 'Backup payload preserves leg title + time (v3)', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
-    // Test 4: OSRM snap success path parses GeoJSON route
+    // Test 4: Route path generator connects endpoints directly
     try {
-      const realFetch = window.fetch;
-      try {
-        const fakeRoute = {
-          code: 'Ok',
-          routes: [{ distance: 12000, geometry: { coordinates: [[76.5, 12.3], [76.6, 12.4]] } }]
-        };
-        window.fetch = (async () => ({ ok: true, status: 200, statusText: 'OK', json: async () => fakeRoute })) as unknown as typeof fetch;
+      const from = { lat: 12.3, lng: 76.5 };
+      const to = { lat: 12.4, lng: 76.6 };
+      const path = await snapLeg(from, to);
 
-        const path = await snapLeg({ lat: 12.3, lng: 76.5 }, { lat: 12.4, lng: 76.6 });
-
-        if (path.length === 2 && path[0].lat === 12.3 && path[1].lat === 12.4) {
-          list.push({ name: 'OSRM snap success path', status: 'PASS' });
-        } else {
-          list.push({ name: 'OSRM snap success path', status: 'FAIL', message: `Got ${path.length} pts` });
-        }
-      } finally {
-        window.fetch = realFetch;
+      if (path.length === 2 && path[0] === from && path[1] === to) {
+        list.push({ name: 'Route path connects endpoints directly', status: 'PASS' });
+      } else {
+        list.push({ name: 'Route path connects endpoints directly', status: 'FAIL', message: `Got ${path.length} pts` });
       }
     } catch (e: unknown) {
-      list.push({ name: 'OSRM snap success path', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
+      list.push({ name: 'Route path connects endpoints directly', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
-    // Test 5: OSRM snap falls back to straight line when all hosts fail
+    // Test 5: Route path generator preserves intermediate viaPoints in order
     try {
-      const realFetch = window.fetch;
-      try {
-        window.fetch = (async () => { throw new Error('network down'); }) as unknown as typeof fetch;
+      const from = { lat: 12.3, lng: 76.5 };
+      const via = [{ lat: 12.35, lng: 76.55 }];
+      const to = { lat: 12.4, lng: 76.6 };
+      const path = await snapLeg(from, to, via);
 
-        const from = { lat: 12.3, lng: 76.5 };
-        const to = { lat: 12.4, lng: 76.6 };
-        const path = await snapLeg(from, to);
-
-        if (path.length === 2 && path[0] === from && path[1] === to) {
-          list.push({ name: 'OSRM snap straight-line fallback on failure', status: 'PASS' });
-        } else {
-          list.push({ name: 'OSRM snap straight-line fallback on failure', status: 'FAIL' });
-        }
-      } finally {
-        window.fetch = realFetch;
+      if (path.length === 3 && path[0] === from && path[1] === via[0] && path[2] === to) {
+        list.push({ name: 'Route path preserves via points in order', status: 'PASS' });
+      } else {
+        list.push({ name: 'Route path preserves via points in order', status: 'FAIL', message: `Got ${path.length} pts` });
       }
     } catch (e: unknown) {
-      list.push({ name: 'OSRM snap straight-line fallback on failure', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
+      list.push({ name: 'Route path preserves via points in order', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
-    // Test 6: OSRM snap tries fallback host after primary failure
+    // Test 6: Haversine distance calculation
     try {
-      const realFetch = window.fetch;
-      try {
-        let calls = 0;
-        const fakeRoute = {
-          code: 'Ok',
-          routes: [{ distance: 12000, geometry: { coordinates: [[76.5, 12.3], [76.6, 12.4]] } }]
-        };
-        window.fetch = (async () => {
-          calls++;
-          if (calls === 1) throw new Error('primary host down');
-          return { ok: true, status: 200, json: async () => fakeRoute };
-        }) as unknown as typeof fetch;
-
-        const path = await snapLeg({ lat: 12.3, lng: 76.5 }, { lat: 12.4, lng: 76.6 });
-
-        if (path.length === 2 && calls === 2) {
-          list.push({ name: 'OSRM snap fallback host recovery', status: 'PASS' });
-        } else {
-          list.push({ name: 'OSRM snap fallback host recovery', status: 'FAIL', message: `calls=${calls}` });
-        }
-      } finally {
-        window.fetch = realFetch;
+      const d = haversineDistance({ lat: 12.3, lng: 76.5 }, { lat: 12.4, lng: 76.6 });
+      if (d > 10 && d < 20) {
+        list.push({ name: 'Haversine distance calculation', status: 'PASS' });
+      } else {
+        list.push({ name: 'Haversine distance calculation', status: 'FAIL', message: `Got ${d} km` });
       }
     } catch (e: unknown) {
-      list.push({ name: 'OSRM snap fallback host recovery', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
+      list.push({ name: 'Haversine distance calculation', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
-    // Test 7: OSRM snap splits very long legs into hops
+    // Test 7: Multi-point leg distance calculation sums intermediate viaPoints accurately
     try {
-      const realFetch = window.fetch;
-      try {
-        const fakeRoute = {
-          code: 'Ok',
-          routes: [{ distance: 80000, geometry: { coordinates: [[76.5, 12.3], [76.6, 12.4]] } }]
-        };
-        window.fetch = (async () => ({ ok: true, status: 200, json: async () => fakeRoute })) as unknown as typeof fetch;
+      const p1 = { lat: 12.3, lng: 76.5 };
+      const p2 = { lat: 12.35, lng: 76.55 };
+      const p3 = { lat: 12.4, lng: 76.6 };
+      const path = await snapLeg(p1, p3, [p2]);
+      const totalDist = haversineDistance(path[0], path[1]) + haversineDistance(path[1], path[2]);
 
-        // ~400km leg → should split into multiple hops without throwing
-        const path = await snapLeg({ lat: 12.3, lng: 76.5 }, { lat: 16.0, lng: 80.0 });
-
-        if (path.length >= 2) {
-          list.push({ name: 'OSRM snap long-leg midpoint splitting', status: 'PASS' });
-        } else {
-          list.push({ name: 'OSRM snap long-leg midpoint splitting', status: 'FAIL', message: `Got ${path.length} pts` });
-        }
-      } finally {
-        window.fetch = realFetch;
+      if (path.length === 3 && totalDist > 0) {
+        list.push({ name: 'Multi-point leg distance calculation', status: 'PASS' });
+      } else {
+        list.push({ name: 'Multi-point leg distance calculation', status: 'FAIL' });
       }
     } catch (e: unknown) {
-      list.push({ name: 'OSRM snap long-leg midpoint splitting', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
+      list.push({ name: 'Multi-point leg distance calculation', status: 'FAIL', message: e instanceof Error ? e.message : 'Unknown error' });
     }
 
     // Test 8: Squiggle edge-label placement keeps text inside the map
