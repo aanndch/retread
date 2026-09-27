@@ -41,28 +41,138 @@ function shortPlaceName(address: unknown, displayName: string): string {
   return displayName.split(',')[0].trim();
 }
 
-// India-biased forward geocoding via Nominatim. `countrycodes=in` plus a viewbox
-// biases ranking toward India without bounding the result, so near-border
-// places still resolve. Shared by the map picker search and the editor's
-// best-effort name-to-pin.
-export async function geocodePlace(query: string, signal?: AbortSignal): Promise<GeocodePlace[]> {
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1&countrycodes=in&viewbox=68.0,6.0,98.0,36.0`,
-    { headers: { Accept: 'application/json' }, signal }
-  );
-  if (!res.ok) throw new Error('Search failed');
-  const data = (await res.json()) as any[];
-  return data.map((r) => ({
-    lat: parseFloat(r.lat),
-    lng: parseFloat(r.lon),
-    name: shortPlaceName(r.address, r.display_name),
-    display: r.display_name,
-  }));
+export interface GeocodeOptions {
+  signal?: AbortSignal;
+  lat?: number;
+  lng?: number;
+}
+
+// Multi-engine place search:
+// 1. Direct coordinate parse (raw lat/lng or Google Maps link).
+// 2. Primary: Photon (Komoot / Elasticsearch OSM) with typo-tolerance, fuzzy matching & camera proximity.
+// 3. Fallback: OpenStreetMap Nominatim with proximity viewbox.
+export async function geocodePlace(
+  query: string,
+  optionsOrSignal?: AbortSignal | GeocodeOptions
+): Promise<GeocodePlace[]> {
+  const options: GeocodeOptions =
+    optionsOrSignal instanceof AbortSignal
+      ? { signal: optionsOrSignal }
+      : (optionsOrSignal ?? {});
+
+  const { signal, lat, lng } = options;
+  const trimmed = query.trim();
+
+  // 1. Direct coordinate paste check
+  const coords = parseCoordinates(trimmed);
+  if (coords) {
+    return [
+      {
+        lat: coords.lat,
+        lng: coords.lng,
+        name: `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`,
+        display: `Coordinates: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`,
+      },
+    ];
+  }
+
+  // 2. Primary search: Photon (fast, typo-tolerant, fuzzy matching)
+  try {
+    let photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(trimmed)}&limit=6&lang=en`;
+    if (lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng)) {
+      photonUrl += `&lat=${lat}&lon=${lng}`;
+    }
+
+    const res = await fetch(photonUrl, {
+      headers: { Accept: 'application/json' },
+      signal,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.features && Array.isArray(data.features) && data.features.length > 0) {
+        const results: GeocodePlace[] = [];
+        for (const f of data.features) {
+          const coords = f.geometry?.coordinates;
+          if (!coords || coords.length < 2) continue;
+          const p = f.properties || {};
+          const name = p.name || p.city || p.town || p.village || p.street || 'Selected Location';
+          const contextParts = [
+            p.street,
+            p.locality,
+            p.district,
+            p.city !== name ? p.city : null,
+            p.town !== name ? p.town : null,
+            p.county,
+            p.state,
+            p.country,
+          ].filter(Boolean);
+          const cleanContext = Array.from(new Set(contextParts)).join(', ');
+          results.push({
+            lat: coords[1],
+            lng: coords[0],
+            name,
+            display: cleanContext ? `${name}, ${cleanContext}` : name,
+          });
+        }
+        if (results.length > 0) {
+          return results;
+        }
+      }
+    }
+  } catch (photonErr) {
+    if (signal?.aborted) throw photonErr;
+    console.warn('Photon search failed, falling back to Nominatim:', photonErr);
+  }
+
+  // 3. Fallback: OpenStreetMap Nominatim
+  try {
+    let nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(trimmed)}&format=json&limit=5&addressdetails=1&countrycodes=in`;
+    if (lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng)) {
+      nominatimUrl += `&viewbox=${lng - 1.5},${lat - 1.5},${lng + 1.5},${lat + 1.5}&bounded=0`;
+    } else {
+      nominatimUrl += `&viewbox=68.0,6.0,98.0,36.0`;
+    }
+
+    const res = await fetch(nominatimUrl, {
+      headers: { Accept: 'application/json' },
+      signal,
+    });
+    if (!res.ok) throw new Error('Search failed');
+    const data = (await res.json()) as any[];
+    return data.map((r) => ({
+      lat: parseFloat(r.lat),
+      lng: parseFloat(r.lon),
+      name: shortPlaceName(r.address, r.display_name),
+      display: r.display_name,
+    }));
+  } catch (nomErr) {
+    if (signal?.aborted) throw nomErr;
+    throw nomErr;
+  }
 }
 
 // Reverse geocode: nearest named place for a pin, or null when offline/unknown.
 // Best-effort — used to suggest a label after a pin is placed.
 export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  // 1. Primary: Photon reverse geocoding
+  try {
+    const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}&lang=en`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.features && data.features.length > 0) {
+        const p = data.features[0].properties || {};
+        const name = p.name || p.city || p.town || p.village || p.suburb || p.locality || p.county;
+        if (name) return name;
+      }
+    }
+  } catch {
+    // Fall through to Nominatim
+  }
+
+  // 2. Fallback: Nominatim reverse geocoding
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=12`,

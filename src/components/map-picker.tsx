@@ -249,7 +249,12 @@ export function MapPicker({
     const timer = window.setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
     setSearching(true);
     try {
-      const mapped = await geocodePlace(trimmed, controller.signal);
+      const center = mapRef.current?.getCenter();
+      const mapped = await geocodePlace(trimmed, {
+        signal: controller.signal,
+        lat: center?.lat ?? fallbackCenterRef.current?.[0],
+        lng: center?.lng ?? fallbackCenterRef.current?.[1],
+      });
       if (searchSeqRef.current !== seq) return;
       setResults(mapped);
       setShowResults(mapped.length > 0);
