@@ -79,6 +79,8 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
 // Shared MapLibre GL loader: concurrent callers get one in-flight attempt,
 // styles and the library are dynamically imported on-demand, and failures
 // clear the cache so a retry can reload.
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+
 export type MaplibreGLModule = typeof import('maplibre-gl');
 
 let maplibreLoadPromise: Promise<MaplibreGLModule> | null = null;
@@ -91,6 +93,9 @@ export const loadMaplibre = async (): Promise<MaplibreGLModule> => {
   maplibreLoadPromise = (async () => {
     await import('maplibre-gl/dist/maplibre-gl.css');
     const mod = await import('maplibre-gl');
+    if (typeof mod.setWorkerUrl === 'function') {
+      mod.setWorkerUrl(workerUrl);
+    }
     maplibreInstance = mod;
     return mod;
   })();
