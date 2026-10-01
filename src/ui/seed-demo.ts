@@ -1,24 +1,85 @@
 import { db } from '../db';
 import { DEMO_ROUTE_PATHS } from './demo-routes';
+import { createThumbnail } from '../images';
 
-// Loads one of the bundled demo photos from Vite's `public/` dir (served at the
-// root). Fetches are awaited up front, before any IndexedDB transaction opens —
-// you cannot await an arbitrary fetch inside a `db.transaction` callback.
-async function loadDemoPhoto(file: string): Promise<Blob> {
-  const r = await fetch(`/demo-photos/${file}`);
-  if (!r.ok) throw new Error(`Failed to load demo photo: ${file}`);
-  return r.blob();
+function createMockPhoto(title: string, color: string): Blob {
+  const escapedTitle = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+    <rect width="100%" height="100%" fill="${color}"/>
+    <circle cx="400" cy="260" r="100" fill="none" stroke="#fafefe" stroke-width="2" opacity="0.3"/>
+    <line x1="400" y1="60" x2="400" y2="460" stroke="#fafefe" stroke-width="1" opacity="0.2"/>
+    <line x1="100" y1="260" x2="700" y2="260" stroke="#fafefe" stroke-width="1" opacity="0.2"/>
+    <text x="50%" y="530" dominant-baseline="middle" text-anchor="middle" font-family="monospace" font-size="16" fill="#fafefe" letter-spacing="2">${escapedTitle.toUpperCase()}</text>
+    <text x="50%" y="265" dominant-baseline="middle" text-anchor="middle" font-family="serif" font-size="32" font-style="italic" fill="#fafefe">RETREAD LOGS</text>
+  </svg>`;
+  return new Blob([svg], { type: 'image/svg+xml' });
+}
+
+// Loads one of the bundled demo photos from Vite's `public/` dir.
+// Respects `import.meta.env.BASE_URL` (critical when Retread is hosted under a
+// subpath like `/retread/` on GitHub Pages or `vite preview`), with candidate
+// URL fallbacks and an inline SVG fallback so seeding never crashes.
+export async function loadDemoPhoto(
+  file: string,
+  fallbackTitle = 'Demo photo',
+  fallbackColor = '#4a5d4e'
+): Promise<Blob> {
+  const rawBase = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
+  const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+
+  const candidates = [
+    `${base}demo-photos/${file}`,
+    `/retread/demo-photos/${file}`,
+    `/demo-photos/${file}`,
+    `./demo-photos/${file}`,
+    `demo-photos/${file}`,
+  ];
+
+  for (const url of candidates) {
+    try {
+      const r = await fetch(url);
+      if (r.ok) {
+        const b = await r.blob();
+        if (b && b.size > 0) return b;
+      }
+    } catch {
+      // Continue to next candidate
+    }
+  }
+
+  console.warn(`[seed-demo] Could not load demo photo "${file}" via fetch; using fallback graphic`);
+  return createMockPhoto(fallbackTitle, fallbackColor);
+}
+
+async function safeThumb(blob: Blob): Promise<Blob> {
+  try {
+    if (typeof document !== 'undefined') {
+      return await createThumbnail(blob);
+    }
+  } catch {
+    // fall through
+  }
+  return blob;
 }
 
 export async function seedDemoRide(): Promise<number> {
   // Preload the bundled real photos (varied aspect ratios) — the lightbox then
   // shows a mix of landscape, portrait, square and panorama shapes.
-  const mountains = await loadDemoPhoto('mountains-800x600.jpg');   // 4:3
-  const valley    = await loadDemoPhoto('valley-800x450.jpg');      // 16:9
-  const peak      = await loadDemoPhoto('peak-portrait-600x800.jpg'); // 3:4
-  const lake      = await loadDemoPhoto('lake-square-700x700.jpg');  // 1:1
-  const ridge     = await loadDemoPhoto('ridge-panorama-1000x500.jpg'); // 2:1
-  const road      = await loadDemoPhoto('road-900x600.jpg');         // 3:2
+  const mountains = await loadDemoPhoto('mountains-800x600.jpg', 'Western Ghats Mountains', '#4a5d4e');   // 4:3
+  const valley    = await loadDemoPhoto('valley-800x450.jpg', 'Wayanad Valley', '#586954');              // 16:9
+  const peak      = await loadDemoPhoto('peak-portrait-600x800.jpg', 'Brahmagiri Peak', '#5c6d5f');       // 3:4
+  const lake      = await loadDemoPhoto('lake-square-700x700.jpg', 'Backwaters Lake', '#4b5b5c');         // 1:1
+  const ridge     = await loadDemoPhoto('ridge-panorama-1000x500.jpg', 'Ghat Ridge Sunset', '#6e6255');  // 2:1
+  const road      = await loadDemoPhoto('road-900x600.jpg', 'Thamarassery Hairpins', '#695e54');          // 3:2
+
+  const [mountainsThumb, valleyThumb, peakThumb, lakeThumb, ridgeThumb, roadThumb] = await Promise.all([
+    safeThumb(mountains),
+    safeThumb(valley),
+    safeThumb(peak),
+    safeThumb(lake),
+    safeThumb(ridge),
+    safeThumb(road),
+  ]);
 
   // Write everything in a single transaction so the UI updates once (not once
   // per leg), which avoids the demo card flickering/animating as it appears.
@@ -47,6 +108,10 @@ export async function seedDemoRide(): Promise<number> {
     photos: [
       valley,
       lake
+    ],
+    photoThumbs: [
+      valleyThumb,
+      lakeThumb
     ]
   });
 
@@ -62,6 +127,10 @@ export async function seedDemoRide(): Promise<number> {
     photos: [
       road,
       peak
+    ],
+    photoThumbs: [
+      roadThumb,
+      peakThumb
     ]
   });
 
@@ -76,6 +145,9 @@ export async function seedDemoRide(): Promise<number> {
     location: { kind: 'gps', lat: 11.2588, lng: 75.7804, name: "Kozhikode" },
     photos: [
       coverPhoto
+    ],
+    photoThumbs: [
+      mountainsThumb
     ]
   });
 
@@ -90,6 +162,9 @@ export async function seedDemoRide(): Promise<number> {
     location: { kind: 'gps', lat: 10.5276, lng: 76.2144, name: "Thrissur" },
     photos: [
       ridge
+    ],
+    photoThumbs: [
+      ridgeThumb
     ]
   });
 
@@ -105,6 +180,10 @@ export async function seedDemoRide(): Promise<number> {
     photos: [
       valley,
       mountains
+    ],
+    photoThumbs: [
+      valleyThumb,
+      mountainsThumb
     ]
   });
 
@@ -120,6 +199,10 @@ export async function seedDemoRide(): Promise<number> {
     photos: [
       road,
       peak
+    ],
+    photoThumbs: [
+      roadThumb,
+      peakThumb
     ]
   });
 
@@ -134,6 +217,9 @@ export async function seedDemoRide(): Promise<number> {
     location: { kind: 'gps', lat: 12.2958, lng: 76.6394, name: "Mysore" },
     photos: [
       lake
+    ],
+    photoThumbs: [
+      lakeThumb
     ]
   });
 
@@ -185,11 +271,19 @@ const SPITI_PATHS: { lat: number; lng: number }[][] = [
 ];
 
 export async function seedPhantomDemoRide(): Promise<number> {
-  const ridge = await loadDemoPhoto('ridge-panorama-1000x500.jpg'); // 2:1
-  const mountains = await loadDemoPhoto('mountains-800x600.jpg');   // 4:3
-  const valley    = await loadDemoPhoto('valley-800x450.jpg');      // 16:9
-  const lake      = await loadDemoPhoto('lake-square-700x700.jpg'); // 1:1
-  const peak      = await loadDemoPhoto('peak-portrait-600x800.jpg'); // 3:4
+  const ridge     = await loadDemoPhoto('ridge-panorama-1000x500.jpg', 'Spiti High Ridge', '#6e6255'); // 2:1
+  const mountains = await loadDemoPhoto('mountains-800x600.jpg', 'Rohtang Pass', '#4a5d4e');          // 4:3
+  const valley    = await loadDemoPhoto('valley-800x450.jpg', 'Spiti River Valley', '#586954');        // 16:9
+  const lake      = await loadDemoPhoto('lake-square-700x700.jpg', 'Chandra Taal Lake', '#4b5b5c');    // 1:1
+  const peak      = await loadDemoPhoto('peak-portrait-600x800.jpg', 'Kunzum La Peak', '#5c6d5f');     // 3:4
+
+  const [ridgeThumb, mountainsThumb, valleyThumb, lakeThumb, peakThumb] = await Promise.all([
+    safeThumb(ridge),
+    safeThumb(mountains),
+    safeThumb(valley),
+    safeThumb(lake),
+    safeThumb(peak),
+  ]);
 
   return db.transaction('rw', db.rides, db.legs, async () => {
   const day2Photo = ridge;
@@ -214,6 +308,9 @@ export async function seedPhantomDemoRide(): Promise<number> {
     location: { kind: 'gps', lat: 32.3717, lng: 77.2467, name: "Rohtang Pass" },
     photos: [
       mountains
+    ],
+    photoThumbs: [
+      mountainsThumb
     ]
   });
 
@@ -228,6 +325,9 @@ export async function seedPhantomDemoRide(): Promise<number> {
     location: { kind: 'named', name: 'Kunzum La' },
     photos: [
       day2Photo
+    ],
+    photoThumbs: [
+      ridgeThumb
     ]
   });
 
@@ -244,6 +344,9 @@ export async function seedPhantomDemoRide(): Promise<number> {
     location: { kind: 'gps', lat: 32.2261, lng: 78.0766, name: "Kaza" },
     photos: [
       valley
+    ],
+    photoThumbs: [
+      valleyThumb
     ]
   });
 
@@ -259,6 +362,9 @@ export async function seedPhantomDemoRide(): Promise<number> {
     location: { kind: 'gps', lat: 32.0804, lng: 78.3673 },
     photos: [
       lake
+    ],
+    photoThumbs: [
+      lakeThumb
     ]
   });
 
@@ -273,6 +379,9 @@ export async function seedPhantomDemoRide(): Promise<number> {
     location: { kind: 'named', name: 'Kalpa' },
     photos: [
       peak
+    ],
+    photoThumbs: [
+      peakThumb
     ]
   });
 

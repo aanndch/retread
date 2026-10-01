@@ -15,7 +15,7 @@ export default defineConfig({
     preact(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg', 'demo-photos/*.jpg'],
       devOptions: {
         enabled: false,
       },
@@ -55,7 +55,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,jpg,jpeg}'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/router\.project-osrm\.org\/route\/v1\/.*/i,
