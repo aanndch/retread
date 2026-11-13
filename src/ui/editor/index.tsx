@@ -16,7 +16,7 @@ import { PageHeader } from '../../components/page-header';
 import { MapPicker } from '../../components/map-picker';
 import { CoordinatePasteModal } from '../../components/coordinate-paste-modal';
 import { saveEditorDetails, saveBackfillTrip } from './save-helper';
-import { groupPhotos, readPhotoMetadata } from '../../images';
+import { groupPhotos } from '../../images';
 import { suggestLegNames, pickCover } from '../../geocode';
 import { snapLeg, haversineDistance } from '../../road';
 import { deriveRideTitle, sortLegs } from '../../lib';
@@ -82,19 +82,6 @@ interface EditorState {
   // Android stripped location from shared photos). Surfaces an informational
   // notice on the Legs step so the user knows pins/names are manual.
   gpsUnavailable: boolean;
-  // TEMP DEBUG: per-photo metadata read during the review build, surfaced
-  // on-screen to debug why a GPS move didn't split legs. Removed after debug.
-  photoMetaDebug: PhotoMetaDebug[];
-}
-
-// TEMP DEBUG: one row per uploaded photo in the backfill flow. `date`/`lat`/`lng`
-// are what readPhotoMetadata extracted; `gpsRead` flags whether GPS was present.
-interface PhotoMetaDebug {
-  name: string;
-  date: string | null;
-  lat: number | null;
-  lng: number | null;
-  gpsRead: boolean;
 }
 
 const initialEditorState: EditorState = {
@@ -133,7 +120,6 @@ const initialEditorState: EditorState = {
   reviewBuilt: false,
   reviewBuilding: false,
   gpsUnavailable: false,
-  photoMetaDebug: [],
 };
 
 // Simple merging reducer (acts like this.setState)
@@ -238,7 +224,6 @@ export function Editor({ onNavigateBack }: EditorProps) {
     reviewLegs,
     reviewBuilding,
     gpsUnavailable,
-    photoMetaDebug,
   } = state;
 
   const photosRef = useRef<Blob[]>([]);
@@ -569,7 +554,6 @@ export function Editor({ onNavigateBack }: EditorProps) {
         // Review step can read EXIF date + GPS for day-grouping.
         newOriginals.push(files[i]);
       } catch (err) {
-        console.error('Image compression failed:', err);
         const isHeicError = err instanceof Error && err.message === HEIC_CONVERT_ERROR;
         showToast(
           isHeicError
@@ -659,21 +643,6 @@ export function Editor({ onNavigateBack }: EditorProps) {
     dispatch({ reviewBuilding: true });
     (async () => {
       try {
-        // TEMP DEBUG: read the raw per-photo metadata so the on-screen debug
-        // panel can show exactly what readPhotoMetadata extracted for each file.
-        const metaDebug: PhotoMetaDebug[] = await Promise.all(
-          files.map(async (file) => {
-            const meta = await readPhotoMetadata(file);
-            return {
-              name: file.name,
-              date: meta.date ? meta.date.toISOString() : null,
-              lat: meta.lat,
-              lng: meta.lng,
-              gpsRead: meta.lat != null && meta.lng != null,
-            };
-          })
-        );
-        dispatch({ photoMetaDebug: metaDebug });
         const dayGroups = await groupPhotos(files);
         const named = await suggestLegNames(dayGroups);
         if (cancelled) return;
@@ -688,8 +657,7 @@ export function Editor({ onNavigateBack }: EditorProps) {
           // Non-silent: if every built leg lacks a GPS pin, tell the user why.
           gpsUnavailable: built.length > 0 && built.every((l) => l.location === null),
         });
-      } catch (err) {
-        console.warn('Photo grouping failed; falling back to a single leg:', err);
+      } catch {
         if (cancelled) return;
         const fallback: ReviewLeg = {
           id: 'leg-1',
@@ -1151,23 +1119,7 @@ export function Editor({ onNavigateBack }: EditorProps) {
               saving={saving}
             />
           ) : mode === 'new-ride' && step === 3 ? (
-            <>
-              {/* TEMP DEBUG: on-screen readout of the per-photo EXIF/GPS extracted
-                  during the backfill build. Debugging why a GPS move didn't split
-                  legs. Removed after debug. */}
-              {photoMetaDebug.length > 0 && (
-                <div style={{ border: '2px dashed #c33', borderRadius: 4, margin: '0 0 12px', padding: 8, background: '#fdf3f3' }}>
-                  <strong style={{ color: '#c33', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>DEBUG — per-photo metadata</strong>
-                  <ul style={{ margin: '6px 0 0', paddingLeft: 16, fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}>
-                    {photoMetaDebug.map((p) => (
-                      <li key={p.name} style={{ marginBottom: 2 }}>
-                        {p.name} · date: {p.date ?? 'null'} · GPS: {p.lat != null && p.lng != null ? `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)} (read)` : 'none'}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <LegsStep
+            <LegsStep
               legs={reviewLegs}
               coverPhotoIndex={coverPhotoIndex}
               photoPreviews={photoPreviews}
@@ -1186,7 +1138,6 @@ export function Editor({ onNavigateBack }: EditorProps) {
               onAutoFillLegDistance={handleAutoFillLegDistance}
               legGpsLoadingId={legGpsLoadingId}
             />
-            </>
           ) : (
             <StoryStep
               note={note}
